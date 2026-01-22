@@ -13,6 +13,37 @@ Laravel 기반 개인 포트폴리오 프로젝트입니다.
 - MariaDB
 - Redis (캐시, 세션, 큐)
 
+## 환경별 설치 명령어
+
+### Windows CMD
+```cmd
+docker run --rm -v "%cd%:/var/www/html" -w /var/www/html laravelsail/php83-composer:latest composer install --ignore-platform-reqs
+```
+
+### Windows PowerShell
+```powershell
+docker run --rm -v "${PWD}:/var/www/html" -w /var/www/html laravelsail/php83-composer:latest composer install --ignore-platform-reqs
+```
+
+### WSL (Ubuntu/Linux)
+```bash
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):/var/www/html" \
+    -w /var/www/html \
+    laravelsail/php83-composer:latest \
+    composer install --ignore-platform-reqs
+```
+
+### Mac (Terminal/zsh)
+```bash
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):/var/www/html" \
+    -w /var/www/html \
+    laravelsail/php83-composer:latest \
+    composer install --ignore-platform-reqs
+```
 ## Sail 명령어
 
 ```bash
