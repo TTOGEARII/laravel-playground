@@ -1,0 +1,85 @@
+/* Reset CSS */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    min-height: 100vh;
+    line-height: 1.5;
+}
+
+/* 이미지 */
+img,
+picture,
+video,
+svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* 폼 요소 */
+input,
+button,
+textarea,
+select {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    outline: none;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* 링크 */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* 리스트 */
+ul,
+ol {
+    list-style: none;
+}
+
+/* 테이블 */
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* 제목 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+/* 기타 */
+address {
+    font-style: normal;
+}
+
+fieldset {
+    border: none;
+}
