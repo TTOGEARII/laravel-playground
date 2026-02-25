@@ -22,7 +22,7 @@
                 <button id="startGameBtn" class="start-game-button">게임 시작</button>
             </div>
         </div>
-        <div id="game-container" style="display: none;"></div>
+        <div id="game-container" style="display: none;" tabindex="0" title="터치하여 이동"></div>
     </div>
 
 
@@ -30,11 +30,21 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
     <script>
 // ============================================================================
-// 게임 설정
+// 게임 설정 (모바일 시 동적 해상도)
 // ============================================================================
+const isMobile = () => 'ontouchstart' in window || window.innerWidth < 768;
+const getGameSize = () => {
+    if (isMobile()) {
+        const w = Math.min(window.innerWidth, 800);
+        const h = Math.min(window.innerHeight - 60, 600);
+        return { width: Math.max(320, w), height: Math.max(400, h) };
+    }
+    return { width: 800, height: 600 };
+};
+
 const CONFIG = {
-    WIDTH: 800,
-    HEIGHT: 600,
+    get WIDTH() { return getGameSize().width; },
+    get HEIGHT() { return getGameSize().height; },
     PLAYER_SPEED: 200,
     PLAYER_HP: 100,
     ENEMY_BASE_SPEED: 80,
@@ -95,7 +105,7 @@ class GameScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.enemies, this.onPlayerHit, null, this);
         this.physics.add.overlap(this.player, this.xpOrbs, this.collectXP, null, this);
 
-        // 입력 설정
+        // 입력 설정 (키보드 + 모바일 터치)
         this.cursors = this.input.keyboard.createCursorKeys();
         this.wasd = this.input.keyboard.addKeys({
             up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -103,6 +113,10 @@ class GameScene extends Phaser.Scene {
             left: Phaser.Input.Keyboard.KeyCodes.A,
             right: Phaser.Input.Keyboard.KeyCodes.D
         });
+        this.touchMoveActive = false;
+        this.input.on('pointerdown', this.onPointerDown, this);
+        this.input.on('pointerup', this.onPointerUp, this);
+        this.input.on('pointerout', this.onPointerUp, this);
 
         // UI 생성
         this.createUI();
@@ -152,7 +166,8 @@ class GameScene extends Phaser.Scene {
         playerGraphics.generateTexture('player', 50, 50);
         playerGraphics.destroy();
 
-        this.player = this.physics.add.sprite(CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, 'player');
+        const w = this.scale.width, h = this.scale.height;
+        this.player = this.physics.add.sprite(w / 2, h / 2, 'player');
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
         this.player.body.setCircle(20, 5, 5);
@@ -202,21 +217,28 @@ class GameScene extends Phaser.Scene {
         this.levelText = this.add.text(20, 70, 'Lv. 1', textStyle);
         this.uiContainer.add(this.levelText);
 
+        const gw = this.scale.width, gh = this.scale.height;
         // 시간 텍스트
-        this.timeText = this.add.text(CONFIG.WIDTH - 100, 20, '00:00', textStyle);
+        this.timeText = this.add.text(gw - 100, 20, '00:00', textStyle);
         this.uiContainer.add(this.timeText);
 
         // 킬 카운트
-        this.killText = this.add.text(CONFIG.WIDTH - 100, 45, 'Kills: 0', textStyle);
+        this.killText = this.add.text(gw - 100, 45, 'Kills: 0', textStyle);
         this.uiContainer.add(this.killText);
 
-        // 조작 안내
-        const helpText = this.add.text(CONFIG.WIDTH / 2, CONFIG.HEIGHT - 30, 
-            'WASD / 방향키로 이동 | 자동 공격', 
-            { fontSize: '14px', fill: '#aaaaaa' }
-        );
+        // 조작 안내 (모바일은 터치 안내)
+        const helpMsg = isMobile() ? '화면 터치로 이동 | 자동 공격' : 'WASD / 방향키로 이동 | 자동 공격';
+        const helpText = this.add.text(gw / 2, gh - 30, helpMsg, { fontSize: '14px', fill: '#aaaaaa' });
         helpText.setOrigin(0.5);
         this.uiContainer.add(helpText);
+    }
+
+    onPointerDown() {
+        this.touchMoveActive = true;
+    }
+
+    onPointerUp() {
+        this.touchMoveActive = false;
     }
 
     updateHPBar() {
@@ -331,16 +353,26 @@ class GameScene extends Phaser.Scene {
         let vx = 0;
         let vy = 0;
 
-        if (this.cursors.left.isDown || this.wasd.left.isDown) vx = -1;
-        else if (this.cursors.right.isDown || this.wasd.right.isDown) vx = 1;
-
-        if (this.cursors.up.isDown || this.wasd.up.isDown) vy = -1;
-        else if (this.cursors.down.isDown || this.wasd.down.isDown) vy = 1;
-
-        // 대각선 이동 시 속도 정규화
-        if (vx !== 0 && vy !== 0) {
-            vx *= 0.707;
-            vy *= 0.707;
+        // 터치/마우스: 누른 위치 방향으로 이동
+        if (this.touchMoveActive && this.input.activePointer.isDown) {
+            const world = this.cameras.main.getWorldPoint(this.input.activePointer.x, this.input.activePointer.y);
+            const dx = world.x - this.player.x;
+            const dy = world.y - this.player.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 20) {
+                vx = dx / dist;
+                vy = dy / dist;
+            }
+        } else {
+            if (this.cursors.left.isDown || this.wasd.left.isDown) vx = -1;
+            else if (this.cursors.right.isDown || this.wasd.right.isDown) vx = 1;
+            if (this.cursors.up.isDown || this.wasd.up.isDown) vy = -1;
+            else if (this.cursors.down.isDown || this.wasd.down.isDown) vy = 1;
+            // 대각선 이동 시 속도 정규화
+            if (vx !== 0 && vy !== 0) {
+                vx *= 0.707;
+                vy *= 0.707;
+            }
         }
 
         this.player.setVelocity(vx * this.playerSpeed, vy * this.playerSpeed);
@@ -554,19 +586,15 @@ class GameScene extends Phaser.Scene {
         this.isGameOver = true;
         this.physics.pause();
 
+        const gw = this.scale.width, gh = this.scale.height;
         // 게임 오버 화면
         const overlay = this.add.graphics();
         overlay.fillStyle(0x000000, 0.7);
-        overlay.fillRect(
-            this.cameras.main.scrollX,
-            this.cameras.main.scrollY,
-            CONFIG.WIDTH,
-            CONFIG.HEIGHT
-        );
+        overlay.fillRect(this.cameras.main.scrollX, this.cameras.main.scrollY, gw, gh);
         overlay.setDepth(200);
 
-        const centerX = this.cameras.main.scrollX + CONFIG.WIDTH / 2;
-        const centerY = this.cameras.main.scrollY + CONFIG.HEIGHT / 2;
+        const centerX = this.cameras.main.scrollX + gw / 2;
+        const centerY = this.cameras.main.scrollY + gh / 2;
 
         const gameOverText = this.add.text(centerX, centerY - 80, 'GAME OVER', {
             fontSize: '48px',
@@ -632,20 +660,25 @@ class GameScene extends Phaser.Scene {
 // ============================================================================
 let game = null;
 
-const config = {
-    type: Phaser.AUTO,
-    width: CONFIG.WIDTH,
-    height: CONFIG.HEIGHT,
-    parent: 'game-container',
-    backgroundColor: '#1a1a2e',
-    physics: {
-        default: 'arcade',
-        arcade: {
-            debug: false
-        }
-    },
-    scene: [GameScene]
-};
+function getPhaserConfig() {
+    const size = getGameSize();
+    return {
+        type: Phaser.AUTO,
+        width: size.width,
+        height: size.height,
+        parent: 'game-container',
+        backgroundColor: '#1a1a2e',
+        scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+        },
+        physics: {
+            default: 'arcade',
+            arcade: { debug: false }
+        },
+        scene: [GameScene]
+    };
+}
 
 // 게임 시작 버튼 이벤트
 const startBtn = document.getElementById('startGameBtn');
@@ -664,13 +697,14 @@ if (startBtn) {
         
         startScreen.style.display = 'none';
         gameContainer.style.display = 'flex';
+        gameContainer.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
         
         // 스크롤 위치 유지
         window.scrollTo(0, scrollY);
         
-        // 게임 시작
+        // 게임 시작 (매번 현재 화면 크기로 생성)
         if (!game) {
-            game = new Phaser.Game(config);
+            game = new Phaser.Game(getPhaserConfig());
         }
         
         // 버튼 비활성화
@@ -689,7 +723,8 @@ if (startBtn) {
     <div class="game-instructions">
         <h3>게임 방법</h3>
         <ul>
-            <li>WASD 또는 방향키로 캐릭터를 이동하세요</li>
+            <li class="desktop-only">WASD 또는 방향키로 캐릭터를 이동하세요</li>
+            <li class="mobile-only">화면을 터치한 방향으로 캐릭터가 이동합니다</li>
             <li>적들이 자동으로 스폰되며 플레이어를 향해 이동합니다</li>
             <li>자동 공격으로 적을 처치하고 경험치를 획득하세요</li>
             <li>경험치를 모아 레벨업하면 공격력, 체력, 속도가 증가합니다</li>

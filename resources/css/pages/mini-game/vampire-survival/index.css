@@ -162,6 +162,13 @@
     background: #1a1a2e;
     overflow: hidden;
     scroll-margin-top: 0;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+#game-container canvas {
+    touch-action: none;
 }
 
 .game-instructions {
@@ -201,6 +208,10 @@
     font-weight: bold;
 }
 
+.game-instructions .mobile-only {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .game-header-bar {
         padding: 10px 16px;
@@ -230,5 +241,13 @@
     .game-instructions {
         margin-top: 16px;
         padding: 16px;
+    }
+
+    .game-instructions .desktop-only {
+        display: none !important;
+    }
+
+    .game-instructions .mobile-only {
+        display: list-item !important;
     }
 }
