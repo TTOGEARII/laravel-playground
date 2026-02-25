@@ -20,12 +20,18 @@ class OtakuProduct extends Model
         'ok_product_brand_label',
         'ok_product_release_date',
         'ok_product_active_flg',
+        'ok_product_cate_id',
     ];
 
     protected $casts = [
         'ok_product_release_date' => 'date',
         'ok_product_active_flg' => 'boolean',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(OtakuCategory::class, 'ok_product_cate_id', 'ok_category_id');
+    }
 
     public function offers()
     {

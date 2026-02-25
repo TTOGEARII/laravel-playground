@@ -22,5 +22,10 @@ class OtakuCategory extends Model
     protected $casts = [
         'ok_category_sort' => 'integer',
     ];
+
+    public function products()
+    {
+        return $this->hasMany(OtakuProduct::class, 'ok_product_cate_id', 'ok_category_id');
+    }
 }
 

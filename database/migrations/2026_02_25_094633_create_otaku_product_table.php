@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('ok_product_brand_label', 120)->nullable()->comment('브랜드/레이블 이름');
             $table->date('ok_product_release_date')->nullable()->comment('발매일');
             $table->boolean('ok_product_active_flg')->default(true)->comment('노출 여부(1:노출,0:숨김)');
+            $table->unsignedBigInteger('ok_product_cate_id')->nullable()->comment('카테고리 ID (otaku_category.ok_category_id)');
             $table->dateTime('create_dt')->nullable()->comment('생성 일시');
             $table->dateTime('update_dt')->nullable()->comment('수정 일시');
 
@@ -27,6 +28,7 @@ return new class extends Migration
             $table->index('ok_product_brand_label', 'idx_ok_pr_brand');
             $table->index('ok_product_release_date', 'idx_ok_pr_release');
             $table->index('ok_product_active_flg', 'idx_ok_pr_active');
+            $table->index('ok_product_cate_id', 'idx_ok_pr_cate_id');
 
             $table->comment('Otaku Shop - 비교 대상 상품 정보 테이블');
         });
