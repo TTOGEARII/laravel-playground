@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('otaku_products', function (Blueprint $table) {
+        Schema::create('toge_os_product_category', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
         });
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('otaku_products');
+        Schema::dropIfExists('toge_os_product_category');
     }
 };
