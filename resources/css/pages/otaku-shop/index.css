@@ -6,49 +6,7 @@
     gap: 0;
 }
 
-.otaku-shop-header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 24px;
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border-color);
-    border-radius: 18px 18px 0 0;
-    margin-bottom: 24px;
-}
-
-.otaku-shop-header-bar .back-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.otaku-shop-header-bar .back-button:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-    color: var(--text-primary);
-    transform: translateX(-2px);
-}
-
-.otaku-shop-header-bar .back-button svg {
-    width: 16px;
-    height: 16px;
-}
-
-.otaku-shop-header-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
+/* 돌아가기 버튼은 layout header (mini-game과 동일한 .header-nav .back-button) 사용 */
 
 .otaku-shop-layout {
     display: grid;

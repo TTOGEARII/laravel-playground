@@ -1,14 +1,5 @@
 <template>
   <div class="otaku-shop-page">
-    <header class="otaku-shop-header-bar">
-      <a href="/" class="back-button">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
-        돌아가기
-      </a>
-      <span class="otaku-shop-header-title">🛒 오타쿠 굿즈 가격비교</span>
-    </header>
     <div class="otaku-shop-layout">
     <aside class="otaku-filter-panel">
       <div class="filter-section">

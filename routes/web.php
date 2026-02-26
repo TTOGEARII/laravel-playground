@@ -11,3 +11,6 @@ Route::prefix("otaku-shop")->group(base_path("routes/otaku-shop.php"));
 
 //미니게임
 Route::prefix("mini-game")->group(base_path("routes/mini-game.php"));
+
+// MyWifeBot (캐릭터 모아보기)
+Route::prefix("my-wife-bot")->group(base_path("routes/my-wife-bot.php"));
