@@ -14,27 +14,53 @@
                 돌아가기
             </a>
             <h1 class="my-wife-bot-header-title">캐릭터 모아보기</h1>
+            <a href="{{ route('my-wife-bot.characters.create') }}" class="add-character-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                챗봇 추가하기
+            </a>
         </header>
+
+        @if(session('message'))
+            <p class="characters-message">{{ session('message') }}</p>
+        @endif
 
         <p class="my-wife-bot-lead">대화하고 싶은 캐릭터를 골라 보세요.</p>
 
-        <section class="characters-grid characters-grid--single">
+        @if($characters->isEmpty())
+            <p class="characters-empty">등록된 캐릭터가 없습니다. <a href="{{ route('my-wife-bot.characters.create') }}">챗봇 추가하기</a>에서 첫 캐릭터를 만들어 보세요.</p>
+        @else
+        <section class="characters-grid {{ $characters->count() === 1 ? 'characters-grid--single' : '' }}">
             @foreach($characters as $char)
                 <article class="character-card {{ $char['accent'] ?? 'accent-violet' }}">
                     <div class="character-image-wrap">
-                        <img src="{{ asset($char['image'] ?? '') }}" alt="{{ $char['name'] }}" class="character-image" />
+                        @if(!empty($char['image']))
+                            <img src="{{ $char['image'] }}" alt="{{ $char['name'] }}" class="character-image" />
+                        @else
+                            <div class="character-image-placeholder">🖼</div>
+                        @endif
                     </div>
                     <h2 class="character-name">{{ $char['name'] }}</h2>
                     <p class="character-description">{{ $char['description'] }}</p>
-                    <a href="{{ route('my-wife-bot.characters') }}?c={{ $char['id'] }}" class="character-button">
-                        대화하기
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                    </a>
+                    <div class="character-actions">
+                        <a href="{{ route('my-wife-bot.chat', $char['id']) }}" class="character-button">
+                            대화하기
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </a>
+                        <a href="{{ route('my-wife-bot.characters.edit', $char['id']) }}" class="character-link character-link--edit">수정</a>
+                        <form action="{{ route('my-wife-bot.characters.destroy', $char['id']) }}" method="POST" class="character-delete-form" onsubmit="return confirm('이 캐릭터를 삭제할까요?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="character-link character-link--delete">삭제</button>
+                        </form>
+                    </div>
                 </article>
             @endforeach
         </section>
+        @endif
     </div>
 @endsection
 
@@ -45,11 +71,44 @@
 .my-wife-bot-header-bar {
     display: flex;
     align-items: center;
-    gap: 24px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
     padding: 12px 0 24px;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 32px;
 }
+.add-character-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, var(--accent-2), rgba(139, 92, 246, 0.85));
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+.add-character-button:hover { opacity: 0.95; }
+.characters-message {
+    padding: 12px 16px;
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 10px;
+    color: #86efac;
+    font-size: 0.875rem;
+    margin-bottom: 20px;
+}
+.characters-empty {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-bottom: 24px;
+}
+.characters-empty a { color: var(--accent-2); text-decoration: none; }
+.characters-empty a:hover { text-decoration: underline; }
 .my-wife-bot-header-bar .back-button {
     display: inline-flex;
     align-items: center;
@@ -131,6 +190,38 @@
     margin-bottom: 8px;
     color: var(--text-primary);
 }
+.character-image-placeholder {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 16px;
+}
+.character-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+.character-delete-form { display: inline; margin: 0; }
+.character-link {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+.character-link:hover { color: var(--text-primary); }
+.character-link--edit { color: var(--accent-2); }
+.character-link--delete { color: #f87171; }
 .character-description {
     color: var(--text-secondary);
     font-size: 0.9rem;

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MyWifeBot\Api\ChatController as MyWifeBotChatController;
 use App\Http\Controllers\OtakuShop\Api\ProductController as OtakuShopProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,7 +14,15 @@ use Illuminate\Support\Facades\Route;
 |   GET /api/otaku-shop/categories
 |   GET /api/otaku-shop/shops
 |
+| MyWifeBot (BASE = /api/my-wife-bot)
+|   POST /api/my-wife-bot/chat/init  body: { character_id: "3" }  → session_id, initial_messages
+|
 */
+
+Route::prefix('my-wife-bot')->controller(MyWifeBotChatController::class)->group(function () {
+    Route::post('chat/init', 'init');
+    Route::post('chat/send', 'send');
+});
 
 Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->group(function () {
     Route::get('products', 'index');
