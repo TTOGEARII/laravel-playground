@@ -93,6 +93,36 @@ const thinking = ref(false);
 const messagesEl = ref(null);
 const inputEl = ref(null);
 
+/**
+ * API 응답이 객체/문자열/JSON 문자열 등 다양한 형태로 올 수 있으므로
+ * 화면에 표시할 텍스트만 추출 ({"message": "..."} 파싱 실패 시 대비)
+ */
+function normalizeChatMessageText(msg) {
+  if (msg == null) return '';
+  if (typeof msg === 'string') {
+    const trimmed = msg.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          return (parsed.message ?? parsed.text ?? parsed.content ?? '').trim() || trimmed;
+        }
+      } catch (_) {
+        const m = trimmed.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        if (m) return m[1].replace(/\\"/g, '"').trim();
+        const t = trimmed.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        if (t) return t[1].replace(/\\"/g, '"').trim();
+      }
+    }
+    return trimmed;
+  }
+  if (typeof msg === 'object') {
+    const s = msg.message ?? msg.text ?? msg.content;
+    return typeof s === 'string' ? s.trim() : '';
+  }
+  return String(msg);
+}
+
 async function send() {
   const text = inputText.value.trim();
   if (!text) return;
@@ -111,9 +141,10 @@ async function send() {
   thinking.value = true;
   try {
     const msg = await myWifeBotChatApi.sendMessage(sessionId.value, text);
+    const displayText = normalizeChatMessageText(msg);
     messages.value.push({
-      role: msg.role === 'character' ? 'character' : 'character',
-      text: typeof msg.text === 'string' ? msg.text : (msg.content ?? ''),
+      role: msg?.role === 'character' ? 'character' : 'character',
+      text: displayText,
     });
   } catch (_) {
     messages.value.push({
@@ -143,8 +174,8 @@ onMounted(async () => {
       sessionId.value = data.session_id || '';
       const list = data.initial_messages || [];
       messages.value = (list || []).map((m) => ({
-        role: m.role,
-        text: typeof m.text === 'string' ? m.text : (m.content ?? ''),
+        role: m?.role || 'character',
+        text: normalizeChatMessageText(m?.text ?? m?.content ?? m),
       }));
     }
     if (messages.value.length === 0 && props.character?.intro) {

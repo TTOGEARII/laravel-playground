@@ -45,4 +45,18 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * 마이페이지 등 뷰에 노출할 사용자 정보 (모델 로직)
+     *
+     * @return array{id: int, name: string, email: string}
+     */
+    public function toProfileArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+        ];
+    }
 }

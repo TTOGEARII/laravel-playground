@@ -3,9 +3,20 @@
 @section('title', 'Fuck you legacy PHP')
 
 @section('header')
-    <span class="header-badge">🚀 Toy Projects</span>
-    <h1>Fuck you legacy PHP</h1>
-    <p>꼴리는대로 살거야.</p>
+    <div class="header-row">
+        <div class="header-brand">
+            <span class="header-badge">🚀 Toy Projects</span>
+            <h1>Fuck you legacy PHP</h1>
+            <p>꼴리는대로 살거야.</p>
+        </div>
+        <div class="header-actions">
+            @guest
+                <a href="{{ route('login') }}" class="header-login-btn">로그인</a>
+            @else
+                <a href="{{ route('user.index') }}" class="header-user-link">{{ Auth::user()->name }}님 · 마이페이지</a>
+            @endguest
+        </div>
+    </div>
 @endsection
 
 @section('content')
