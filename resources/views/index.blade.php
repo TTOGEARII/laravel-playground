@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Fuck you legacy PHP')
+@section('title', 'Tomochan is cute')
 
 @section('header')
     <div class="header-row">
         <div class="header-brand">
             <span class="header-badge">🚀 Toy Projects</span>
-            <h1>Fuck you legacy PHP</h1>
-            <p>꼴리는대로 살거야.</p>
+            <h1>토모짱 귀여워</h1>
+            <p>덕후 개발자의 은밀한 취미공간</p>
         </div>
         <div class="header-actions">
             @guest
@@ -71,6 +71,7 @@
             <div class="card-tags">
                 <span class="tag">Laravel</span>
                 <span class="tag">Vue.js</span>
+                <span class="tag">Phaser 3</span>
             </div>
             <a href="{{ route('mini-game.index') }}" class="card-button">
                 프로젝트 보기
@@ -78,6 +79,29 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
             </a>
+        </article>
+    </section>
+
+    <section class="projects-grid" style="margin-top: 40px;">
+        <article class="project-card accent-teal">
+            <div class="card-icon profile-avatar">
+                <img src="/images/131544476_p0.jpg" alt="개발자 프로필 이미지">
+            </div>
+            <h2 class="card-title">TTOGEARII</h2>
+            <p class="card-description">
+                PHP/Laravel를 중심으로 웹 백엔드와 프론트엔드를 모두 다루는 6년 차 웹 개발자입니다. </br>
+                NestJS와 Nuxt.js로 모던한 TypeScript 기반 애플리케이션을 구축한 경험이있고,</br>
+                Docker와 AWS 환경에서 서비스의 Jenkins를 활용하여 배포·운영까지 직접 경험했습니다.
+            </p>
+            <div class="card-tags">
+                <span class="tag">PHP</span>
+                <span class="tag">Laravel</span>
+                <span class="tag">NestJS</span>
+                <span class="tag">Nuxt.js</span>
+                <span class="tag">Docker</span>
+                <span class="tag">AWS</span>
+                <span class="tag">Jenkins</span>
+            </div>
         </article>
     </section>
 @endsection

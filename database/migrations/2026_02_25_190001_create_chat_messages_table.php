@@ -10,11 +10,13 @@ return new class extends Migration
     {
         Schema::create('chat_messages', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('user_id')->nullable()->comment('메시지 소유 회원 ID (세션 기준)');
             $table->foreignId('chat_session_id')->constrained('chat_sessions')->cascadeOnDelete();
             $table->string('role', 20)->comment('user | character');
             $table->text('content')->comment('메시지 내용');
             $table->timestamps();
 
+            $table->index('user_id');
             $table->index(['chat_session_id', 'created_at']);
         });
     }

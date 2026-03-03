@@ -15,6 +15,7 @@ return new class extends Migration
             $table->bigIncrements('ok_offer_id')->comment('오퍼 PK ID');
             $table->unsignedBigInteger('ok_offer_product_id')->comment('상품 ID (otaku_product.ok_product_id)');
             $table->unsignedBigInteger('ok_offer_shop_id')->comment('샵 ID (otaku_shop.ok_shop_id)');
+            $table->string('ok_offer_external_id', 255)->nullable()->comment('샵 내부 상품 ID 또는 URL 해시 (증분 크롤 시 매칭용)');
             $table->char('ok_offer_currency', 3)->comment('통화 코드(JPY,KRW 등)');
             $table->decimal('ok_offer_price', 12, 2)->comment('기준 통화 가격');
             $table->decimal('ok_offer_local_price', 12, 2)->nullable()->comment('환산된 로컬 통화 가격');
@@ -32,6 +33,7 @@ return new class extends Migration
             $table->index(['ok_offer_product_id', 'ok_offer_shop_id'], 'idx_ok_of_product_shop');
             $table->index(['ok_offer_product_id', 'ok_offer_lowest_flg'], 'idx_ok_of_lowest');
             $table->index('ok_offer_available_flg', 'idx_ok_of_available');
+            $table->index(['ok_offer_shop_id', 'ok_offer_external_id'], 'idx_ok_of_shop_external');
 
             $table->comment('Otaku Shop - 상품별 샵 오퍼(가격/재고/링크) 정보 테이블');
         });
