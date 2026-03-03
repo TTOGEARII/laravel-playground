@@ -9,7 +9,7 @@ class ChatMessage extends Model
 {
     protected $table = 'chat_messages';
 
-    protected $fillable = ['chat_session_id', 'role', 'content'];
+    protected $fillable = ['user_id', 'chat_session_id', 'role', 'content'];
 
     public function chatSession(): BelongsTo
     {

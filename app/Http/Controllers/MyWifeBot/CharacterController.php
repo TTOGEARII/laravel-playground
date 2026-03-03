@@ -52,15 +52,20 @@ class CharacterController extends Controller
 
         $this->characterService->add($validated, $request->file('character_image'));
 
-        return redirect()->route('my-wife-bot.characters')
-            ->with('message', '캐릭터가 추가되었습니다.');
+        if (auth()->check()) {
+            return redirect()->route('my-wife-bot.my-characters')->with('message', '캐릭터가 추가되었습니다.');
+        }
+        return redirect()->route('my-wife-bot.characters')->with('message', '캐릭터가 추가되었습니다.');
     }
 
     /**
-     * 챗봇 수정 폼 표시.
+     * 챗봇 수정 폼 표시. (본인 캐릭터만)
      */
-    public function editForm(ChatCharacter $character): View
+    public function editForm(ChatCharacter $character): View|RedirectResponse
     {
+        if (!$this->canManageCharacter($character)) {
+            return redirect()->route('my-wife-bot.characters')->with('message', '수정 권한이 없습니다.');
+        }
         return view('my-wife-bot.character-form', [
             'character' => $character,
             'genres' => $this->characterService->getGenres(),
@@ -69,20 +74,26 @@ class CharacterController extends Controller
     }
 
     /**
-     * 캐릭터 페르소나 기반 첫 인사 생성 (Gemini API).
+     * 캐릭터 페르소나 기반 첫 인사 생성 (Gemini API). (본인 캐릭터만)
      */
     public function generateGreeting(ChatCharacter $character): JsonResponse
     {
+        if (!$this->canManageCharacter($character)) {
+            return response()->json(['intro' => ''], 403);
+        }
         $greeting = $this->chatService->generateGreeting($character);
 
         return response()->json(['intro' => $greeting]);
     }
 
     /**
-     * 챗봇 수정 저장.
+     * 챗봇 수정 저장. (본인 캐릭터만)
      */
     public function save(Request $request, ChatCharacter $character): RedirectResponse
     {
+        if (!$this->canManageCharacter($character)) {
+            return redirect()->route('my-wife-bot.characters')->with('message', '수정 권한이 없습니다.');
+        }
         $validated = $request->validate([
             'character_name' => ['required', 'string', 'min:2', 'max:30'],
             'short_intro' => ['required', 'string', 'max:50'],
@@ -96,18 +107,33 @@ class CharacterController extends Controller
 
         $this->characterService->update($character, $validated, $request->file('character_image'));
 
-        return redirect()->route('my-wife-bot.characters')
+        return redirect()->route('my-wife-bot.my-characters')
             ->with('message', '캐릭터가 수정되었습니다.');
     }
 
     /**
-     * 챗봇 삭제.
+     * 챗봇 삭제. (본인 캐릭터만)
      */
     public function remove(ChatCharacter $character): RedirectResponse
     {
+        if (!$this->canManageCharacter($character)) {
+            return redirect()->route('my-wife-bot.characters')->with('message', '삭제 권한이 없습니다.');
+        }
         $this->characterService->remove($character);
 
-        return redirect()->route('my-wife-bot.characters')
+        return redirect()->route('my-wife-bot.my-characters')
             ->with('message', '캐릭터가 삭제되었습니다.');
+    }
+
+    /**
+     * 현재 사용자가 해당 캐릭터를 수정/삭제할 수 있는지 (소유자만).
+     */
+    private function canManageCharacter(ChatCharacter $character): bool
+    {
+        $userId = auth()->id();
+        if ($userId === null) {
+            return false;
+        }
+        return (int) $character->user_id === (int) $userId;
     }
 }

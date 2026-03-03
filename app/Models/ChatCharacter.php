@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class ChatCharacter extends Model
 {
     protected $table = 'chat_characters';
 
     protected $fillable = [
+        'user_id',
         'name',
         'short_intro',
         'character_detail',
@@ -19,6 +21,17 @@ class ChatCharacter extends Model
         'image_path',
         'accent',
     ];
+
+    /**
+     * 이 캐릭터를 생성한 회원 ID (소유자). null이면 비회원/레거시.
+     */
+    public function scopeOwnedBy($query, ?int $userId)
+    {
+        if ($userId === null) {
+            return $query->whereNull('user_id');
+        }
+        return $query->where('user_id', $userId);
+    }
 
     /**
      * API/뷰용 이미지 URL.
@@ -44,7 +57,7 @@ class ChatCharacter extends Model
         return [
             'id' => (string) $this->id,
             'name' => $this->name,
-            'description' => $this->short_intro . ($this->character_detail ? ' ' . \Str::limit($this->character_detail, 80) : ''),
+            'description' => $this->short_intro . ($this->character_detail ? ' ' . Str::limit($this->character_detail, 80) : ''),
             'image' => $this->image_url ?? '',
             'accent' => $this->accent ?? 'accent-violet',
             'speech_style' => $this->speech_style ?? '',

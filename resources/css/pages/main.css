@@ -354,7 +354,6 @@
                 width: 100%;
                 justify-content: flex-end;
             }
-        }
 
             .projects-grid {
                 grid-template-columns: 1fr;

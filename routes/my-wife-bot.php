@@ -5,6 +5,7 @@ use App\Http\Controllers\MyWifeBot\MainController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MainController::class, 'characters'])->name('my-wife-bot.characters');
+Route::get('/my-characters', [MainController::class, 'myCharacters'])->name('my-wife-bot.my-characters')->middleware('auth');
 Route::get('/chat/{characterId}', [MainController::class, 'chat'])->name('my-wife-bot.chat');
 
 Route::get('/characters/create', [CharacterController::class, 'addForm'])->name('my-wife-bot.characters.create');

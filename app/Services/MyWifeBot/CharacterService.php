@@ -6,6 +6,7 @@ use App\Models\ChatCharacter;
 use App\Services\Gemini\ChatService;
 use App\Services\HelperService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 
 class CharacterService
 {
@@ -34,6 +35,7 @@ class CharacterService
             : null;
 
         $character = ChatCharacter::create([
+            'user_id' => Auth::id(),
             'name' => $data['character_name'],
             'short_intro' => $data['short_intro'],
             'character_detail' => $data['character_detail'] ?? null,

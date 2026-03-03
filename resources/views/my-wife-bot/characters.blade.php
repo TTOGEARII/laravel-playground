@@ -13,20 +13,27 @@
                 </svg>
                 돌아가기
             </a>
-            <h1 class="my-wife-bot-header-title">캐릭터 모아보기</h1>
-            <a href="{{ route('my-wife-bot.characters.create') }}" class="add-character-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                챗봇 추가하기
-            </a>
+            <h1 class="my-wife-bot-header-title">{{ $title ?? '캐릭터 모아보기' }}</h1>
+            <div class="my-wife-bot-header-actions">
+                @auth
+                    <a href="{{ route('my-wife-bot.my-characters') }}" class="my-characters-button">
+                        내 챗봇 관리
+                    </a>
+                @endauth
+                <a href="{{ route('my-wife-bot.characters.create') }}" class="add-character-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    챗봇 추가하기
+                </a>
+            </div>
         </header>
 
         @if(session('message'))
             <p class="characters-message">{{ session('message') }}</p>
         @endif
 
-        <p class="my-wife-bot-lead">대화하고 싶은 캐릭터를 골라 보세요.</p>
+        <p class="my-wife-bot-lead">{{ $lead ?? '대화하고 싶은 캐릭터를 골라 보세요.' }}</p>
 
         @if($characters->isEmpty())
             <p class="characters-empty">등록된 캐릭터가 없습니다. <a href="{{ route('my-wife-bot.characters.create') }}">챗봇 추가하기</a>에서 첫 캐릭터를 만들어 보세요.</p>
@@ -50,12 +57,14 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
                         </a>
-                        <a href="{{ route('my-wife-bot.characters.edit', $char['id']) }}" class="character-link character-link--edit">수정</a>
-                        <form action="{{ route('my-wife-bot.characters.destroy', $char['id']) }}" method="POST" class="character-delete-form" onsubmit="return confirm('이 캐릭터를 삭제할까요?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="character-link character-link--delete">삭제</button>
-                        </form>
+                        @if(!empty($showActions))
+                            <a href="{{ route('my-wife-bot.characters.edit', $char['id']) }}" class="character-link character-link--edit">수정</a>
+                            <form action="{{ route('my-wife-bot.characters.destroy', $char['id']) }}" method="POST" class="character-delete-form" onsubmit="return confirm('이 캐릭터를 삭제할까요?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="character-link character-link--delete">삭제</button>
+                            </form>
+                        @endif
                     </div>
                 </article>
             @endforeach
@@ -93,6 +102,29 @@
     transition: opacity 0.2s;
 }
 .add-character-button:hover { opacity: 0.95; }
+.my-wife-bot-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.my-characters-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.my-characters-button:hover {
+    color: var(--accent-2);
+    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(139, 92, 246, 0.1);
+}
 .characters-message {
     padding: 12px 16px;
     background: rgba(34, 197, 94, 0.15);
