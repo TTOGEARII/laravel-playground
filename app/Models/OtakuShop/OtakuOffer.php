@@ -16,6 +16,7 @@ class OtakuOffer extends Model
     protected $fillable = [
         'ok_offer_product_id',
         'ok_offer_shop_id',
+        'ok_offer_external_id',
         'ok_offer_currency',
         'ok_offer_price',
         'ok_offer_local_price',

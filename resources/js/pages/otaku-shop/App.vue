@@ -113,7 +113,20 @@
             :class="{ 'is-featured': index === 0 }"
           >
             <div class="product-thumbnail">
-              <div class="thumb-image thumb-placeholder">
+              <div
+                v-if="product.ok_product_image_url"
+                class="thumb-image thumb-has-image"
+              >
+                <img
+                  :src="product.ok_product_image_url"
+                  :alt="product.ok_product_title || '상품 이미지'"
+                  loading="lazy"
+                />
+              </div>
+              <div
+                v-else
+                class="thumb-image thumb-placeholder"
+              >
                 {{ productLabelLetter(product) }}
               </div>
             </div>

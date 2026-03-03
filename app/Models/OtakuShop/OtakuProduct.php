@@ -21,6 +21,7 @@ class OtakuProduct extends Model
         'ok_product_release_date',
         'ok_product_active_flg',
         'ok_product_cate_id',
+        'ok_product_image_url',
     ];
 
     protected $casts = [
