@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // nginx 리버스 프록시(127.0.0.1) 뒤 — X-Forwarded-Proto(https) 신뢰 → 자산 URL https 생성
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
