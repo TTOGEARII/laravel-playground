@@ -3,28 +3,22 @@
 namespace App\Services\MiniGame;
 
 use App\Models\MiniGame\Game;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Collection;
 
 class GameService
 {
     /**
      * 게임 목록 조회
-     *
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getGames()
+    public function getGames(): Collection
     {
         return Game::all();
     }
 
     /**
      * 게임 점수 저장
-     *
-     * @param string $gameName
-     * @param int $score
-     * @return Game
      */
-    public function saveScore(string $gameName, int $score)
+    public function saveScore(string $gameName, int $score): Game
     {
         return Game::create([
             'name' => $gameName,
@@ -35,11 +29,8 @@ class GameService
 
     /**
      * 최고 점수 조회
-     *
-     * @param string|null $gameName
-     * @return int
      */
-    public function getHighScore(?string $gameName = null)
+    public function getHighScore(?string $gameName = null): int
     {
         $query = Game::query();
 
@@ -47,17 +38,13 @@ class GameService
             $query->where('name', $gameName);
         }
 
-        return $query->max('score') ?? 0;
+        return (int) ($query->max('score') ?? 0);
     }
 
     /**
      * 게임 랭킹 조회
-     *
-     * @param string|null $gameName
-     * @param int $limit
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function getRankings(?string $gameName = null, int $limit = 10)
+    public function getRankings(?string $gameName = null, int $limit = 10): Collection
     {
         $query = Game::query()
             ->orderBy('score', 'desc')

@@ -23,10 +23,12 @@ class HelperService
         $dir = public_path($directory);
         File::ensureDirectoryExists($dir);
 
-        $filename = uniqid($prefix, true) . '.' . $file->getClientOriginalExtension();
+        // 클라이언트 확장자가 비어 있거나 신뢰할 수 없을 때를 대비해 추정 확장자로 폴백.
+        $extension = $file->getClientOriginalExtension() ?: ($file->guessExtension() ?: 'jpg');
+        $filename = uniqid($prefix, true).'.'.$extension;
         $file->move($dir, $filename);
 
-        return $directory . '/' . $filename;
+        return $directory.'/'.$filename;
     }
 
     /**
@@ -42,7 +44,7 @@ class HelperService
         $path = ltrim($path, '/');
         $fullPath = str_starts_with($path, 'images/')
             ? public_path($path)
-            : public_path('storage/' . $path);
+            : public_path('storage/'.$path);
         if (File::exists($fullPath)) {
             File::delete($fullPath);
         }

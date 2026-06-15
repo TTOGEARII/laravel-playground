@@ -5,7 +5,6 @@ namespace App\Console\Commands\OtakuShop;
 use App\Services\OtakuShop\Crawler\Contracts\ShopCrawlerInterface;
 use App\Services\OtakuShop\Crawler\CrawlerDriver;
 use App\Services\OtakuShop\Crawler\CrawlSyncService;
-use App\Services\OtakuShop\Crawler\ProductNormalizer;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\AnimateCrawler;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\DokidokigoodsCrawler;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\TtabbaemallCrawler;
@@ -35,7 +34,7 @@ class OtakuShopCrawlCommand extends Command
 
         $this->info('2. 3사 크롤링 수집...');
         $crawled = $this->runCrawlers();
-        $this->info('수집 상품 수: ' . count($crawled));
+        $this->info('수집 상품 수: '.count($crawled));
 
         if (count($crawled) === 0) {
             $this->warn('크롤된 상품이 없습니다. Selenium 드라이버(Chrome) 실행 여부를 확인하세요.');
@@ -66,7 +65,17 @@ class OtakuShopCrawlCommand extends Command
     private function runCrawlers(): array
     {
         $driver = CrawlerDriver::fromConfig();
-        $driver->start();
+
+        try {
+            $driver->start();
+        } catch (\Throwable $e) {
+            // Selenium(Chrome) 미가동/연결 실패 시 스택트레이스 대신 안내 후 빈 결과 반환.
+            $this->error('Selenium WebDriver 연결 실패: '.$e->getMessage());
+            report($e);
+
+            return [];
+        }
+
         $crawlers = $this->getCrawlers($driver->getDriver());
 
         $all = [];
@@ -85,9 +94,9 @@ class OtakuShopCrawlCommand extends Command
                 foreach ($items as $dto) {
                     $all[] = $dto;
                 }
-                $this->line("    → " . count($items) . "건");
+                $this->line('    → '.count($items).'건');
             } catch (\Throwable $e) {
-                $this->error("    오류: " . $e->getMessage());
+                $this->error('    오류: '.$e->getMessage());
                 report($e);
             }
         }

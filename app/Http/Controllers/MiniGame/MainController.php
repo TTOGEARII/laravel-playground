@@ -4,18 +4,15 @@ namespace App\Http\Controllers\MiniGame;
 
 use App\Http\Controllers\Controller;
 use App\Services\MiniGame\GameService;
-use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class MainController extends Controller
 {
-    protected $gameService;
+    public function __construct(
+        private GameService $gameService
+    ) {}
 
-    public function __construct(GameService $gameService)
-    {
-        $this->gameService = $gameService;
-    }
-
-    public function index()
+    public function index(): View
     {
         $games = [
             [
@@ -33,7 +30,7 @@ class MainController extends Controller
         return view('mini-game.index', compact('games'));
     }
 
-    public function vampireSurvival()
+    public function vampireSurvival(): View
     {
         return view('mini-game.vampire-survival.index');
     }
