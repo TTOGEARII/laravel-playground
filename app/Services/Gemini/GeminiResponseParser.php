@@ -10,14 +10,16 @@ class GeminiResponseParser
         if ($text === null || trim((string) $text) === '') {
             return null;
         }
+
         return trim((string) $text);
     }
 
     public static function parseJson(string $text): ?array
     {
-        $normalized = trim(preg_replace('/\s+/', ' ', $text));
-        $stripped = trim(preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $normalized));
+        $normalized = trim(preg_replace('/\s+/', ' ', $text) ?? $text);
+        $stripped = trim(preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $normalized) ?? $normalized);
         $decoded = json_decode($stripped, true);
+
         return is_array($decoded) ? $decoded : null;
     }
 
@@ -25,8 +27,9 @@ class GeminiResponseParser
     {
         $data = self::parseJson($text);
         if (isset($data['intro']) && is_string($data['intro'])) {
-            return trim(preg_replace('/\s+/', ' ', $data['intro']));
+            return trim(preg_replace('/\s+/', ' ', $data['intro']) ?? $data['intro']);
         }
+
         return null;
     }
 
@@ -65,6 +68,7 @@ class GeminiResponseParser
         if (preg_match('/"text"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/s', $trimmed, $m)) {
             return trim(stripcslashes($m[1]));
         }
+
         return null;
     }
 }

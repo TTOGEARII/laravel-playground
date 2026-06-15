@@ -51,7 +51,7 @@ class CharacterService
             $character->update(['intro_message' => $generated]);
         }
 
-        return $character->fresh();
+        return $character->fresh() ?? $character;
     }
 
     /**

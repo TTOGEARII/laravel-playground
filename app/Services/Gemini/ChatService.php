@@ -33,6 +33,7 @@ class ChatService
             if ($parsed) {
                 return $parsed;
             }
+
             return $text;
         }
 
@@ -63,12 +64,12 @@ class ChatService
     public function chat(ChatCharacter $character, ?string $summary, array $recentMessages, string $userMessage): string
     {
         if (! $this->gemini->hasApiKey()) {
-            return ($character->name ?? '캐릭터') . '입니다. (API 설정 후 이용해 주세요.)';
+            return ($character->name ?? '캐릭터').'입니다. (API 설정 후 이용해 주세요.)';
         }
 
         $systemPrompt = PromptBuilder::characterSystem($character);
         if (filled($summary)) {
-            $systemPrompt .= "\n\n[이전 대화 요약]\n" . trim($summary);
+            $systemPrompt .= "\n\n[이전 대화 요약]\n".trim($summary);
         }
 
         $contents = collect($recentMessages)
@@ -103,7 +104,7 @@ class ChatService
             temperature: 0.3,
         );
 
-        return $text ? trim(preg_replace('/\s+/', ' ', $text)) : '';
+        return $text ? trim(preg_replace('/\s+/', ' ', $text) ?? $text) : '';
     }
 
     public function getSummaryThreshold(): int
@@ -113,6 +114,6 @@ class ChatService
 
     private function fallbackGreeting(ChatCharacter $character): string
     {
-        return '안녕하세요, ' . $character->name . '이에요. 편하게 이야기해 주세요.';
+        return '안녕하세요, '.$character->name.'이에요. 편하게 이야기해 주세요.';
     }
 }
