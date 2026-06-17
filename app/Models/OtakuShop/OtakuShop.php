@@ -3,6 +3,7 @@
 namespace App\Models\OtakuShop;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OtakuShop extends Model
 {
@@ -11,6 +12,7 @@ class OtakuShop extends Model
     protected $primaryKey = 'ok_shop_id';
 
     const CREATED_AT = 'create_dt';
+
     const UPDATED_AT = 'update_dt';
 
     protected $fillable = [
@@ -20,13 +22,15 @@ class OtakuShop extends Model
         'ok_shop_active_flg',
     ];
 
-    protected $casts = [
-        'ok_shop_active_flg' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'ok_shop_active_flg' => 'boolean',
+        ];
+    }
 
-    public function offers()
+    public function offers(): HasMany
     {
         return $this->hasMany(OtakuOffer::class, 'ok_offer_shop_id', 'ok_shop_id');
     }
 }
-

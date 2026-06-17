@@ -7,12 +7,17 @@ namespace App\Services\OtakuShop\Crawler;
  */
 class ProductNormalizer
 {
+    private int $titleMinLength;
+
+    private array $stripPatterns;
+
     public function __construct(
-        private int $titleMinLength = 5,
-        private array $stripPatterns = [],
+        ?int $titleMinLength = null,
+        ?array $stripPatterns = null,
     ) {
-        $this->stripPatterns = $this->stripPatterns ?: config('otaku-crawler.product_match.strip_patterns', []);
-        $this->titleMinLength = $this->titleMinLength ?: config('otaku-crawler.product_match.title_min_length', 5);
+        // 인자를 명시하지 않으면(컨테이너 자동 주입 포함) config 값을 사용한다.
+        $this->stripPatterns = $stripPatterns ?? config('otaku-crawler.product_match.strip_patterns', []);
+        $this->titleMinLength = $titleMinLength ?? (int) config('otaku-crawler.product_match.title_min_length', 5);
     }
 
     /**
@@ -22,9 +27,9 @@ class ProductNormalizer
     {
         $t = $this->normalizeTitle($title);
         $b = $brandLabel !== null && $brandLabel !== '' ? mb_strtolower(trim($brandLabel)) : '';
-        $raw = $t . '|' . $b;
+        $raw = $t.'|'.$b;
 
-        return 'pr_' . md5($raw);
+        return 'pr_'.md5($raw);
     }
 
     /**
