@@ -236,8 +236,8 @@
         </button>
       </div>
 
-      <div v-if="products.length" class="compare-table-wrapper">
-        <h3 class="compare-title">빠른 가격 비교</h3>
+      <div v-if="comparableProducts.length" class="compare-table-wrapper">
+        <h3 class="compare-title">빠른 가격 비교 · {{ comparableProducts.length }}개 상품</h3>
         <div class="compare-table">
           <div class="compare-row compare-header">
             <div class="compare-cell">상품명</div>
@@ -247,7 +247,7 @@
             <div class="compare-cell">가격 차이</div>
           </div>
           <div
-            v-for="p in products"
+            v-for="p in comparableProducts"
             :key="p.ok_product_id"
             class="compare-row"
           >
@@ -267,7 +267,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { otakuShopApi } from './api.js';
 
 const categories = ref([]);
@@ -288,6 +288,9 @@ const priceMin = ref(0);
 const priceMax = ref(200000);
 const comparedOnly = ref(false);
 const popularKeywords = ['넨도로이드', '블루아카이브', '원신', '하츠네 미쿠', '피규어'];
+
+// 빠른 가격 비교 표는 2개 이상 쇼핑몰에 오퍼가 있어 실제로 비교가 되는 상품만 노출.
+const comparableProducts = computed(() => products.value.filter((p) => (p.offers || []).length >= 2));
 
 function quickSearch(kw) {
   keyword.value = kw;
