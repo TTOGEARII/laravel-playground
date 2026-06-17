@@ -55,9 +55,16 @@ class CrawlSyncService
     }
 
     /**
-     * 3·4. 크롤된 상품 목록으로 otaku_product 찾거나 생성 후, otaku_offer upsert.
-     * - incremental: true 이면 기존 offer(shop_id + external_id) 있으면 가격/URL만 업데이트, 없으면 새로 insert.
-     * - incremental: false 이면 상품/오퍼 모두 upsert (전체 재수집 시).
+     * 3·4. 크롤된 상품 목록을 정규화 키로 묶어 otaku_product/otaku_offer 에 동기화한다.
+     *
+     * 가격비교의 핵심: 같은 정규화 키 = 동일 상품. 한 상품에 대해 쇼핑몰별로 오퍼는 "정확히 1건"이며
+     * 같은 샵이 (일반/특전 등) 여러 변형을 올린 경우 그 중 최저가만 그 샵의 오퍼로 남긴다.
+     * 이렇게 해야 쇼핑몰 간 가격비교가 같은 기준(샵별 최저가)으로 이뤄진다.
+     *
+     * @param  array<int, CrawledProductDto>  $crawledProducts
+     * @param  bool  $incremental  현재 오퍼는 (상품,샵) 단위로 항상 upsert 되므로 동작 차이는 없고,
+     *                             증분/전체 호출 호환을 위해 시그니처만 유지한다.
+     * @return array{products_created:int, products_matched:int, offers_created:int, offers_updated:int}
      */
     public function syncProductsAndOffers(array $crawledProducts, bool $incremental = true): array
     {
@@ -66,66 +73,112 @@ class CrawlSyncService
         $categoryByCode = OtakuCategory::pluck('ok_category_id', 'ok_category_code')->all();
         $now = Carbon::now();
 
-        foreach ($crawledProducts as $dto) {
-            $shopId = $shopIds[$dto->shopCode] ?? null;
-            if ($shopId === null) {
-                continue;
-            }
+        foreach ($this->groupByProduct($crawledProducts, $shopIds) as $bundle) {
+            $product = $this->findOrCreateProduct($bundle, $categoryByCode, $stats);
 
-            $productKey = $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
-            $product = OtakuProduct::where('ok_product_code', $productKey)->first();
-            if ($product === null) {
-                $categoryId = $dto->categoryCode ? ($categoryByCode[$dto->categoryCode] ?? null) : null;
-                $product = OtakuProduct::create([
-                    'ok_product_code' => $productKey,
-                    'ok_product_title' => $dto->title,
-                    'ok_product_subtitle' => $dto->subtitle,
-                    'ok_product_brand_label' => $dto->brandLabel,
-                    'ok_product_release_date' => $dto->releaseDate,
-                    'ok_product_active_flg' => true,
-                    'ok_product_cate_id' => $categoryId,
-                    'ok_product_image_url' => $dto->imageUrl,
-                ]);
-                $stats['products_created']++;
-            } else {
-                // 기존 상품에 이미지가 비어 있고, 새 DTO 에 이미지가 있으면 채워준다.
-                if (! $product->ok_product_image_url && $dto->imageUrl) {
-                    $product->ok_product_image_url = $dto->imageUrl;
-                    $product->save();
-                }
-                $stats['products_matched']++;
-            }
-
-            $offer = null;
-            if ($incremental && $dto->externalId !== '') {
-                $offer = OtakuOffer::where('ok_offer_shop_id', $shopId)
-                    ->where('ok_offer_external_id', $dto->externalId)
-                    ->first();
-            }
-
-            $offerData = [
-                'ok_offer_product_id' => $product->ok_product_id,
-                'ok_offer_shop_id' => $shopId,
-                'ok_offer_external_id' => $dto->externalId,
-                'ok_offer_currency' => $dto->currency,
-                'ok_offer_price' => $dto->price,
-                'ok_offer_available_flg' => true,
-                'ok_offer_external_url' => $dto->productUrl,
-                'ok_offer_collected_dt' => $now,
-            ];
-
-            if ($offer !== null) {
-                $offer->update($offerData);
-                $stats['offers_updated']++;
-            } else {
-                OtakuOffer::create($offerData);
-                $stats['offers_created']++;
+            foreach ($bundle['offers'] as $shopId => $dto) {
+                $this->upsertOffer($product, (int) $shopId, $dto, $now, $stats);
             }
         }
 
         $this->updateLowestPriceFlags();
 
         return $stats;
+    }
+
+    /**
+     * 크롤 결과를 정규화 키(동일 상품)로 묶는다.
+     * 같은 (상품, 샵)이면 최저가 DTO 하나만 유지해 샵별 오퍼 중복을 제거한다.
+     *
+     * @param  array<int, CrawledProductDto>  $crawledProducts
+     * @param  array<string, int>  $shopIds  shop_code => ok_shop_id
+     * @return array<string, array{key: string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
+     */
+    private function groupByProduct(array $crawledProducts, array $shopIds): array
+    {
+        $bundles = [];
+
+        foreach ($crawledProducts as $dto) {
+            $shopId = $shopIds[$dto->shopCode] ?? null;
+            if ($shopId === null) {
+                continue;
+            }
+
+            $key = $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
+            $bundles[$key] ??= ['key' => $key, 'dto' => $dto, 'offers' => []];
+
+            $existing = $bundles[$key]['offers'][$shopId] ?? null;
+            if ($existing === null || $dto->price < $existing->price) {
+                $bundles[$key]['offers'][$shopId] = $dto;
+            }
+        }
+
+        return $bundles;
+    }
+
+    /**
+     * 정규화 키로 상품을 찾거나 생성. 기존 상품에 이미지가 비어 있으면 채워준다.
+     *
+     * @param  array{key: string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
+     * @param  array<string, int>  $categoryByCode
+     */
+    private function findOrCreateProduct(array $bundle, array $categoryByCode, array &$stats): OtakuProduct
+    {
+        $dto = $bundle['dto'];
+        $product = OtakuProduct::where('ok_product_code', $bundle['key'])->first();
+
+        if ($product === null) {
+            $categoryId = $dto->categoryCode ? ($categoryByCode[$dto->categoryCode] ?? null) : null;
+            $stats['products_created']++;
+
+            return OtakuProduct::create([
+                'ok_product_code' => $bundle['key'],
+                'ok_product_title' => $dto->title,
+                'ok_product_subtitle' => $dto->subtitle,
+                'ok_product_brand_label' => $dto->brandLabel,
+                'ok_product_release_date' => $dto->releaseDate,
+                'ok_product_active_flg' => true,
+                'ok_product_cate_id' => $categoryId,
+                'ok_product_image_url' => $dto->imageUrl,
+            ]);
+        }
+
+        if (! $product->ok_product_image_url && $dto->imageUrl) {
+            $product->ok_product_image_url = $dto->imageUrl;
+            $product->save();
+        }
+        $stats['products_matched']++;
+
+        return $product;
+    }
+
+    /**
+     * (상품, 샵) 단위로 오퍼를 upsert. 같은 조합이 이미 있으면 가격/URL 등을 갱신한다.
+     */
+    private function upsertOffer(OtakuProduct $product, int $shopId, CrawledProductDto $dto, Carbon $now, array &$stats): void
+    {
+        $offerData = [
+            'ok_offer_product_id' => $product->ok_product_id,
+            'ok_offer_shop_id' => $shopId,
+            'ok_offer_external_id' => $dto->externalId,
+            'ok_offer_currency' => $dto->currency,
+            'ok_offer_price' => $dto->price,
+            'ok_offer_available_flg' => true,
+            'ok_offer_external_url' => $dto->productUrl,
+            'ok_offer_collected_dt' => $now,
+        ];
+
+        $offer = OtakuOffer::where('ok_offer_product_id', $product->ok_product_id)
+            ->where('ok_offer_shop_id', $shopId)
+            ->first();
+
+        if ($offer !== null) {
+            $offer->update($offerData);
+            $stats['offers_updated']++;
+        } else {
+            OtakuOffer::create($offerData);
+            $stats['offers_created']++;
+        }
     }
 
     /**
