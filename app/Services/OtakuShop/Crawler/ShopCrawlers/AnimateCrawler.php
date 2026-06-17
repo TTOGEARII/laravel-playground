@@ -64,6 +64,22 @@ class AnimateCrawler extends AbstractShopCrawler
     }
 
     /**
+     * 고도몰 메뉴에서 모든 상품 카테고리(goods_list.php?cateCd=) 경로를 수집(전량 크롤용).
+     */
+    protected function categoryDiscoveryScript(): string
+    {
+        return <<<'JS'
+            const set = new Set();
+            document.querySelectorAll('a[href*="goods_list.php?cateCd="]').forEach((a) => {
+                const href = a.getAttribute('href') || '';
+                const m = href.match(/cateCd=([0-9]+)/);
+                if (m) set.add('/goods/goods_list.php?cateCd=' + m[1]);
+            });
+            return JSON.stringify([...set]);
+            JS;
+    }
+
+    /**
      * 애니메이트 상품 이미지는 godohosting/cdn 모두 https 를 지원하므로 https 로 강제해
      * https 배포 환경에서의 mixed-content 차단을 방지한다.
      */

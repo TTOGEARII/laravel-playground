@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Log;
  */
 abstract class AbstractShopCrawler implements ShopCrawlerInterface
 {
+    /** 전량 모드(카테고리 자동 발견·끝 페이지까지·긴 딜레이). */
+    protected bool $fullMode = false;
+
     public function __construct(
         protected RemoteWebDriver $driver
     ) {}
@@ -34,6 +37,16 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
      * 반환 형식: '[{"id","title","price","url","img"}, ...]'
      */
     abstract protected function listScript(): string;
+
+    /**
+     * 전량 크롤 모드 활성화 (최초 1회용).
+     */
+    public function enableFullMode(): static
+    {
+        $this->fullMode = true;
+
+        return $this;
+    }
 
     /**
      * {@inheritdoc}
@@ -81,13 +94,71 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
     }
 
     /**
-     * config 의 샵별 리스트 대상 목록.
+     * 크롤 대상 리스트 목록. 전량 모드면 사이트 카테고리 메뉴에서 자동 발견하고,
+     * 아니면 config 의 샵별 지정 목록을 쓴다.
      *
      * @return array<int, array{path: string, category?: string|null, pages?: int}>
      */
     protected function listingTargets(): array
     {
+        if ($this->fullMode) {
+            $discovered = $this->discoverListingTargets();
+            if ($discovered !== []) {
+                return $discovered;
+            }
+        }
+
         return config('otaku-crawler.listings.'.$this->getShopCode(), []);
+    }
+
+    /**
+     * 전량 크롤: 사이트 메뉴에서 모든 상품 리스트(카테고리) 경로를 발견한다.
+     * 카테고리는 null 로 두고 제목 키워드로 보정하며, 페이지는 끝까지(max_pages) 돈다.
+     *
+     * @return array<int, array{path: string, category: null, pages: int}>
+     */
+    protected function discoverListingTargets(): array
+    {
+        $script = $this->categoryDiscoveryScript();
+        if ($script === null) {
+            return [];
+        }
+
+        try {
+            $this->driver->get($this->baseUrl().'/');
+            usleep(800 * 1000);
+            $raw = $this->driver->executeScript($script);
+        } catch (\Throwable $e) {
+            Log::warning('OtakuShop Crawler: category discovery failed', [
+                'shop' => $this->getShopCode(),
+                'message' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        $paths = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (! is_array($paths)) {
+            return [];
+        }
+
+        $maxPages = max(1, (int) config('otaku-crawler.crawl.full.max_pages', 100));
+        $targets = [];
+        foreach (array_unique($paths) as $path) {
+            if (is_string($path) && $path !== '') {
+                $targets[] = ['path' => $path, 'category' => null, 'pages' => $maxPages];
+            }
+        }
+
+        return $targets;
+    }
+
+    /**
+     * 카테고리 발견용 브라우저 JS (리스트 경로 배열 JSON 반환). 없으면 null → config 사용.
+     */
+    protected function categoryDiscoveryScript(): ?string
+    {
+        return null;
     }
 
     /**
@@ -214,11 +285,14 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
     }
 
     /**
-     * 요청 사이 짧은 딜레이로 트래픽 급증 방지.
+     * 요청 사이 딜레이로 트래픽 급증/차단 방지. 전량 모드면 더 보수적으로 쉰다.
      */
     protected function delayBetweenRequests(): void
     {
-        $ms = (int) config('otaku-crawler.crawl.delay_ms_between_requests', 1500);
+        $ms = $this->fullMode
+            ? (int) config('otaku-crawler.crawl.full.delay_ms_between_requests', 3000)
+            : (int) config('otaku-crawler.crawl.delay_ms_between_requests', 1500);
+
         if ($ms > 0) {
             usleep($ms * 1000);
         }
