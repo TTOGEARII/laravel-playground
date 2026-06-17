@@ -53,4 +53,20 @@ abstract class Cafe24ShopCrawler extends AbstractShopCrawler
             return JSON.stringify(out);
             JS;
     }
+
+    /**
+     * cafe24 메뉴에서 모든 상품 카테고리(product/list.html?cate_no=) 경로를 수집(전량 크롤용).
+     */
+    protected function categoryDiscoveryScript(): string
+    {
+        return <<<'JS'
+            const set = new Set();
+            document.querySelectorAll('a[href*="product/list.html?cate_no="]').forEach((a) => {
+                const href = a.getAttribute('href') || '';
+                const m = href.match(/cate_no=(\d+)/);
+                if (m) set.add('/product/list.html?cate_no=' + m[1]);
+            });
+            return JSON.stringify([...set]);
+            JS;
+    }
 }

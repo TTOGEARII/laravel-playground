@@ -168,9 +168,18 @@ return [
     |--------------------------------------------------------------------------
     | delay_ms_between_requests : 한 사이트 내에서 페이지 이동 사이의 대기(ms)
     | delay_ms_between_shops    : 각 쇼핑몰 크롤 사이의 대기(ms)
+    |
+    | full : 전량 크롤(otaku-shop:crawl-full, 최초 1회)용 설정.
+    |   차단 방지를 위해 더 긴 딜레이를 쓰고, max_pages 까지(빈 페이지 만나면 자동 중단)
+    |   카테고리별로 끝 페이지까지 수집한다.
     */
     'crawl' => [
         'delay_ms_between_requests' => (int) env('OTAKU_CRAWL_DELAY_MS', 1500),
         'delay_ms_between_shops' => (int) env('OTAKU_CRAWL_DELAY_BETWEEN_SHOPS_MS', 2000),
+        'full' => [
+            'delay_ms_between_requests' => (int) env('OTAKU_FULL_DELAY_MS', 3000),
+            'delay_ms_between_shops' => (int) env('OTAKU_FULL_DELAY_BETWEEN_SHOPS_MS', 8000),
+            'max_pages' => (int) env('OTAKU_FULL_MAX_PAGES', 100),
+        ],
     ],
 ];
