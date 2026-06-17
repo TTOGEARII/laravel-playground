@@ -97,6 +97,11 @@ return [
         'headless' => env('OTAKU_CRAWL_HEADLESS', true),
         'page_load_timeout_sec' => (int) env('OTAKU_PAGE_LOAD_TIMEOUT', 30),
         'implicit_wait_sec' => (int) env('OTAKU_IMPLICIT_WAIT', 10),
+        // WebDriver HTTP(curl) 타임아웃. 없으면(0=무한) 브라우저가 응답 안 주는 페이지에서
+        // 명령 하나가 영원히 블록돼 크롤 전체가 멈춘다(실제 발생). request 는 page_load 보다
+        // 커서 정상 페이지를 안 끊되, 진짜 hang 은 잘라 try/catch 로 흘려보낸다.
+        'connection_timeout_sec' => (int) env('OTAKU_CONNECTION_TIMEOUT', 30),
+        'request_timeout_sec' => (int) env('OTAKU_REQUEST_TIMEOUT', 60),
     ],
 
     /*

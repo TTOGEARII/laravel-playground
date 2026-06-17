@@ -19,6 +19,8 @@ class CrawlerDriver
         private bool $headless = true,
         private int $pageLoadTimeout = 30,
         private int $implicitWait = 10,
+        private int $connectionTimeout = 30,
+        private int $requestTimeout = 60,
     ) {}
 
     /**
@@ -33,6 +35,8 @@ class CrawlerDriver
             (bool) ($config['headless'] ?? true),
             (int) ($config['page_load_timeout_sec'] ?? 30),
             (int) ($config['implicit_wait_sec'] ?? 10),
+            (int) ($config['connection_timeout_sec'] ?? 30),
+            (int) ($config['request_timeout_sec'] ?? 60),
         );
     }
 
@@ -53,7 +57,14 @@ class CrawlerDriver
         $options->addArguments(['--window-size=1920,1080']);
         $caps->setCapability(ChromeOptions::CAPABILITY, $options);
 
-        $this->driver = RemoteWebDriver::create($this->driverUrl, $caps);
+        // 3·4번째 인자(연결/요청 타임아웃, ms)를 반드시 준다. 안 주면 curl 타임아웃이 무한이라
+        // 브라우저가 응답을 안 주는 페이지에서 명령 하나가 영원히 블록돼 크롤 전체가 멈춘다.
+        $this->driver = RemoteWebDriver::create(
+            $this->driverUrl,
+            $caps,
+            $this->connectionTimeout * 1000,
+            $this->requestTimeout * 1000,
+        );
         $this->driver->manage()->timeouts()->pageLoadTimeout($this->pageLoadTimeout);
         $this->driver->manage()->timeouts()->implicitlyWait($this->implicitWait);
 
