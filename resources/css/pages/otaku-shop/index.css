@@ -840,3 +840,175 @@
     }
 }
 
+/* ===== 검색 히어로 (메인 기능) ===== */
+.otaku-search-hero {
+    margin-bottom: 24px;
+    padding: 28px 24px;
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 15% 0%, rgba(129, 140, 248, 0.22), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.15), transparent 50%),
+        rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(129, 140, 248, 0.3);
+    text-align: center;
+}
+
+.search-hero-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.search-hero-sub {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.search-hero-sub strong {
+    color: #c7d2fe;
+    font-weight: 600;
+}
+
+.search-hero-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 640px;
+    margin: 0 auto;
+    background: rgba(2, 6, 23, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+    padding: 8px 8px 8px 18px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-hero-box:focus-within {
+    border-color: rgba(129, 140, 248, 0.9);
+    box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.18);
+}
+
+.search-hero-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.search-hero-box input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.search-hero-box input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-hero-box input:focus {
+    outline: none;
+}
+
+.search-hero-button {
+    flex-shrink: 0;
+    padding: 10px 24px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.2s ease;
+}
+
+.search-hero-button:hover {
+    filter: brightness(1.1);
+}
+
+.search-hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.hero-tags-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.hero-tag {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.7);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hero-tag:hover {
+    border-color: rgba(129, 140, 248, 0.7);
+    color: #e0e7ff;
+}
+
+@media (max-width: 768px) {
+    .search-hero-button {
+        padding: 10px 16px;
+    }
+
+    .search-hero-title {
+        font-size: 1.25rem;
+    }
+}
+
+/* ===== 가격비교 가능만 토글 ===== */
+.compare-only-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.compare-only-toggle .toggle-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.5);
+    transition: background 0.2s ease;
+}
+
+.compare-only-toggle.is-active {
+    border-color: rgba(248, 113, 113, 0.8);
+    color: #fee2e2;
+    background: rgba(248, 113, 113, 0.12);
+}
+
+.compare-only-toggle.is-active .toggle-dot {
+    background: #f87171;
+    box-shadow: 0 0 8px rgba(248, 113, 113, 0.8);
+}
+
+/* ===== 크로스샵 매칭 배지 ===== */
+.badge-compare {
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(251, 146, 60, 0.2));
+    border-color: rgba(248, 113, 113, 0.8);
+    color: #fed7aa;
+    font-weight: 600;
+}
+
