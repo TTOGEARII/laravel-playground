@@ -3,6 +3,8 @@
 namespace App\Models\OtakuShop;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OtakuProduct extends Model
 {
@@ -11,6 +13,7 @@ class OtakuProduct extends Model
     protected $primaryKey = 'ok_product_id';
 
     const CREATED_AT = 'create_dt';
+
     const UPDATED_AT = 'update_dt';
 
     protected $fillable = [
@@ -24,17 +27,20 @@ class OtakuProduct extends Model
         'ok_product_image_url',
     ];
 
-    protected $casts = [
-        'ok_product_release_date' => 'date',
-        'ok_product_active_flg' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'ok_product_release_date' => 'date',
+            'ok_product_active_flg' => 'boolean',
+        ];
+    }
 
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(OtakuCategory::class, 'ok_product_cate_id', 'ok_category_id');
     }
 
-    public function offers()
+    public function offers(): HasMany
     {
         return $this->hasMany(OtakuOffer::class, 'ok_offer_product_id', 'ok_product_id');
     }

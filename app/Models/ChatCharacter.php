@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -30,6 +31,7 @@ class ChatCharacter extends Model
         if ($userId === null) {
             return $query->whereNull('user_id');
         }
+
         return $query->where('user_id', $userId);
     }
 
@@ -38,15 +40,18 @@ class ChatCharacter extends Model
      * - images/chat-bot/character/... → public 경로
      * - 기존 storage/characters/... → storage 링크 경로 (호환)
      */
-    public function getImageUrlAttribute(): ?string
+    protected function imageUrl(): Attribute
     {
-        if (!$this->image_path) {
-            return null;
-        }
-        $path = ltrim($this->image_path, '/');
-        return str_starts_with($path, 'images/')
-            ? asset($path)
-            : asset('storage/' . $path);
+        return Attribute::get(function (): ?string {
+            if (! $this->image_path) {
+                return null;
+            }
+            $path = ltrim($this->image_path, '/');
+
+            return str_starts_with($path, 'images/')
+                ? asset($path)
+                : asset('storage/'.$path);
+        });
     }
 
     /**
@@ -57,7 +62,7 @@ class ChatCharacter extends Model
         return [
             'id' => (string) $this->id,
             'name' => $this->name,
-            'description' => $this->short_intro . ($this->character_detail ? ' ' . Str::limit($this->character_detail, 80) : ''),
+            'description' => $this->short_intro.($this->character_detail ? ' '.Str::limit($this->character_detail, 80) : ''),
             'image' => $this->image_url ?? '',
             'accent' => $this->accent ?? 'accent-violet',
             'speech_style' => $this->speech_style ?? '',

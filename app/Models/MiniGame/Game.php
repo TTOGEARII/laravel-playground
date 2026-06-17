@@ -13,7 +13,10 @@ class Game extends Model
         'status',
     ];
 
-    protected $casts = [
-        'score' => 'integer',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'score' => 'integer',
+        ];
+    }
 }

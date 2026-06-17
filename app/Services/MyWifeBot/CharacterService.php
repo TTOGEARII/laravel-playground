@@ -2,6 +2,8 @@
 
 namespace App\Services\MyWifeBot;
 
+use App\Enums\MyWifeBot\Genre;
+use App\Enums\MyWifeBot\Target;
 use App\Models\ChatCharacter;
 use App\Services\Gemini\ChatService;
 use App\Services\HelperService;
@@ -104,13 +106,7 @@ class CharacterService
      */
     public function getGenres(): array
     {
-        return [
-            'romance' => '로맨스',
-            'fantasy' => '판타지',
-            'action' => '액션',
-            'slice_of_life' => '일상',
-            'otaku' => '오타쿠/서브컬처',
-        ];
+        return Genre::options();
     }
 
     /**
@@ -120,11 +116,6 @@ class CharacterService
      */
     public function getTargets(): array
     {
-        return [
-            'all' => '전체',
-            'male' => '남성',
-            'female' => '여성',
-            'teen' => '10대',
-        ];
+        return Target::options();
     }
 }

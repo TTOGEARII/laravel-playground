@@ -3,6 +3,7 @@
 namespace App\Models\OtakuShop;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OtakuOffer extends Model
 {
@@ -11,6 +12,7 @@ class OtakuOffer extends Model
     protected $primaryKey = 'ok_offer_id';
 
     const CREATED_AT = 'create_dt';
+
     const UPDATED_AT = 'update_dt';
 
     protected $fillable = [
@@ -27,23 +29,25 @@ class OtakuOffer extends Model
         'ok_offer_collected_dt',
     ];
 
-    protected $casts = [
-        'ok_offer_price' => 'decimal:2',
-        'ok_offer_local_price' => 'decimal:2',
-        'ok_offer_shipping_fee' => 'decimal:2',
-        'ok_offer_lowest_flg' => 'boolean',
-        'ok_offer_available_flg' => 'boolean',
-        'ok_offer_collected_dt' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'ok_offer_price' => 'decimal:2',
+            'ok_offer_local_price' => 'decimal:2',
+            'ok_offer_shipping_fee' => 'decimal:2',
+            'ok_offer_lowest_flg' => 'boolean',
+            'ok_offer_available_flg' => 'boolean',
+            'ok_offer_collected_dt' => 'datetime',
+        ];
+    }
 
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(OtakuProduct::class, 'ok_offer_product_id', 'ok_product_id');
     }
 
-    public function shop()
+    public function shop(): BelongsTo
     {
         return $this->belongsTo(OtakuShop::class, 'ok_offer_shop_id', 'ok_shop_id');
     }
 }
-
