@@ -50,6 +50,33 @@ class ProductNormalizerTest extends TestCase
         $this->assertSame($base, $n->normalizeKey('【굿즈】블루 아카이브 메가하우스 FigUnity 피규어 - 흥신소 68'));
     }
 
+    public function test_ip_name_spacing_and_abbreviation_aliases_match(): void
+    {
+        $n = $this->normalizer();
+
+        // 작품명 표기(띄어쓰기/줄임말)가 달라도 같은 상품으로 묶여야 한다.
+        $base = $n->normalizeKey('블루 아카이브 아로나 아크릴 스탠드');
+        $this->assertSame($base, $n->normalizeKey('블루아카이브 아로나 아크릴 스탠드'));
+        $this->assertSame($base, $n->normalizeKey('블아 아로나 아크릴 스탠드'));
+
+        // 실제 데이터: "페스나"(페이트 스테이 나이트 줄임말)만 덧붙은 동일 상품.
+        $this->assertSame(
+            $n->normalizeKey('페이트 스테이 나이트 페스나 굿스마일 컴퍼니 넨도로이드 3078 피규어 - 세이버 사복 Ver.'),
+            $n->normalizeKey('페이트 스테이 나이트 넨도로이드 세이버 사복 Ver.'),
+        );
+    }
+
+    public function test_same_ip_different_character_still_separate(): void
+    {
+        $n = $this->normalizer();
+
+        // 별칭 통일 후에도 캐릭터가 다르면 다른 상품으로 남아야 한다(과매칭 방지).
+        $this->assertNotSame(
+            $n->normalizeKey('블아 넨도로이드 아로나'),
+            $n->normalizeKey('블루 아카이브 넨도로이드 미카'),
+        );
+    }
+
     public function test_different_products_do_not_match(): void
     {
         $n = $this->normalizer();
