@@ -1,5 +1,34 @@
 <template>
   <div class="otaku-shop-page">
+    <section class="otaku-search-hero">
+      <h2 class="search-hero-title">어떤 굿즈를 찾으세요?</h2>
+      <p class="search-hero-sub">여러 쇼핑몰의 <strong>같은 상품 가격</strong>을 한 번에 검색·비교하세요.</p>
+      <div class="search-hero-box">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="search-hero-icon">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 21l-4.35-4.35M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/>
+        </svg>
+        <input
+          type="text"
+          v-model="keyword"
+          placeholder="상품명·작품명·캐릭터명으로 검색 (예: 넨도로이드 아스카)"
+          @keyup.enter="fetchProducts(1)"
+        />
+        <button class="search-hero-button" @click="fetchProducts(1)">검색</button>
+      </div>
+      <div class="search-hero-tags">
+        <span class="hero-tags-label">인기 검색어</span>
+        <button
+          v-for="kw in popularKeywords"
+          :key="kw"
+          class="hero-tag"
+          @click="quickSearch(kw)"
+        >
+          {{ kw }}
+        </button>
+      </div>
+    </section>
+
     <div class="otaku-shop-layout">
     <aside class="otaku-filter-panel">
       <div class="filter-section">
@@ -81,6 +110,14 @@
           />
         </div>
         <div class="toolbar-right">
+          <button
+            class="compare-only-toggle"
+            :class="{ 'is-active': comparedOnly }"
+            @click="comparedOnly = !comparedOnly"
+          >
+            <span class="toggle-dot"></span>
+            가격비교 가능만
+          </button>
           <div class="sort-select">
             <label for="sort">정렬</label>
             <select id="sort" v-model="sortBy">
@@ -89,10 +126,6 @@
               <option value="release_desc">발매일 최신 순</option>
             </select>
           </div>
-          <button class="compare-toggle-button">
-            비교함 보기
-            <span class="compare-badge">0</span>
-          </button>
         </div>
       </div>
 
@@ -132,6 +165,9 @@
             </div>
             <div class="product-main">
               <div class="product-meta">
+                <span v-if="offerCount(product) >= 2" class="badge badge-compare">
+                  🔥 {{ offerCount(product) }}개 쇼핑몰 비교<template v-if="savingStr(product)"> · 최대 {{ savingStr(product) }} 절약</template>
+                </span>
                 <span v-if="product.ok_product_brand_label" class="badge badge-brand">
                   {{ product.ok_product_brand_label }}
                 </span>
@@ -250,6 +286,25 @@ const selectedShopIds = ref([]);
 const sortBy = ref('price_asc');
 const priceMin = ref(0);
 const priceMax = ref(200000);
+const comparedOnly = ref(false);
+const popularKeywords = ['넨도로이드', '블루아카이브', '원신', '하츠네 미쿠', '피규어'];
+
+function quickSearch(kw) {
+  keyword.value = kw;
+  fetchProducts(1);
+}
+
+function offerCount(product) {
+  return (product.offers || []).length;
+}
+
+function savingStr(product) {
+  const offers = product.offers || [];
+  if (offers.length < 2) return '';
+  const prices = offers.map((o) => Number(o.ok_offer_price));
+  const diff = Math.max(...prices) - Math.min(...prices);
+  return diff > 0 ? `₩${diff.toLocaleString()}` : '';
+}
 
 function productLabelLetter(product) {
   const label = product.ok_product_brand_label || 'P';
@@ -373,6 +428,7 @@ async function fetchProducts(page = 1) {
       category_id: selectedCategoryId.value ?? undefined,
       shop_id: selectedShopIds.value,
       sort: sortBy.value,
+      compared_only: comparedOnly.value,
     });
     products.value = res.data || [];
     meta.value = res.meta || meta.value;
@@ -390,6 +446,7 @@ function resetFilters() {
   selectedShopIds.value = shops.value.length ? shops.value.map((s) => s.ok_shop_id) : [];
   priceMin.value = 0;
   priceMax.value = 200000;
+  comparedOnly.value = false;
   fetchProducts(1);
 }
 
@@ -398,6 +455,6 @@ onMounted(() => {
   fetchShops().then(() => fetchProducts(1));
 });
 
-watch([selectedCategoryId, sortBy], () => fetchProducts(1));
+watch([selectedCategoryId, sortBy, comparedOnly], () => fetchProducts(1));
 watch(selectedShopIds, () => fetchProducts(1), { deep: true });
 </script>

@@ -45,12 +45,32 @@ class AnimateCrawler extends AbstractShopCrawler
                 const pm = priceText.match(/(\d{1,3}(?:,\d{3})*)\s*원/);
                 const price = pm ? pm[1].replace(/,/g, '') : '';
 
-                const img = item.querySelector('a[href*="goods_view"] img, .item_photo_box img, img.middle');
-                const imgSrc = img ? (img.getAttribute('src') || '') : '';
+                // 상품 카드에는 ★특전★ 배지(goods_icon/tokuten...) 같은 아이콘 img 가 실제 상품
+                // 사진보다 먼저 올 수 있어, 아이콘/버튼류를 건너뛰고 실제 상품 이미지를 고른다.
+                let imgSrc = '';
+                const cand = item.querySelectorAll('.item_photo_box img, a[href*="goods_view"] img, img.middle, img');
+                for (const im of cand) {
+                    const s = im.getAttribute('src') || '';
+                    if (!s) continue;
+                    if (/\/icon\/|goods_icon|tokuten|\/_btn\/|blank|btn_/i.test(s)) continue;
+                    imgSrc = s;
+                    break;
+                }
 
                 out.push({ id: idMatch[1], title, price, url: 'goods/goods_view.php?goodsNo=' + idMatch[1], img: imgSrc });
             });
             return JSON.stringify(out);
             JS;
+    }
+
+    /**
+     * 애니메이트 상품 이미지는 godohosting/cdn 모두 https 를 지원하므로 https 로 강제해
+     * https 배포 환경에서의 mixed-content 차단을 방지한다.
+     */
+    protected function resolveImage(string $src): ?string
+    {
+        $resolved = parent::resolveImage($src);
+
+        return $resolved !== null ? preg_replace('#^http://#', 'https://', $resolved) : null;
     }
 }

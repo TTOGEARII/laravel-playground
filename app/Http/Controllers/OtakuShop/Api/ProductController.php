@@ -25,6 +25,7 @@ class ProductController extends Controller
             'brand' => $request->input('brand'),
             'category_id' => $request->input('category_id'),
             'sort' => $request->input('sort', 'price_asc'),
+            'compared_only' => $request->boolean('compared_only'),
         ];
         $shopIds = $request->input('shop_id', []);
         if (is_array($shopIds) && $shopIds !== []) {

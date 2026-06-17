@@ -39,7 +39,7 @@ class ProductService
             },
         ]);
 
-        if (!empty($filters['keyword'])) {
+        if (! empty($filters['keyword'])) {
             $keyword = $filters['keyword'];
             $query->where(function ($q) use ($keyword) {
                 $q->where('ok_product_title', 'like', "%{$keyword}%")
@@ -48,11 +48,11 @@ class ProductService
             });
         }
 
-        if (!empty($filters['brand'])) {
+        if (! empty($filters['brand'])) {
             $query->where('ok_product_brand_label', $filters['brand']);
         }
 
-        if (!empty($filters['shop_ids']) && is_array($filters['shop_ids'])) {
+        if (! empty($filters['shop_ids']) && is_array($filters['shop_ids'])) {
             $shopIds = array_filter(array_map('intval', $filters['shop_ids']));
             if ($shopIds !== []) {
                 $query->whereHas('offers', function ($q) use ($shopIds) {
@@ -61,8 +61,15 @@ class ProductService
             }
         }
 
-        if (!empty($filters['active_only'])) {
+        if (! empty($filters['active_only'])) {
             $query->where('ok_product_active_flg', true);
+        }
+
+        // 가격비교 가능(2개 이상 쇼핑몰에 판매 중 오퍼가 있는) 상품만.
+        if (! empty($filters['compared_only'])) {
+            $query->whereHas('offers', function ($q) {
+                $q->where('ok_offer_available_flg', true);
+            }, '>=', 2);
         }
 
         if (isset($filters['category_id']) && $filters['category_id'] !== '' && $filters['category_id'] !== null) {
@@ -106,7 +113,7 @@ class ProductService
     {
         $product = OtakuProduct::find($id);
 
-        if (!$product) {
+        if (! $product) {
             return null;
         }
 
@@ -123,7 +130,7 @@ class ProductService
     {
         $product = OtakuProduct::find($id);
 
-        if (!$product) {
+        if (! $product) {
             return false;
         }
 
@@ -142,4 +149,3 @@ class ProductService
             ->get();
     }
 }
-

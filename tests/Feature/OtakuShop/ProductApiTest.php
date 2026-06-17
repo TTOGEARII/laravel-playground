@@ -97,6 +97,35 @@ class ProductApiTest extends TestCase
             ->assertJsonPath('meta.total', 1);
     }
 
+    public function test_compared_only_returns_products_with_multiple_shops(): void
+    {
+        $data = $this->seedCatalog();
+
+        // 한 쇼핑몰에만 오퍼가 있는 상품(비교 불가) 추가.
+        $single = OtakuProduct::create([
+            'ok_product_code' => 'pr_single',
+            'ok_product_title' => '단일샵 키링',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $single->ok_product_id,
+            'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_currency' => 'KRW',
+            'ok_offer_price' => 8000,
+            'ok_offer_available_flg' => true,
+        ]);
+
+        // 전체는 2건, 비교가능만은 1건(2개 샵 상품).
+        $this->getJson('/api/otaku-shop/products')
+            ->assertOk()->assertJsonPath('meta.total', 2);
+
+        $this->getJson('/api/otaku-shop/products?compared_only=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
+    }
+
     public function test_per_page_is_capped_at_50(): void
     {
         $this->seedCatalog();
