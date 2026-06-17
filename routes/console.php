@@ -20,8 +20,16 @@ Artisan::command('inspire', function () {
 |      또는 호스트 cron: * * * * * cd /path/to/project && ./vendor/bin/sail artisan schedule:run
 | Selenium 엔드포인트는 .env 의 OTAKU_SELENIUM_URL (기본: http://selenium:4444)을 따릅니다.
 */
+// 매일 03:00 증분 크롤 (가격/재고 갱신)
 Schedule::command('otaku-shop:crawl --incremental')
     ->dailyAt('03:00')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(120)
+    ->runInBackground();
+
+// 매주 일요일 04:00 전체 크롤 (오퍼 전면 재수집·정합성 보정)
+Schedule::command('otaku-shop:crawl')
+    ->weeklyOn(0, '04:00')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(180)
     ->runInBackground();
