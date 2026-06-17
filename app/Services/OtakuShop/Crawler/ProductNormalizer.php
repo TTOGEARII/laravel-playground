@@ -23,10 +23,14 @@ class ProductNormalizer
     /** @var array<string, true> */
     private array $stopwords;
 
+    /** @var array<string, array<int, string>> 표준토큰 => [별칭 표기들] */
+    private array $aliases;
+
     public function __construct(
         ?int $titleMinLength = null,
         ?array $stripPatterns = null,
         ?array $stopwords = null,
+        ?array $aliases = null,
     ) {
         // 인자를 명시하지 않으면(컨테이너 자동 주입 포함) config 값을 사용한다.
         $this->stripPatterns = $stripPatterns ?? config('otaku-crawler.product_match.strip_patterns', []);
@@ -36,6 +40,11 @@ class ProductNormalizer
         $this->stopwords = [];
         foreach ($words as $word) {
             $this->stopwords[mb_strtolower($word)] = true;
+        }
+
+        $this->aliases = [];
+        foreach ($aliases ?? config('otaku-crawler.product_match.ip_aliases', []) as $canonical => $variants) {
+            $this->aliases[mb_strtolower($canonical)] = array_map('mb_strtolower', $variants);
         }
     }
 
@@ -100,11 +109,33 @@ class ProductNormalizer
         $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
         $normalized = trim($normalized);
 
+        $normalized = $this->applyAliases($normalized);
+
         // 과도하게 깎여 너무 짧아지면 원제목(소문자) 기준으로 폴백.
         if (mb_strlen($normalized) < $this->titleMinLength) {
             return mb_strtolower(trim($title));
         }
 
         return $normalized;
+    }
+
+    /**
+     * IP명 별칭(띄어쓰기/줄임말)을 표준 토큰으로 합친다. 토큰 경계를 지키기 위해
+     * 양끝을 공백으로 감싼 뒤 치환한다.
+     */
+    private function applyAliases(string $spaced): string
+    {
+        if ($this->aliases === []) {
+            return $spaced;
+        }
+
+        $padded = ' '.$spaced.' ';
+        foreach ($this->aliases as $canonical => $variants) {
+            foreach ($variants as $variant) {
+                $padded = str_replace(' '.$variant.' ', ' '.$canonical.' ', $padded);
+            }
+        }
+
+        return trim($padded);
     }
 }
