@@ -56,6 +56,16 @@
       </div>
 
       <div class="filter-section">
+        <h2 class="filter-title">작품 (IP)</h2>
+        <select class="filter-select" v-model="selectedIpId">
+          <option :value="null">전체 작품</option>
+          <option v-for="ip in ips" :key="ip.ok_ip_id" :value="ip.ok_ip_id">
+            {{ ip.ok_ip_label }} ({{ ip.products_count }})
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-section">
         <h2 class="filter-title">브랜드 / 샵</h2>
         <template v-if="shops.length">
           <label
@@ -118,12 +128,21 @@
             <span class="toggle-dot"></span>
             가격비교 가능만
           </button>
+          <button
+            class="compare-only-toggle"
+            :class="{ 'is-active': hasReleaseOnly }"
+            @click="hasReleaseOnly = !hasReleaseOnly"
+          >
+            <span class="toggle-dot"></span>
+            발매예정만
+          </button>
           <div class="sort-select">
             <label for="sort">정렬</label>
             <select id="sort" v-model="sortBy">
               <option value="price_asc">최저가 순</option>
               <option value="price_desc">가격 높은 순</option>
               <option value="release_desc">발매일 최신 순</option>
+              <option value="release_asc">발매 임박 순</option>
             </select>
           </div>
         </div>
@@ -177,6 +196,17 @@
                 {{ product.ok_product_subtitle }}
               </p>
               <div class="product-tags">
+                <button
+                  v-if="product.ip"
+                  type="button"
+                  class="tag tag-ip"
+                  @click="selectedIpId = product.ip.ok_ip_id"
+                >
+                  # {{ product.ip.ok_ip_label }}
+                </button>
+                <span v-if="product.category" class="tag tag-cat">
+                  {{ product.category.ok_category_label }}
+                </span>
                 <span v-if="product.ok_product_brand_label" class="tag">
                   {{ product.ok_product_brand_label }}
                 </span>
@@ -271,6 +301,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { otakuShopApi } from './api.js';
 
 const categories = ref([]);
+const ips = ref([]);
 const shops = ref([]);
 const products = ref([]);
 const meta = ref({
@@ -282,11 +313,13 @@ const meta = ref({
 const loading = ref(false);
 const keyword = ref('');
 const selectedCategoryId = ref(null);
+const selectedIpId = ref(null);
 const selectedShopIds = ref([]);
 const sortBy = ref('price_asc');
 const priceMin = ref(0);
 const priceMax = ref(200000);
 const comparedOnly = ref(false);
+const hasReleaseOnly = ref(false);
 const popularKeywords = ['넨도로이드', '블루아카이브', '원신', '하츠네 미쿠', '피규어'];
 
 // 빠른 가격 비교 표는 2개 이상 쇼핑몰에 오퍼가 있어 실제로 비교가 되는 상품만 노출.
@@ -408,6 +441,16 @@ async function fetchCategories() {
   }
 }
 
+async function fetchIps() {
+  try {
+    const res = await otakuShopApi.getIps();
+    ips.value = res.data || [];
+  } catch (e) {
+    console.error('ips', e);
+    ips.value = [];
+  }
+}
+
 async function fetchShops() {
   try {
     const res = await otakuShopApi.getShops();
@@ -429,9 +472,11 @@ async function fetchProducts(page = 1) {
       per_page: 15,
       keyword: keyword.value || undefined,
       category_id: selectedCategoryId.value ?? undefined,
+      ip_id: selectedIpId.value ?? undefined,
       shop_id: selectedShopIds.value,
       sort: sortBy.value,
       compared_only: comparedOnly.value,
+      has_release: hasReleaseOnly.value,
     });
     products.value = res.data || [];
     meta.value = res.meta || meta.value;
@@ -446,18 +491,21 @@ async function fetchProducts(page = 1) {
 function resetFilters() {
   keyword.value = '';
   selectedCategoryId.value = null;
+  selectedIpId.value = null;
   selectedShopIds.value = shops.value.length ? shops.value.map((s) => s.ok_shop_id) : [];
   priceMin.value = 0;
   priceMax.value = 200000;
   comparedOnly.value = false;
+  hasReleaseOnly.value = false;
   fetchProducts(1);
 }
 
 onMounted(() => {
   fetchCategories();
+  fetchIps();
   fetchShops().then(() => fetchProducts(1));
 });
 
-watch([selectedCategoryId, sortBy, comparedOnly], () => fetchProducts(1));
+watch([selectedCategoryId, selectedIpId, sortBy, comparedOnly, hasReleaseOnly], () => fetchProducts(1));
 watch(selectedShopIds, () => fetchProducts(1), { deep: true });
 </script>
