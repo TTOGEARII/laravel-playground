@@ -97,6 +97,9 @@ return [
         'headless' => env('OTAKU_CRAWL_HEADLESS', true),
         'page_load_timeout_sec' => (int) env('OTAKU_PAGE_LOAD_TIMEOUT', 30),
         'implicit_wait_sec' => (int) env('OTAKU_IMPLICIT_WAIT', 10),
+        // 'eager' = DOMContentLoaded 까지만 기다리고(이미지·트래커 등 서브리소스 대기 안 함) 진행.
+        // 상품은 DOM 에서 읽으므로 충분하고, 멈춘 서브리소스로 인한 렌더러 타임아웃을 크게 줄인다.
+        'page_load_strategy' => env('OTAKU_PAGE_LOAD_STRATEGY', 'eager'),
         // WebDriver HTTP(curl) 타임아웃. 없으면(0=무한) 브라우저가 응답 안 주는 페이지에서
         // 명령 하나가 영원히 블록돼 크롤 전체가 멈춘다(실제 발생). request 는 page_load 보다
         // 커서 정상 페이지를 안 끊되, 진짜 hang 은 잘라 try/catch 로 흘려보낸다.
@@ -181,6 +184,10 @@ return [
     'crawl' => [
         'delay_ms_between_requests' => (int) env('OTAKU_CRAWL_DELAY_MS', 1500),
         'delay_ms_between_shops' => (int) env('OTAKU_CRAWL_DELAY_BETWEEN_SHOPS_MS', 2000),
+        // 한 샵 안에서 이만큼 페이지를 로드하면 브라우저 세션을 새로 만든다(0=비활성).
+        // 단일 세션을 수천 페이지·수 시간 재사용하면 렌더러가 불안정해져 간헐 타임아웃이 나므로,
+        // 주기적으로 세션을 갈아 degradation 을 막는다.
+        'recycle_after_pages' => (int) env('OTAKU_RECYCLE_AFTER_PAGES', 80),
         'full' => [
             'delay_ms_between_requests' => (int) env('OTAKU_FULL_DELAY_MS', 3000),
             'delay_ms_between_shops' => (int) env('OTAKU_FULL_DELAY_BETWEEN_SHOPS_MS', 8000),
