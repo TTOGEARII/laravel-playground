@@ -96,4 +96,33 @@ class ProductNormalizerTest extends TestCase
             $n->normalizeKey('아크릴 스탠드 아로나', '메가하우스'),
         );
     }
+
+    public function test_extract_release_date_from_title(): void
+    {
+        $n = $this->normalizer();
+
+        // [NN년 NN월 발매] → 그 달 1일.
+        $this->assertSame('2026-02-01', $n->extractReleaseDate('[26년 02월 발매] 귀멸의 칼날 굿즈'));
+        $this->assertSame('2025-12-01', $n->extractReleaseDate('[25년 12월 발매][재판] 블루 아카이브 키링'));
+        // 한 자리 월도 처리.
+        $this->assertSame('2026-09-01', $n->extractReleaseDate('[26년 9월 발매] 원신 아크릴'));
+        // 발매 표기가 없으면 null.
+        $this->assertNull($n->extractReleaseDate('[입고 완료] 명일방주 인형'));
+        $this->assertNull($n->extractReleaseDate('블루 아카이브 아로나 피규어'));
+    }
+
+    public function test_extract_ip_code_from_title(): void
+    {
+        $n = $this->normalizer();
+
+        // 표준명/띄어쓰기/줄임말 모두 같은 IP 코드로.
+        $this->assertSame('블루아카이브', $n->extractIpCode('[26년 02월 발매] 블루 아카이브 아로나 아크릴'));
+        $this->assertSame('블루아카이브', $n->extractIpCode('블아 공식 굿즈 키링'));
+        $this->assertSame('귀멸의칼날', $n->extractIpCode('[26년 02월 발매] 귀멸의 칼날 귀칼 굿즈 파샤코레'));
+        // 새로 보강한 IP.
+        $this->assertSame('나의히어로아카데미아', $n->extractIpCode('나의 히어로 아카데미아 데쿠 피규어'));
+        $this->assertSame('승리의여신니케', $n->extractIpCode('승리의 여신: 니케 폴라로이드'));
+        // 사전에 없는 작품은 null.
+        $this->assertNull($n->extractIpCode('이름없는 무명 작품 아크릴 스탠드'));
+    }
 }

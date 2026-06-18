@@ -15,7 +15,8 @@ class ProductController extends Controller
 
     /**
      * 상품 목록 (페이지네이션, 필터).
-     * 쿼리: page, per_page, keyword, category_id (ok_product_cate_id), shop_id[], sort (price_asc|price_desc|release_desc)
+     * 쿼리: page, per_page, keyword, category_id(상품종류), ip_id(작품), shop_id[],
+     *       has_release, sort (price_asc|price_desc|release_desc|release_asc)
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,6 +25,8 @@ class ProductController extends Controller
             'keyword' => $request->input('keyword'),
             'brand' => $request->input('brand'),
             'category_id' => $request->input('category_id'),
+            'ip_id' => $request->input('ip_id'),
+            'has_release' => $request->boolean('has_release'),
             'sort' => $request->input('sort', 'price_asc'),
             'compared_only' => $request->boolean('compared_only'),
         ];
@@ -66,6 +69,16 @@ class ProductController extends Controller
     {
         return response()->json([
             'data' => $this->productService->getShopsForFilter(),
+        ]);
+    }
+
+    /**
+     * 필터용 IP(작품) 목록 (상품 많은 순).
+     */
+    public function ips(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->productService->getIpsForFilter(),
         ]);
     }
 }

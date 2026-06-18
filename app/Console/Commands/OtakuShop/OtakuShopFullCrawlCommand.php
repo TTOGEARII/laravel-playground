@@ -33,9 +33,10 @@ class OtakuShopFullCrawlCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info('1. 샵/카테고리 동기화...');
+        $this->info('1. 샵/카테고리/IP 동기화...');
         $syncService->syncShops();
         $syncService->syncCategories();
+        $syncService->syncIps();
 
         // 샵 하나가 끝날 때마다 바로 DB에 저장한다. 뒤 샵이 실패해도 앞 샵 데이터는 안전하다.
         $this->info('2. 전량 크롤 + 샵별 즉시 저장 (카테고리 자동 발견 + 끝 페이지까지)...');

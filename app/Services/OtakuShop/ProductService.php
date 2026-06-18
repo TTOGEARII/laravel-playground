@@ -3,6 +3,7 @@
 namespace App\Services\OtakuShop;
 
 use App\Models\OtakuShop\OtakuCategory;
+use App\Models\OtakuShop\OtakuIp;
 use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
 use App\Models\OtakuShop\OtakuShop;
@@ -28,12 +29,25 @@ class ProductService
     }
 
     /**
+     * 필터용 IP(작품) 목록. 실제 상품이 1개 이상 붙은 IP만, 상품 많은 순으로.
+     */
+    public function getIpsForFilter(): Collection
+    {
+        return OtakuIp::query()
+            ->withCount('products')
+            ->whereHas('products')  // 상품이 1개 이상 붙은 IP만
+            ->orderByDesc('products_count')
+            ->get();
+    }
+
+    /**
      * 상품 목록 조회 (간단 필터 포함).
      */
     public function listProducts(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         $query = OtakuProduct::query()->with([
             'category',
+            'ip',
             'offers' => function ($q) {
                 $q->where('ok_offer_available_flg', true)->with('shop')->orderBy('ok_offer_price');
             },
@@ -79,10 +93,26 @@ class ProductService
             }
         }
 
-        // sort: price_asc|price_desc|release_desc
+        if (isset($filters['ip_id']) && $filters['ip_id'] !== '' && $filters['ip_id'] !== null) {
+            $ipId = (int) $filters['ip_id'];
+            if ($ipId > 0) {
+                $query->where('ok_product_ip_id', $ipId);
+            }
+        }
+
+        // 발매(예정)일이 있는 상품만(예: 예약/발매예정 모아보기).
+        if (! empty($filters['has_release'])) {
+            $query->whereNotNull('ok_product_release_date');
+        }
+
+        // sort: price_asc|price_desc|release_desc(최신 발매순)|release_asc(발매 임박순)
         $sort = $filters['sort'] ?? 'price_asc';
         if ($sort === 'release_desc') {
-            $query->orderByDesc('ok_product_release_date')->orderByDesc('ok_product_id');
+            $query->orderByRaw('ok_product_release_date IS NULL')  // 발매일 없는 건 뒤로
+                ->orderByDesc('ok_product_release_date')->orderByDesc('ok_product_id');
+        } elseif ($sort === 'release_asc') {
+            $query->orderByRaw('ok_product_release_date IS NULL')
+                ->orderBy('ok_product_release_date')->orderByDesc('ok_product_id');
         } else {
             $query->orderByDesc('ok_product_id');
         }
