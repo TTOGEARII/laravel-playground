@@ -21,6 +21,7 @@ class CrawlerDriver
         private int $implicitWait = 10,
         private int $connectionTimeout = 30,
         private int $requestTimeout = 60,
+        private string $pageLoadStrategy = 'eager',
     ) {}
 
     /**
@@ -37,6 +38,7 @@ class CrawlerDriver
             (int) ($config['implicit_wait_sec'] ?? 10),
             (int) ($config['connection_timeout_sec'] ?? 30),
             (int) ($config['request_timeout_sec'] ?? 60),
+            (string) ($config['page_load_strategy'] ?? 'eager'),
         );
     }
 
@@ -56,6 +58,10 @@ class CrawlerDriver
         }
         $options->addArguments(['--window-size=1920,1080']);
         $caps->setCapability(ChromeOptions::CAPABILITY, $options);
+        // DOM 준비까지만 기다리도록(이미지·트래커 대기 안 함) → 멈춘 서브리소스로 인한 렌더러 타임아웃 완화.
+        if ($this->pageLoadStrategy !== '') {
+            $caps->setCapability('pageLoadStrategy', $this->pageLoadStrategy);
+        }
 
         // 3·4번째 인자(연결/요청 타임아웃, ms)를 반드시 준다. 안 주면 curl 타임아웃이 무한이라
         // 브라우저가 응답을 안 주는 페이지에서 명령 하나가 영원히 블록돼 크롤 전체가 멈춘다.
@@ -79,6 +85,16 @@ class CrawlerDriver
     public function getDriver(): RemoteWebDriver
     {
         return $this->driver ?? $this->start();
+    }
+
+    /**
+     * 세션을 종료하고 새로 시작한다(장시간 단일 세션의 렌더러 degradation 방지용).
+     */
+    public function recycle(): RemoteWebDriver
+    {
+        $this->quit();
+
+        return $this->start();
     }
 
     /**

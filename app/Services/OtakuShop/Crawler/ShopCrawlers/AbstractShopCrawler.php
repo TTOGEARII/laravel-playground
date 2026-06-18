@@ -3,6 +3,7 @@
 namespace App\Services\OtakuShop\Crawler\ShopCrawlers;
 
 use App\Services\OtakuShop\Crawler\Contracts\ShopCrawlerInterface;
+use App\Services\OtakuShop\Crawler\CrawlerDriver;
 use App\Services\OtakuShop\Crawler\DTO\CrawledProductDto;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Illuminate\Support\Facades\Log;
@@ -23,8 +24,11 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
     /** 전량 모드(카테고리 자동 발견·끝 페이지까지·긴 딜레이). */
     protected bool $fullMode = false;
 
+    /** 현재 세션에서 로드한 페이지 수(세션 재생성 주기 판단용). */
+    private int $pageLoads = 0;
+
     public function __construct(
-        protected RemoteWebDriver $driver
+        protected CrawlerDriver $driver
     ) {}
 
     /**
@@ -46,6 +50,23 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
         $this->fullMode = true;
 
         return $this;
+    }
+
+    /**
+     * 새 페이지를 로드하기 직전 호출. recycle_after_pages 마다 세션을 새로 만들어
+     * 장시간 단일 세션의 렌더러 degradation(간헐 타임아웃)을 방지한다.
+     * 재생성은 페이지 경계에서만 일어나므로 get()→executeScript() 한 쌍은 절대 분리되지 않는다.
+     */
+    private function driverForNextPage(): RemoteWebDriver
+    {
+        $threshold = max(0, (int) config('otaku-crawler.crawl.recycle_after_pages', 80));
+        if ($threshold > 0 && $this->pageLoads >= $threshold) {
+            $this->driver->recycle();
+            $this->pageLoads = 0;
+        }
+        $this->pageLoads++;
+
+        return $this->driver->getDriver();
     }
 
     /**
@@ -125,9 +146,10 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
         }
 
         try {
-            $this->driver->get($this->baseUrl().'/');
+            $driver = $this->driverForNextPage();
+            $driver->get($this->baseUrl().'/');
             usleep(800 * 1000);
-            $raw = $this->driver->executeScript($script);
+            $raw = $driver->executeScript($script);
         } catch (\Throwable $e) {
             Log::warning('OtakuShop Crawler: category discovery failed', [
                 'shop' => $this->getShopCode(),
@@ -168,8 +190,10 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
      */
     private function fetchPage(string $url): array
     {
+        $driver = $this->driverForNextPage();
+
         try {
-            $this->driver->get($url);
+            $driver->get($url);
         } catch (\Throwable $e) {
             Log::warning('OtakuShop Crawler: page load failed', ['url' => $url, 'message' => $e->getMessage()]);
 
@@ -180,7 +204,7 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
         usleep(800 * 1000);
 
         try {
-            $raw = $this->driver->executeScript($this->listScript());
+            $raw = $driver->executeScript($this->listScript());
         } catch (\Throwable $e) {
             Log::warning('OtakuShop Crawler: list script failed', ['url' => $url, 'message' => $e->getMessage()]);
 
