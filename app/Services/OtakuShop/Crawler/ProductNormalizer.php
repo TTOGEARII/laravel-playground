@@ -26,6 +26,9 @@ class ProductNormalizer
     /** @var array<string, array<int, string>> 표준토큰 => [별칭 표기들] */
     private array $aliases;
 
+    /** @var array<string, array<int, string>> IP코드(원본 표기) => [매칭 검색어(소문자)] — 분류용 */
+    private array $ipClassify;
+
     public function __construct(
         ?int $titleMinLength = null,
         ?array $stripPatterns = null,
@@ -42,10 +45,52 @@ class ProductNormalizer
             $this->stopwords[mb_strtolower($word)] = true;
         }
 
+        $aliasSource = $aliases ?? config('otaku-crawler.product_match.ip_aliases', []);
         $this->aliases = [];
-        foreach ($aliases ?? config('otaku-crawler.product_match.ip_aliases', []) as $canonical => $variants) {
+        $this->ipClassify = [];
+        foreach ($aliasSource as $canonical => $variants) {
             $this->aliases[mb_strtolower($canonical)] = array_map('mb_strtolower', $variants);
+            // 분류는 원본 코드를 키로, 표준명+별칭 전부를 검색어로(소문자) 둔다.
+            $this->ipClassify[$canonical] = array_map('mb_strtolower', array_merge([$canonical], $variants));
         }
+    }
+
+    /**
+     * 제목에서 IP(작품) 코드를 추출한다(별칭 사전 부분일치, 먼저 매칭되는 것). 없으면 null.
+     */
+    public function extractIpCode(string $title): ?string
+    {
+        $low = mb_strtolower($title);
+        foreach ($this->ipClassify as $code => $terms) {
+            foreach ($terms as $term) {
+                if ($term !== '' && mb_strpos($low, $term) !== false) {
+                    return $code;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 제목의 "[NN년 NN월 발매]"(또는 4자리 연도)에서 발매(예정)일을 뽑아 Y-m-d(일=01)로 반환. 없으면 null.
+     */
+    public function extractReleaseDate(string $title): ?string
+    {
+        if (! preg_match('/(\d{2,4})\s*년\s*(\d{1,2})\s*월\s*발매/u', $title, $m)) {
+            return null;
+        }
+
+        $year = (int) $m[1];
+        if ($year < 100) {
+            $year += 2000;  // 2자리 연도(26년 → 2026)
+        }
+        $month = (int) $m[2];
+        if ($month < 1 || $month > 12) {
+            return null;
+        }
+
+        return sprintf('%04d-%02d-01', $year, $month);
     }
 
     /**

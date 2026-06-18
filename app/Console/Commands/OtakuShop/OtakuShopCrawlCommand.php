@@ -21,9 +21,10 @@ class OtakuShopCrawlCommand extends Command
     {
         // 샵/카테고리는 firstOrCreate(멱등)이며, 상품·오퍼 동기화 시 코드→ID 매핑에 반드시 필요하므로
         // 증분 모드에서도 항상 먼저 보장한다. (빈 DB + 증분 스케줄에서 아무것도 적재되지 않던 문제 방지)
-        $this->info('1. 샵/카테고리 동기화...');
+        $this->info('1. 샵/카테고리/IP 동기화...');
         $syncService->syncShops();
         $syncService->syncCategories();
+        $syncService->syncIps();
 
         if ($this->option('incremental')) {
             $this->info('증분 모드: 기존 오퍼는 가격/URL만 갱신합니다.');

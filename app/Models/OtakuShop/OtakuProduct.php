@@ -24,6 +24,7 @@ class OtakuProduct extends Model
         'ok_product_release_date',
         'ok_product_active_flg',
         'ok_product_cate_id',
+        'ok_product_ip_id',
         'ok_product_image_url',
     ];
 
@@ -38,6 +39,11 @@ class OtakuProduct extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(OtakuCategory::class, 'ok_product_cate_id', 'ok_category_id');
+    }
+
+    public function ip(): BelongsTo
+    {
+        return $this->belongsTo(OtakuIp::class, 'ok_product_ip_id', 'ok_ip_id');
     }
 
     public function offers(): HasMany

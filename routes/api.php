@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Otaku Shop (BASE = /api/otaku-shop)
-|   GET /api/otaku-shop/products   ?page, per_page, keyword, category_id, shop_id[], sort
+|   GET /api/otaku-shop/products   ?page, per_page, keyword, category_id, ip_id, shop_id[], has_release, sort
 |   GET /api/otaku-shop/categories
+|   GET /api/otaku-shop/ips
 |   GET /api/otaku-shop/shops
 |
 | MyWifeBot (BASE = /api/my-wife-bot)
@@ -27,6 +28,7 @@ Route::prefix('my-wife-bot')->controller(MyWifeBotChatController::class)->group(
 Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->group(function () {
     Route::get('products', 'index');
     Route::get('categories', 'categories');
+    Route::get('ips', 'ips');
     Route::get('shops', 'shops');
 });
 
