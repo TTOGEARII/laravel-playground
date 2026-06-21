@@ -23,6 +23,7 @@ export const otakuShopApi = {
     if (params.category_id != null) q.set('category_id', params.category_id);
     if (params.ip_id != null) q.set('ip_id', params.ip_id);
     if (params.has_release) q.set('has_release', '1');
+    if (params.upcoming) q.set('upcoming', '1');
     if (params.sort) q.set('sort', params.sort);
     if (params.compared_only) q.set('compared_only', '1');
     (params.shop_id || []).forEach((id) => q.append('shop_id[]', id));

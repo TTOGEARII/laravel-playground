@@ -105,9 +105,27 @@ class ProductService
             $query->whereNotNull('ok_product_release_date');
         }
 
-        // sort: price_asc|price_desc|release_desc(최신 발매순)|release_asc(발매 임박순)
+        // 발매예정(오늘 이후 발매일) 상품만.
+        if (! empty($filters['upcoming'])) {
+            $query->whereNotNull('ok_product_release_date')
+                ->whereDate('ok_product_release_date', '>=', now()->toDateString());
+        }
+
+        // sort: price_asc|price_desc(판매중 오퍼 최저가 기준)|release_desc(최신 발매순)|release_asc(발매 임박순)
         $sort = $filters['sort'] ?? 'price_asc';
-        if ($sort === 'release_desc') {
+        if ($sort === 'price_asc' || $sort === 'price_desc') {
+            // 가격은 offer 테이블에 있으므로 판매중 오퍼의 최저가를 상관 서브쿼리로 끌어와 정렬한다.
+            $minPriceSub = OtakuOffer::query()
+                ->selectRaw('MIN(ok_offer_price)')
+                ->whereColumn('ok_offer_product_id', 'otaku_product.ok_product_id')
+                ->where('ok_offer_available_flg', true);
+
+            $query->select('otaku_product.*')
+                ->selectSub($minPriceSub, 'min_offer_price')
+                ->orderByRaw('min_offer_price IS NULL')  // 판매중 오퍼 없는 상품(가격 없음)은 뒤로
+                ->orderBy('min_offer_price', $sort === 'price_asc' ? 'asc' : 'desc')
+                ->orderByDesc('ok_product_id');
+        } elseif ($sort === 'release_desc') {
             $query->orderByRaw('ok_product_release_date IS NULL')  // 발매일 없는 건 뒤로
                 ->orderByDesc('ok_product_release_date')->orderByDesc('ok_product_id');
         } elseif ($sort === 'release_asc') {
