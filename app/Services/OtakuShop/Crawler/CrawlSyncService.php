@@ -114,7 +114,7 @@ class CrawlSyncService
      *
      * @param  array<int, CrawledProductDto>  $crawledProducts
      * @param  array<string, int>  $shopIds  shop_code => ok_shop_id
-     * @return array<string, array{key: string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
+     * @return array<string, array{key: string, makerCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
      */
     private function groupByProduct(array $crawledProducts, array $shopIds): array
     {
@@ -126,11 +126,17 @@ class CrawlSyncService
                 continue;
             }
 
-            $key = $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
-            $bundles[$key] ??= ['key' => $key, 'dto' => $dto, 'offers' => []];
+            // 고유값(품번/JAN)이 있으면 그것을 매칭 키로 우선 사용한다. 제목 표기가 쇼핑몰마다 달라도
+            // 같은 코드가 나와 동일상품으로 정확히 묶인다. 없으면 기존 제목 정규화 키로 폴백.
+            $makerCode = $dto->makerCode ?? $this->normalizer->extractMakerCode($dto->title);
+            $key = $makerCode !== null
+                ? 'mkr_'.md5($makerCode)
+                : $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
+
+            $bundles[$key] ??= ['key' => $key, 'makerCode' => $makerCode, 'dto' => $dto, 'offers' => []];
 
             $existing = $bundles[$key]['offers'][$shopId] ?? null;
-            if ($existing === null || $dto->price < $existing->price) {
+            if ($existing === null || $this->preferOffer($dto, $existing)) {
                 $bundles[$key]['offers'][$shopId] = $dto;
             }
         }
@@ -139,14 +145,29 @@ class CrawlSyncService
     }
 
     /**
+     * 같은 (상품,샵)에서 대표 오퍼를 고를 때 $candidate 가 $current 보다 나으면 true.
+     * 재고 있는 쪽을 우선하고(품절 변형이 최저가여도 구매 가능한 가격이 비교 기준이 되도록),
+     * 재고 상태가 같으면 더 싼 쪽을 택한다.
+     */
+    private function preferOffer(CrawledProductDto $candidate, CrawledProductDto $current): bool
+    {
+        if ($candidate->available !== $current->available) {
+            return $candidate->available;
+        }
+
+        return $candidate->price < $current->price;
+    }
+
+    /**
      * 정규화 키로 상품을 찾거나 생성. 기존 상품에 이미지가 비어 있으면 채워준다.
      *
-     * @param  array{key: string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
+     * @param  array{key: string, makerCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
      * @param  array<string, int>  $categoryByCode
      */
     private function findOrCreateProduct(array $bundle, array $categoryByCode, array $ipIdByCode, array &$stats): OtakuProduct
     {
         $dto = $bundle['dto'];
+        $makerCode = $bundle['makerCode'] ?? null;
         // 발매(예정)일·IP는 제목에서 파싱한다(크롤 단계가 아니라 여기서 분류).
         $releaseDate = $dto->releaseDate ?? $this->normalizer->extractReleaseDate($dto->title);
         $ipCode = $this->normalizer->extractIpCode($dto->title);
@@ -162,6 +183,8 @@ class CrawlSyncService
                 'ok_product_title' => $dto->title,
                 'ok_product_subtitle' => $dto->subtitle,
                 'ok_product_brand_label' => $dto->brandLabel,
+                'ok_product_maker_code' => $makerCode,
+                'ok_product_maker_name' => $dto->maker,
                 'ok_product_release_date' => $releaseDate,
                 'ok_product_active_flg' => true,
                 'ok_product_cate_id' => $categoryId,
@@ -179,6 +202,12 @@ class CrawlSyncService
         }
         if ($product->ok_product_ip_id === null && $ipId !== null) {
             $product->ok_product_ip_id = $ipId;
+        }
+        if ($product->ok_product_maker_code === null && $makerCode !== null) {
+            $product->ok_product_maker_code = $makerCode;
+        }
+        if ($product->ok_product_maker_name === null && $dto->maker !== null) {
+            $product->ok_product_maker_name = $dto->maker;
         }
         if ($product->isDirty()) {
             $product->save();
@@ -199,7 +228,7 @@ class CrawlSyncService
             'ok_offer_external_id' => $dto->externalId,
             'ok_offer_currency' => $dto->currency,
             'ok_offer_price' => $dto->price,
-            'ok_offer_available_flg' => true,
+            'ok_offer_available_flg' => $dto->available,
             'ok_offer_external_url' => $dto->productUrl,
             'ok_offer_collected_dt' => $now,
         ];
@@ -215,6 +244,44 @@ class CrawlSyncService
             OtakuOffer::create($offerData);
             $stats['offers_created']++;
         }
+    }
+
+    /**
+     * 전량 크롤 마무리: 이번 회차에 다시 수집되지 않은 오퍼를 품절 처리한다.
+     *
+     * 일부 쇼핑몰(예: 애니메이트/godo)은 품절 상품을 리스트에서 숨겨, 품절을 마크업으로
+     * 읽는 대신 "사라짐"으로 판단해야 한다. 이번 크롤에서 본 오퍼는 collected_dt 가 갱신되므로
+     * (run 시작 시각 이후), 그보다 오래된 오퍼 = 이번에 못 본 오퍼 = 품절로 간주한다.
+     *
+     * 주의: 카테고리 전체를 도는 전량 크롤(crawl-full)에서만 안전하다. 일부 카테고리만 도는
+     * 일반/증분 크롤에서는 "안 봤다 ≠ 사라졌다"이므로 호출하지 않는다. 또 크롤이 1건도 못 한
+     * 쇼핑몰(Selenium 실패 등)은 대상에서 제외해 전체 품절 오인을 막는다.
+     *
+     * @param  array<int, string>  $crawledShopCodes  이번에 실제로 상품을 수집한 샵 코드들
+     * @return int 품절로 전환된 오퍼 수
+     */
+    public function markUnseenOffersUnavailable(array $crawledShopCodes, Carbon $runStartedAt): int
+    {
+        $shopIds = OtakuShop::whereIn('ok_shop_code', array_values(array_unique($crawledShopCodes)))
+            ->pluck('ok_shop_id')->all();
+        if ($shopIds === []) {
+            return 0;
+        }
+
+        $affected = OtakuOffer::query()
+            ->whereIn('ok_offer_shop_id', $shopIds)
+            ->where('ok_offer_available_flg', true)
+            ->where(function ($q) use ($runStartedAt) {
+                $q->where('ok_offer_collected_dt', '<', $runStartedAt)
+                    ->orWhereNull('ok_offer_collected_dt');
+            })
+            ->update(['ok_offer_available_flg' => false, 'update_dt' => Carbon::now()]);
+
+        if ($affected > 0) {
+            $this->updateLowestPriceFlags();
+        }
+
+        return $affected;
     }
 
     /**

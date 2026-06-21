@@ -57,7 +57,14 @@ class AnimateCrawler extends AbstractShopCrawler
                     break;
                 }
 
-                out.push({ id: idMatch[1], title, price, url: 'goods/goods_view.php?goodsNo=' + idMatch[1], img: imgSrc });
+                // 품절 판정(godo): 품절 시 상품 컨테이너에 item_soldout 클래스가 붙고
+                // 썸네일에 .item_soldout_bg 오버레이가 렌더된다(비품절엔 미존재 → 오탐 없음).
+                // 장바구니 버튼도 btn_shop_soldout/btn_add_soldout 로 바뀐다.
+                const soldout = item.classList.contains('item_soldout')
+                    || !!item.closest('.item_soldout')
+                    || !!item.querySelector('.item_soldout_bg, .btn_shop_soldout, .btn_add_soldout, img[alt*="품절"]');
+
+                out.push({ id: idMatch[1], title, price, url: 'goods/goods_view.php?goodsNo=' + idMatch[1], img: imgSrc, soldout, makercode: '' });
             });
             return JSON.stringify(out);
             JS;

@@ -21,6 +21,8 @@ class OtakuProduct extends Model
         'ok_product_title',
         'ok_product_subtitle',
         'ok_product_brand_label',
+        'ok_product_maker_code',
+        'ok_product_maker_name',
         'ok_product_release_date',
         'ok_product_active_flg',
         'ok_product_cate_id',

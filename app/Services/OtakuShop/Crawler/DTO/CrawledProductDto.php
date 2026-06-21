@@ -20,5 +20,8 @@ final class CrawledProductDto
         public ?string $releaseDate = null,
         public ?float $shippingFee = null,
         public ?string $imageUrl = null,
+        public bool $available = true,
+        public ?string $makerCode = null,
+        public ?string $maker = null,
     ) {}
 }
