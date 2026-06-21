@@ -9,6 +9,7 @@ Route::get('/my-characters', [MainController::class, 'myCharacters'])->name('my-
 Route::get('/chat/{characterId}', [MainController::class, 'chat'])->name('my-wife-bot.chat');
 
 Route::get('/characters/create', [CharacterController::class, 'addForm'])->name('my-wife-bot.characters.create');
+Route::post('/characters/analyze', [CharacterController::class, 'analyze'])->name('my-wife-bot.characters.analyze');
 Route::post('/characters', [CharacterController::class, 'add'])->name('my-wife-bot.characters.store');
 Route::get('/characters/{character}/edit', [CharacterController::class, 'editForm'])->name('my-wife-bot.characters.edit');
 Route::post('/characters/{character}/generate-greeting', [CharacterController::class, 'generateGreeting'])->name('my-wife-bot.characters.generate-greeting');

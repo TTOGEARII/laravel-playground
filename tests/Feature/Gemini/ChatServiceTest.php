@@ -28,7 +28,8 @@ class ChatServiceTest extends TestCase
 
         $reply = $service->chat($this->character(), null, [], '안녕');
 
-        $this->assertStringContainsString('미아', $reply);
+        $this->assertStringContainsString('미아', $reply['message']);
+        $this->assertNull($reply['narration']);
     }
 
     public function test_chat_degrades_gracefully_on_connection_failure(): void
@@ -44,23 +45,27 @@ class ChatServiceTest extends TestCase
         // 예외가 밖으로 새지 않고 폴백 문자열을 반환해야 한다 (Fix 1)
         $reply = $service->chat($this->character(), null, [], '안녕');
 
-        $this->assertSame('잠시 후 다시 말 걸어 주세요.', $reply);
+        $this->assertSame('잠시 후 다시 말 걸어 주세요.', $reply['message']);
     }
 
-    public function test_chat_parses_json_message_on_success(): void
+    public function test_chat_parses_structured_reply_on_success(): void
     {
         config(['services.gemini.api_key' => 'test-key']);
         Http::fake([
             '*' => Http::response([
                 'candidates' => [[
-                    'content' => ['parts' => [['text' => '{"message": "오늘도 좋은 하루예요"}']]],
+                    'content' => ['parts' => [['text' => '{"narration": "미아가 미소짓는다", "message": "오늘도 좋은 하루예요", "affinity": 70}']]],
                 ]],
             ], 200),
         ]);
 
         $service = new ChatService($this->app->make(GeminiService::class));
 
-        $this->assertSame('오늘도 좋은 하루예요', $service->chat($this->character(), null, [], '안녕'));
+        $reply = $service->chat($this->character(), null, [], '안녕');
+
+        $this->assertSame('오늘도 좋은 하루예요', $reply['message']);
+        $this->assertSame('미아가 미소짓는다', $reply['narration']);
+        $this->assertSame(70, $reply['affinity']);
     }
 
     public function test_intro_message_falls_back_to_stored_intro_on_api_failure(): void

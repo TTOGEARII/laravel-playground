@@ -76,13 +76,13 @@ class ChatApiTest extends TestCase
             ->assertStatus(404);
     }
 
-    public function test_send_persists_messages_and_returns_reply(): void
+    public function test_send_persists_messages_and_returns_structured_reply(): void
     {
         config(['services.gemini.api_key' => 'test-key']);
         Http::fake([
             '*' => Http::response([
                 'candidates' => [[
-                    'content' => ['parts' => [['text' => '{"message": "반가워요"}']]],
+                    'content' => ['parts' => [['text' => '{"narration": "미아가 손을 흔든다", "message": "반가워요", "affinity": 65}']]],
                 ]],
             ], 200),
         ]);
@@ -97,10 +97,60 @@ class ChatApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.message.text', '반가워요')
-            ->assertJsonPath('data.message.role', 'character');
+            ->assertJsonPath('data.message.narration', '미아가 손을 흔든다')
+            ->assertJsonPath('data.message.role', 'character')
+            ->assertJsonPath('data.affinity', 65);
 
         $this->assertDatabaseHas('chat_messages', ['role' => 'user', 'content' => '안녕하세요']);
-        $this->assertDatabaseHas('chat_messages', ['role' => 'character', 'content' => '반가워요']);
+        $this->assertDatabaseHas('chat_messages', ['role' => 'character', 'content' => '반가워요', 'narration' => '미아가 손을 흔든다']);
+        $this->assertDatabaseHas('chat_sessions', ['id' => $session->id, 'affinity' => 65]);
+    }
+
+    public function test_suggest_returns_user_reply_suggestions(): void
+    {
+        config(['services.gemini.api_key' => 'test-key']);
+        Http::fake([
+            '*' => Http::response([
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"suggestions": ["오늘 뭐 했어?", "기분이 어때?", "같이 산책할래?"]}']]],
+                ]],
+            ], 200),
+        ]);
+
+        $character = $this->makeCharacter();
+        $session = ChatSession::create(['chat_character_id' => $character->id]);
+
+        $this->postJson('/api/my-wife-bot/chat/suggest', ['session_id' => (string) $session->id])
+            ->assertOk()
+            ->assertJsonCount(3, 'data.suggestions')
+            ->assertJsonPath('data.suggestions.0', '오늘 뭐 했어?');
+    }
+
+    public function test_narrate_generates_and_persists_narration(): void
+    {
+        config(['services.gemini.api_key' => 'test-key']);
+        Http::fake([
+            '*' => Http::response([
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"narration": "창밖으로 노을이 진다"}']]],
+                ]],
+            ], 200),
+        ]);
+
+        $character = $this->makeCharacter();
+        $session = ChatSession::create(['chat_character_id' => $character->id]);
+
+        $this->postJson('/api/my-wife-bot/chat/narrate', ['session_id' => (string) $session->id])
+            ->assertOk()
+            ->assertJsonPath('data.narration', '창밖으로 노을이 진다');
+
+        $this->assertDatabaseHas('chat_messages', ['role' => 'character', 'narration' => '창밖으로 노을이 진다']);
+    }
+
+    public function test_suggest_returns_404_for_unknown_session(): void
+    {
+        $this->postJson('/api/my-wife-bot/chat/suggest', ['session_id' => '99999'])
+            ->assertStatus(404);
     }
 
     public function test_send_degrades_gracefully_on_connection_failure(): void

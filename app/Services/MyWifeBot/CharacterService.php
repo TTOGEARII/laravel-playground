@@ -36,17 +36,14 @@ class CharacterService
             ? (string) $data['intro_message']
             : null;
 
-        $character = ChatCharacter::create([
-            'user_id' => Auth::id(),
-            'name' => $data['character_name'],
-            'short_intro' => $data['short_intro'],
-            'character_detail' => $data['character_detail'] ?? null,
-            'speech_style' => $data['speech_style'] ?? null,
-            'intro_message' => $intro,
-            'genre' => $data['genre'],
-            'target' => $data['target'],
-            'image_path' => $imagePath,
-        ]);
+        $character = ChatCharacter::create(array_merge(
+            $this->personaAttributes($data),
+            [
+                'user_id' => Auth::id(),
+                'intro_message' => $intro,
+                'image_path' => $imagePath,
+            ]
+        ));
 
         if ($intro === null) {
             $generated = $this->chatService->generateGreeting($character);
@@ -78,16 +75,38 @@ class CharacterService
             $intro = $this->chatService->generateGreeting($character);
         }
 
-        $character->update([
+        $character->update(array_merge(
+            $this->personaAttributes($data),
+            [
+                'intro_message' => $intro,
+                'image_path' => $imagePath,
+            ]
+        ));
+    }
+
+    /**
+     * 폼 입력을 모델 속성으로 매핑 (추가/수정 공통). 페르소나·배경 설정 포함.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function personaAttributes(array $data): array
+    {
+        return [
             'name' => $data['character_name'],
             'short_intro' => $data['short_intro'],
             'character_detail' => $data['character_detail'] ?? null,
+            'personality' => $data['personality'] ?? null,
+            'appearance' => $data['appearance'] ?? null,
+            'likes' => $data['likes'] ?? null,
+            'dislikes' => $data['dislikes'] ?? null,
+            'user_alias' => $data['user_alias'] ?? null,
+            'example_dialogue' => $data['example_dialogue'] ?? null,
+            'world_setting' => $data['world_setting'] ?? null,
             'speech_style' => $data['speech_style'] ?? null,
-            'intro_message' => $intro,
             'genre' => $data['genre'],
             'target' => $data['target'],
-            'image_path' => $imagePath,
-        ]);
+        ];
     }
 
     /**

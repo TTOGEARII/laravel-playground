@@ -9,6 +9,7 @@ use App\Services\Gemini\ChatService;
 use App\Services\MyWifeBot\CharacterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CharacterController extends Controller
@@ -58,6 +59,19 @@ class CharacterController extends Controller
             'genres' => $this->characterService->getGenres(),
             'targets' => $this->characterService->getTargets(),
         ]);
+    }
+
+    /**
+     * 소설/작품 정보를 AI로 분석해 페르소나 폼 필드를 자동 채운다.
+     * POST /my-wife-bot/characters/analyze { "source": "..." }
+     */
+    public function analyze(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'source' => ['required', 'string', 'min:10', 'max:6000'],
+        ]);
+
+        return response()->json(['persona' => $this->chatService->analyzePersona($data['source'])]);
     }
 
     /**

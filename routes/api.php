@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('my-wife-bot')->controller(MyWifeBotChatController::class)->group(function () {
     Route::post('chat/init', 'init');
     Route::post('chat/send', 'send');
+    Route::post('chat/suggest', 'suggest');
+    Route::post('chat/narrate', 'narrate');
 });
 
 Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->group(function () {

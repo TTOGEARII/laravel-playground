@@ -2,6 +2,8 @@
 
 namespace App\Services\Gemini;
 
+use App\Enums\MyWifeBot\Genre;
+use App\Enums\MyWifeBot\Target;
 use App\Models\ChatCharacter;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
@@ -34,8 +36,10 @@ class ChatService
     /**
      * 유저 메시지 저장 → (임계치 초과 시 이전 대화 요약) → Gemini 응답 저장 후 반환.
      * 요약/히스토리 구성 등 대화 오케스트레이션을 모두 담당해 컨트롤러를 얇게 유지한다.
+     *
+     * @return array{message: string, narration: ?string, affinity: int}
      */
-    public function reply(ChatSession $session, string $content): string
+    public function reply(ChatSession $session, string $content): array
     {
         $character = $session->chatCharacter;
 
@@ -76,10 +80,21 @@ class ChatService
         ChatMessage::create([
             'chat_session_id' => $session->id,
             'role' => 'character',
-            'content' => $reply,
+            'content' => $reply['message'],
+            'narration' => $reply['narration'],
         ]);
 
-        return $reply;
+        // 모델이 호감도를 제시하면 세션에 반영 (없으면 기존값 유지)
+        if ($reply['affinity'] !== null) {
+            $session->affinity = $reply['affinity'];
+            $session->save();
+        }
+
+        return [
+            'message' => $reply['message'],
+            'narration' => $reply['narration'],
+            'affinity' => (int) $session->affinity,
+        ];
     }
 
     /**
@@ -142,12 +157,18 @@ class ChatService
     }
 
     /**
-     * 대화 히스토리 기반 채팅 응답 생성
+     * 대화 히스토리 기반 채팅 응답 생성. 지문(narration)/대사(message)/호감도(affinity)로 구조화 반환.
+     *
+     * @return array{message: string, narration: ?string, affinity: ?int}
      */
-    public function chat(ChatCharacter $character, ?string $summary, array $recentMessages, string $userMessage): string
+    public function chat(ChatCharacter $character, ?string $summary, array $recentMessages, string $userMessage): array
     {
         if (! $this->gemini->hasApiKey()) {
-            return ($character->name ?? '캐릭터').'입니다. (API 설정 후 이용해 주세요.)';
+            return [
+                'message' => ($character->name ?? '캐릭터').'입니다. (API 설정 후 이용해 주세요.)',
+                'narration' => null,
+                'affinity' => null,
+            ];
         }
 
         $systemPrompt = PromptBuilder::characterSystem($character);
@@ -167,10 +188,99 @@ class ChatService
         $text = $this->gemini->chat($systemPrompt, $contents);
 
         if ($text) {
-            return GeminiResponseParser::parseMessage($text) ?? trim($text);
+            return GeminiResponseParser::parseReply($text);
         }
 
-        return '잠시 후 다시 말 걸어 주세요.';
+        return ['message' => '잠시 후 다시 말 걸어 주세요.', 'narration' => null, 'affinity' => null];
+    }
+
+    /**
+     * 유저 추천 답변 생성 (최근 대화 흐름 기반).
+     *
+     * @return array<int, string>
+     */
+    public function suggestReplies(ChatSession $session): array
+    {
+        if (! $this->gemini->hasApiKey()) {
+            return [];
+        }
+
+        $character = $session->chatCharacter;
+        if (! $character) {
+            return [];
+        }
+
+        $recent = $this->recentHistory($session);
+        $text = $this->gemini->generate(PromptBuilder::suggestReplies($character, $recent), temperature: 0.9);
+
+        return $text ? GeminiResponseParser::parseSuggestions($text) : [];
+    }
+
+    /**
+     * 상황 묘사(지문) 생성 — 현재 장면을 이어 묘사하고 메시지로 저장 후 반환.
+     */
+    public function narrate(ChatSession $session): string
+    {
+        $character = $session->chatCharacter;
+        if (! $character || ! $this->gemini->hasApiKey()) {
+            return '';
+        }
+
+        $recent = $this->recentHistory($session);
+        $text = $this->gemini->generate(PromptBuilder::narrate($character, $recent), temperature: 0.9);
+        $narration = $text ? (GeminiResponseParser::parseNarration($text) ?? '') : '';
+
+        if ($narration !== '') {
+            ChatMessage::create([
+                'chat_session_id' => $session->id,
+                'role' => 'character',
+                'content' => '',
+                'narration' => $narration,
+            ]);
+        }
+
+        return $narration;
+    }
+
+    /**
+     * 추천답변/상황묘사 프롬프트에 넘길 최근 대화(요약 이후 미요약분).
+     *
+     * @return array<int, array{role: string, content: string}>
+     */
+    private function recentHistory(ChatSession $session, int $limit = 10): array
+    {
+        return $session->messages()
+            ->reorder('id', 'desc')
+            ->take($limit)
+            ->get()
+            ->reverse()
+            ->map(fn ($m) => ['role' => $m->role, 'content' => trim((string) ($m->content ?: $m->narration))])
+            ->filter(fn ($m) => $m['content'] !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * 소설/작품 정보를 분석해 캐릭터 페르소나 필드를 추출한다 (폼 자동 채우기용).
+     *
+     * @return array<string, string>
+     */
+    public function analyzePersona(string $source): array
+    {
+        if (! $this->gemini->hasApiKey()) {
+            return [];
+        }
+
+        $prompt = PromptBuilder::analyzePersona(
+            $source,
+            array_keys(Genre::options()),
+            array_keys(Target::options()),
+        );
+
+        // 페르소나 JSON은 항목이 많아 길다 → JSON 모드 + 넉넉한 토큰으로 잘림/깨짐 방지.
+        $text = $this->gemini->generate($prompt, temperature: 0.8, json: true, maxOutputTokens: 3000);
+
+        return $text ? GeminiResponseParser::parsePersona($text) : [];
     }
 
     /**
