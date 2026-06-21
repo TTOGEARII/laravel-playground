@@ -3,7 +3,9 @@
 namespace Tests\Feature\MyWifeBot;
 
 use App\Models\ChatCharacter;
+use App\Models\ChatMessage;
 use App\Models\ChatSession;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -47,6 +49,48 @@ class ChatApiTest extends TestCase
 
         $this->assertDatabaseCount('chat_sessions', 1);
         $this->assertDatabaseHas('chat_messages', ['role' => 'character']);
+    }
+
+    public function test_logged_in_user_resumes_existing_session_with_history(): void
+    {
+        config(['services.gemini.api_key' => '']);
+        $user = User::factory()->create();
+        $character = $this->makeCharacter();
+
+        // 로그인 사용자의 기존 세션 + 대화 기록
+        $session = ChatSession::create(['chat_character_id' => $character->id, 'user_id' => $user->id]);
+        ChatMessage::create(['chat_session_id' => $session->id, 'role' => 'character', 'content' => '안녕!']);
+        ChatMessage::create(['chat_session_id' => $session->id, 'role' => 'user', 'content' => '반가워']);
+
+        $response = $this->actingAs($user)->postJson('/api/my-wife-bot/chat/init', [
+            'character_id' => $character->id,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.session_id', (string) $session->id)
+            ->assertJsonPath('data.resumed', true)
+            ->assertJsonCount(2, 'data.initial_messages');
+
+        // 새 세션을 만들지 않고 기존 것을 재개해야 한다.
+        $this->assertDatabaseCount('chat_sessions', 1);
+    }
+
+    public function test_guest_never_resumes_and_starts_new_session(): void
+    {
+        config(['services.gemini.api_key' => '']);
+        $character = $this->makeCharacter();
+
+        // 게스트 세션이 있어도 재개하지 않고 새로 시작해야 한다.
+        $old = ChatSession::create(['chat_character_id' => $character->id]);
+
+        $this->postJson('/api/my-wife-bot/chat/init', [
+            'character_id' => $character->id,
+            'session_id' => (string) $old->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.resumed', false);
+
+        $this->assertDatabaseCount('chat_sessions', 2);
     }
 
     public function test_init_still_succeeds_when_gemini_connection_fails(): void

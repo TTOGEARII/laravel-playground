@@ -44,9 +44,9 @@ class GeminiService
         return $text ? trim(preg_replace('/\s+/', ' ', $text) ?? $text) : null;
     }
 
-    public function chat(string $systemPrompt, array $contents, float $temperature = 0.8): ?string
+    public function chat(string $systemPrompt, array $contents, float $temperature = 0.8, bool $json = false, ?int $maxOutputTokens = null): ?string
     {
-        $response = $this->call($contents, $temperature, $systemPrompt);
+        $response = $this->call($contents, $temperature, $systemPrompt, $json, $maxOutputTokens);
 
         return GeminiResponseParser::extractText($response);
     }

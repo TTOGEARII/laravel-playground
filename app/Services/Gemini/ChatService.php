@@ -20,9 +20,12 @@ class ChatService
     /**
      * 채팅 세션 생성 + 캐릭터 인트로 메시지 저장.
      */
-    public function initialize(ChatCharacter $character): ChatSession
+    public function initialize(ChatCharacter $character, ?int $userId = null): ChatSession
     {
-        $session = ChatSession::create(['chat_character_id' => $character->id]);
+        $session = ChatSession::create([
+            'chat_character_id' => $character->id,
+            'user_id' => $userId,
+        ]);
 
         ChatMessage::create([
             'chat_session_id' => $session->id,
@@ -31,6 +34,32 @@ class ChatService
         ]);
 
         return $session;
+    }
+
+    /**
+     * 이어할 수 있는 기존 세션을 찾는다 (대화 이어가기).
+     * - session_id가 주어지면 해당 캐릭터의 그 세션을(소유 일치 시) 우선 사용.
+     * - 없으면 로그인 사용자의 가장 최근 세션을 사용.
+     * 게스트(userId=null)는 session_id로만 재개한다(브라우저 보관 ID 신뢰).
+     */
+    public function findResumableSession(ChatCharacter $character, ?int $sessionId, ?int $userId): ?ChatSession
+    {
+        // 게스트는 대화 내용을 저장/복원하지 않는다 (항상 새 대화).
+        if ($userId === null) {
+            return null;
+        }
+
+        if ($sessionId) {
+            $candidate = ChatSession::where('chat_character_id', $character->id)->find($sessionId);
+            if ($candidate && (int) $candidate->user_id === $userId) {
+                return $candidate;
+            }
+        }
+
+        return ChatSession::where('chat_character_id', $character->id)
+            ->where('user_id', $userId)
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**
@@ -185,7 +214,8 @@ class ChatService
             ->values()
             ->all();
 
-        $text = $this->gemini->chat($systemPrompt, $contents);
+        // JSON 모드 + 넉넉한 토큰으로 응답 잘림/코드펜스 깨짐 방지.
+        $text = $this->gemini->chat($systemPrompt, $contents, json: true, maxOutputTokens: 2048);
 
         if ($text) {
             return GeminiResponseParser::parseReply($text);

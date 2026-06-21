@@ -20,12 +20,10 @@ export const myWifeBotChatApi = {
    * @param {string} characterId
    * @returns {Promise<{ session_id: string, initial_messages: Array<{ role: string, text: string, narration: ?string }>, affinity: number }>}
    */
-  async initChat(characterId) {
-    const { data } = await axios.post(
-      `${BASE}/chat/init`,
-      { character_id: String(characterId) },
-      { headers: jsonHeaders }
-    );
+  async initChat(characterId, sessionId = null) {
+    const payload = { character_id: String(characterId) };
+    if (sessionId) payload.session_id = String(sessionId);
+    const { data } = await axios.post(`${BASE}/chat/init`, payload, { headers: jsonHeaders });
     return data.data;
   },
 
