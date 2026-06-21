@@ -73,7 +73,7 @@
             class="mw-input"
             ref="inputEl"
             @input="autoGrow"
-            @keydown.enter.exact.prevent="send"
+            @keydown.enter.exact="onEnterKey"
           />
           <button type="button" class="mw-send" :disabled="!inputText.trim() || busy" @click="send" aria-label="전송">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -244,6 +244,14 @@ function cleanString(raw) {
 }
 
 /* ── 액션 ────────────────────────────────────────────── */
+// 한글(IME) 조합 중 Enter는 마지막 글자가 아직 확정되지 않았으므로 전송하지 않는다.
+// 조합이 끝난 뒤(또는 다시 누른) Enter에서만 전송해 글자 누락/잔류 버그를 막는다.
+function onEnterKey(e) {
+  if (e.isComposing || e.keyCode === 229) return;
+  e.preventDefault();
+  send();
+}
+
 async function send() {
   const text = inputText.value.trim();
   if (!text || busy.value) return;
