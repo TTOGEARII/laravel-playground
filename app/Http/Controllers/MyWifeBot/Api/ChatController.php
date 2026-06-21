@@ -38,12 +38,14 @@ class ChatController extends Controller
         $initialMessages = $session->messages()->get()->map(fn ($m) => [
             'role' => $m->role,
             'text' => $m->content,
+            'narration' => $m->narration,
         ])->values()->all();
 
         return response()->json([
             'data' => [
                 'session_id' => (string) $session->id,
                 'initial_messages' => $initialMessages,
+                'affinity' => (int) $session->affinity,
             ],
         ]);
     }
@@ -78,8 +80,65 @@ class ChatController extends Controller
 
         return response()->json([
             'data' => [
-                'message' => ['role' => 'character', 'text' => $reply],
+                'message' => [
+                    'role' => 'character',
+                    'text' => $reply['message'],
+                    'narration' => $reply['narration'],
+                ],
+                'affinity' => $reply['affinity'],
             ],
         ]);
+    }
+
+    /**
+     * 유저 추천 답변 생성.
+     * POST /api/my-wife-bot/chat/suggest { "session_id": "1" }
+     */
+    public function suggest(Request $request): JsonResponse
+    {
+        $session = $this->findSessionOrFail($request);
+        if ($session instanceof JsonResponse) {
+            return $session;
+        }
+
+        return response()->json([
+            'data' => ['suggestions' => $this->chatService->suggestReplies($session)],
+        ]);
+    }
+
+    /**
+     * 상황 묘사(지문) 생성.
+     * POST /api/my-wife-bot/chat/narrate { "session_id": "1" }
+     */
+    public function narrate(Request $request): JsonResponse
+    {
+        $session = $this->findSessionOrFail($request);
+        if ($session instanceof JsonResponse) {
+            return $session;
+        }
+
+        return response()->json([
+            'data' => ['narration' => $this->chatService->narrate($session)],
+        ]);
+    }
+
+    /**
+     * session_id 검증 후 세션(캐릭터 포함) 반환. 실패 시 JsonResponse 반환.
+     */
+    private function findSessionOrFail(Request $request): ChatSession|JsonResponse
+    {
+        $request->validate(['session_id' => ['required', 'string']]);
+
+        $session = ChatSession::with('chatCharacter')->find($request->input('session_id'));
+
+        if (! $session) {
+            return response()->json(['message' => '세션을 찾을 수 없습니다.'], 404);
+        }
+
+        if (! $session->chatCharacter) {
+            return response()->json(['message' => '캐릭터를 찾을 수 없습니다.'], 404);
+        }
+
+        return $session;
     }
 }
