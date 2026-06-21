@@ -19,13 +19,17 @@
                     <a href="{{ route('my-wife-bot.my-characters') }}" class="my-characters-button">
                         내 챗봇 관리
                     </a>
+                    <a href="{{ route('my-wife-bot.characters.create') }}" class="add-character-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        챗봇 추가하기
+                    </a>
+                @else
+                    <a href="{{ route('login') }}" class="add-character-button">
+                        로그인하고 챗봇 만들기
+                    </a>
                 @endauth
-                <a href="{{ route('my-wife-bot.characters.create') }}" class="add-character-button">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    챗봇 추가하기
-                </a>
             </div>
         </header>
 
@@ -36,7 +40,7 @@
         <p class="my-wife-bot-lead">{{ $lead ?? '대화하고 싶은 캐릭터를 골라 보세요.' }}</p>
 
         @if($characters->isEmpty())
-            <p class="characters-empty">등록된 캐릭터가 없습니다. <a href="{{ route('my-wife-bot.characters.create') }}">챗봇 추가하기</a>에서 첫 캐릭터를 만들어 보세요.</p>
+            <p class="characters-empty">등록된 캐릭터가 없습니다. @auth<a href="{{ route('my-wife-bot.characters.create') }}">챗봇 추가하기</a>에서 첫 캐릭터를 만들어 보세요.@else<a href="{{ route('login') }}">로그인</a> 후 첫 캐릭터를 만들어 보세요.@endauth</p>
         @else
         <section class="characters-grid {{ $characters->count() === 1 ? 'characters-grid--single' : '' }}">
             @foreach($characters as $char)

@@ -33,7 +33,16 @@ class ChatController extends Controller
             return response()->json(['message' => '캐릭터를 찾을 수 없습니다.'], 404);
         }
 
-        $session = $this->chatService->initialize($character);
+        // 대화 이어가기: 기존 세션이 있으면 재개, 없으면 새로 생성.
+        $userId = auth()->id();
+        $existing = $this->chatService->findResumableSession(
+            $character,
+            $request->input('session_id') ? (int) $request->input('session_id') : null,
+            $userId,
+        );
+
+        $resumed = $existing !== null;
+        $session = $existing ?? $this->chatService->initialize($character, $userId);
 
         $initialMessages = $session->messages()->get()->map(fn ($m) => [
             'role' => $m->role,
@@ -46,6 +55,7 @@ class ChatController extends Controller
                 'session_id' => (string) $session->id,
                 'initial_messages' => $initialMessages,
                 'affinity' => (int) $session->affinity,
+                'resumed' => $resumed,
             ],
         ]);
     }

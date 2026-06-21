@@ -86,10 +86,6 @@
     <aside class="mw-art" :class="{ 'no-img': !hasCharacterImage }">
       <img v-if="hasCharacterImage" class="mw-art-img" :src="characterImageSrc" :alt="character?.name" />
       <span v-else class="mw-art-initial">{{ initial }}</span>
-      <div class="mw-art-overlay">
-        <p class="mw-art-name">{{ character?.name || '캐릭터' }}</p>
-        <p v-if="character?.description" class="mw-art-desc">{{ character.description }}</p>
-      </div>
     </aside>
   </div>
 </template>
@@ -340,12 +336,34 @@ function getCharacterIdFromUrl() {
   return m ? m[1] : null;
 }
 
+// 대화 이어가기용: 브라우저에 캐릭터별 세션 ID 보관
+function sessionStorageKey(cid) {
+  return `mw_session_${cid}`;
+}
+function loadStoredSessionId(cid) {
+  try {
+    return localStorage.getItem(sessionStorageKey(cid)) || null;
+  } catch (_) {
+    return null;
+  }
+}
+function storeSessionId(cid, sid) {
+  try {
+    if (cid && sid) localStorage.setItem(sessionStorageKey(cid), String(sid));
+  } catch (_) {
+    /* localStorage 불가 환경 무시 */
+  }
+}
+
 onMounted(async () => {
   const cid = props.character?.id ?? getCharacterIdFromUrl();
+  let resumed = false;
   try {
     if (cid) {
-      const data = await myWifeBotChatApi.initChat(cid);
+      const data = await myWifeBotChatApi.initChat(cid, loadStoredSessionId(cid));
       sessionId.value = data.session_id || '';
+      storeSessionId(cid, sessionId.value);
+      resumed = !!data.resumed;
       if (typeof data.affinity === 'number') affinity.value = data.affinity;
       const list = data.initial_messages || [];
       messages.value = list.map((m) => ({
@@ -365,8 +383,12 @@ onMounted(async () => {
   } finally {
     loadingIntro.value = false;
   }
-  // 마지막 캐릭터 인트로 메시지를 타자기로 노출
+  // 이어가는 대화는 즉시 전체 표시, 새 대화는 마지막 인트로만 타자기로 노출.
   nextTick(() => {
+    if (resumed) {
+      scrollToBottom();
+      return;
+    }
     const lastIdx = messages.value.length - 1;
     if (lastIdx >= 0 && messages.value[lastIdx].role === 'character') startTyping(lastIdx);
     else scrollToBottom();
@@ -434,27 +456,6 @@ onBeforeUnmount(cancelTimer);
   background: radial-gradient(120% 80% at 50% 30%, rgba(99, 102, 241, 0.4), transparent 60%), #0b0b12;
 }
 .mw-art-initial { font-size: 5rem; font-weight: 800; color: rgba(255, 255, 255, 0.4); }
-.mw-art-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 22px 20px 18px;
-  background: linear-gradient(180deg, transparent, rgba(5, 5, 8, 0.88) 80%);
-  z-index: 1;
-}
-.mw-art-name { margin: 0; font-size: 1.3rem; font-weight: 800; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); }
-.mw-art-desc {
-  margin: 5px 0 0;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--mw-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
-}
 
 /* 상단 바 */
 .mw-bar {
@@ -704,8 +705,6 @@ onBeforeUnmount(cancelTimer);
     border-bottom: 1px solid var(--mw-line);
     order: -1;
   }
-  .mw-art-overlay { padding: 16px 16px 12px; }
-  .mw-art-name { font-size: 1.15rem; }
   .mw-chat-pane { min-height: 0; }
   .mw-row { max-width: 94%; }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\MyWifeBot;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -10,9 +11,17 @@ class CharacterAnalyzeTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_analyze_requires_login(): void
+    {
+        // 게스트는 분석 불가 → 로그인으로 리다이렉트.
+        $this->post(route('my-wife-bot.characters.analyze'), ['source' => '늑대와 향신료 시놉시스'])
+            ->assertRedirect(route('login'));
+    }
+
     public function test_analyze_requires_source(): void
     {
-        $this->postJson(route('my-wife-bot.characters.analyze'), ['source' => '짧음'])
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('my-wife-bot.characters.analyze'), ['source' => '짧음'])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['source']);
     }
@@ -28,9 +37,10 @@ class CharacterAnalyzeTest extends TestCase
             ], 200),
         ]);
 
-        $this->postJson(route('my-wife-bot.characters.analyze'), [
-            'source' => '늑대와 향신료 — 풍요의 신 현랑 호로가 행상인과 여행하는 이야기.',
-        ])
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('my-wife-bot.characters.analyze'), [
+                'source' => '늑대와 향신료 — 풍요의 신 현랑 호로가 행상인과 여행하는 이야기.',
+            ])
             ->assertOk()
             ->assertJsonPath('persona.name', '호로')
             ->assertJsonPath('persona.personality', '도도하지만 정이 많다')
@@ -41,10 +51,17 @@ class CharacterAnalyzeTest extends TestCase
     {
         config(['services.gemini.api_key' => '']);
 
-        $this->postJson(route('my-wife-bot.characters.analyze'), [
-            'source' => '아무 작품 정보나 충분히 길게 입력합니다.',
-        ])
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('my-wife-bot.characters.analyze'), [
+                'source' => '아무 작품 정보나 충분히 길게 입력합니다.',
+            ])
             ->assertOk()
             ->assertJsonPath('persona', []);
+    }
+
+    public function test_guest_cannot_access_create_form_or_store(): void
+    {
+        $this->get(route('my-wife-bot.characters.create'))->assertRedirect(route('login'));
+        $this->post(route('my-wife-bot.characters.store'), [])->assertRedirect(route('login'));
     }
 }
