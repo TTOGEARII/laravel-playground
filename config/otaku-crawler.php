@@ -114,6 +114,16 @@ return [
     */
     'product_match' => [
         'title_min_length' => 5,
+        // 상품 고유값(제조사 품번/모델 번호) 추출 패턴.
+        // 제목에서 결정적으로 뽑히는 값이라 쇼핑몰이 달라도 같은 코드가 나와, 동일상품 매칭의 강한 키가 된다.
+        // 키=코드 접두사, 값=정규식(첫 캡처그룹이 번호). 위에서부터 먼저 매칭되는 것을 쓴다.
+        'maker_code_patterns' => [
+            'jan' => '/(?<![0-9])(\d{13})(?![0-9])/u',                    // JAN/EAN-13 바코드
+            'nendo' => '/넨도로이드(?:\s*doll)?\s*#?\s*(\d{2,5})/u',        // 넨도로이드 번호
+            'figma' => '/(?:figma|피그마)\s*#?\s*(\d{1,4})/iu',            // figma 번호
+            'figuarts' => '/(?:s\.?h\.?\s*)?피?규?어?츠\s*#?\s*(\d{1,4})/iu', // 피규어츠 번호
+            'popup' => '/(?:팝업\s*퍼레이드|pop\s*up\s*parade)\s*#?\s*(\d{1,4})/iu',
+        ],
         // 매칭 키 생성 전에 제거할 노이즈(에디션·발매정보·카테고리 말머리 등).
         // 동일 상품을 가리키는데 쇼핑몰마다 다르게 붙는 수식어를 걷어내 매칭률을 높인다.
         // 주의: 상품을 구분하는 핵심어(캐릭터명 등)는 지우지 않도록 보수적으로 유지.
@@ -226,6 +236,15 @@ return [
         // 단일 세션을 수천 페이지·수 시간 재사용하면 렌더러가 불안정해져 간헐 타임아웃이 나므로,
         // 주기적으로 세션을 갈아 degradation 을 막는다.
         'recycle_after_pages' => (int) env('OTAKU_RECYCLE_AFTER_PAGES', 80),
+        // 상세 페이지 추가 크롤(옵트인). 켜면 리스트 수집 후 각 상품 상세를 한 번 더 열어
+        // 바코드(JAN/자체상품코드=고유값)·제조사·품절을 보강한다. 상품마다 요청이 1건씩 더 늘어
+        // 크롤 시간이 크게 증가하므로 기본은 끔. 필요 시 .env 에서 켠다.
+        'fetch_detail' => (bool) env('OTAKU_CRAWL_FETCH_DETAIL', false),
+        'detail' => [
+            'delay_ms' => (int) env('OTAKU_CRAWL_DETAIL_DELAY_MS', 1200),
+            // 샵당 상세를 더 볼 최대 상품 수(0=제한 없음). 부분 보강·테스트용 안전장치.
+            'max_products' => (int) env('OTAKU_CRAWL_DETAIL_MAX', 0),
+        ],
         'full' => [
             'delay_ms_between_requests' => (int) env('OTAKU_FULL_DELAY_MS', 3000),
             'delay_ms_between_shops' => (int) env('OTAKU_FULL_DELAY_BETWEEN_SHOPS_MS', 8000),

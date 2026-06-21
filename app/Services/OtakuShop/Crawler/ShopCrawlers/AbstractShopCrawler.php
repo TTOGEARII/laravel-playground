@@ -111,7 +111,126 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
             }
         }
 
+        // 옵트인: 상세 페이지를 한 번 더 열어 바코드(고유값)·제조사·품절을 보강한다.
+        if (config('otaku-crawler.crawl.fetch_detail', false)) {
+            $this->enrichWithDetails($all);
+        }
+
         return $all;
+    }
+
+    /**
+     * 수집한 상품들의 상세 페이지를 열어 바코드/제조사/품절을 보강한다.
+     * 상품마다 요청이 1건씩 추가되므로 config(crawl.detail) 로 딜레이·상한을 둔다.
+     *
+     * @param  array<int, CrawledProductDto>  $dtos
+     */
+    private function enrichWithDetails(array $dtos): void
+    {
+        $delayMs = (int) config('otaku-crawler.crawl.detail.delay_ms', 1200);
+        $max = (int) config('otaku-crawler.crawl.detail.max_products', 0);
+        $script = $this->detailScript();
+
+        $count = 0;
+        foreach ($dtos as $dto) {
+            if ($max > 0 && $count >= $max) {
+                break;
+            }
+            if (! $dto->productUrl) {
+                continue;
+            }
+            if ($delayMs > 0) {
+                usleep($delayMs * 1000);
+            }
+            $count++;
+
+            $info = $this->fetchDetail($dto->productUrl, $script);
+            if ($info === null) {
+                continue;
+            }
+
+            // 바코드(JAN/EAN/ISBN, 8~13자리)만 고유값으로 채택해 잘못된 내부코드 매칭을 막는다.
+            $barcode = preg_replace('/\D/', '', (string) ($info['barcode'] ?? '')) ?? '';
+            if ($barcode !== '' && strlen($barcode) >= 8 && strlen($barcode) <= 13) {
+                $dto->makerCode = 'jan_'.$barcode;
+            }
+
+            $maker = trim((string) ($info['maker'] ?? ''));
+            if ($maker !== '') {
+                $dto->maker = mb_substr($maker, 0, 120);
+            }
+
+            // 상세 품절은 재고 상태를 '추가로' 끌어내리기만 한다(리스트에서 이미 품절이면 유지).
+            if (! empty($info['soldout'])) {
+                $dto->available = false;
+            }
+        }
+    }
+
+    /**
+     * 상세 페이지 하나를 열어 detailScript() 로 {barcode, maker, soldout} 를 받아온다.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchDetail(string $url, string $script): ?array
+    {
+        $driver = $this->driverForNextPage();
+
+        try {
+            $driver->get($url);
+        } catch (\Throwable $e) {
+            Log::warning('OtakuShop Crawler: detail load failed', ['url' => $url, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+
+        usleep(600 * 1000);
+
+        try {
+            $raw = $driver->executeScript($script);
+        } catch (\Throwable $e) {
+            Log::warning('OtakuShop Crawler: detail script failed', ['url' => $url, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+
+        $data = is_string($raw) ? json_decode($raw, true) : $raw;
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * 상세 페이지에서 바코드/제조사/품절을 추출하는 브라우저 JS.
+     * cafe24·godo 모두 "라벨(th/dt) → 값(td/dd)" 행 구조라 라벨 키워드 매칭 하나로 공용 처리한다.
+     * 실측 확인: 따빼몰 JAN코드, 애니메이트 자체상품코드(=바코드), 도키도키굿즈는 미입력→빈값.
+     */
+    protected function detailScript(): string
+    {
+        return <<<'JS'
+            function findByLabels(names) {
+                const cells = document.querySelectorAll('th, dt');
+                for (const c of cells) {
+                    const t = c.textContent.replace(/\s+/g, ' ').trim();
+                    for (const n of names) {
+                        if (t === n || t.replace(/\s/g, '') === n.replace(/\s/g, '')) {
+                            const row = c.closest('tr');
+                            if (row) { const td = row.querySelector('td'); if (td) return td.textContent.replace(/\s+/g, ' ').trim(); }
+                            const dd = c.nextElementSibling;
+                            if (dd) return dd.textContent.replace(/\s+/g, ' ').trim();
+                        }
+                    }
+                }
+                return '';
+            }
+            const barcodeRaw = findByLabels(['JAN코드', '자체상품코드', '바코드', '상품코드', '상품번호']);
+            const bm = barcodeRaw.match(/(\d{8,13})/);
+            const barcode = bm ? bm[1] : '';
+            const maker = findByLabels(['제조사']);
+            // 품절: cafe24 품절 아이콘(실측 확인) 또는 godo 품절 버튼(스킨 CSS 확인 클래스).
+            // 광범위한 [class*=soldout]는 상세의 연관상품 위젯 등에서 오탐이 나므로 쓰지 않는다.
+            const soldout = !!document.querySelector('img[alt*="품절"], img[src*="soldout" i], .btnSoldOut, .btn_shop_soldout, .btn_add_soldout');
+            return JSON.stringify({ barcode, maker, soldout });
+            JS;
     }
 
     /**
@@ -231,6 +350,12 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
             return null;
         }
 
+        // 품절 신호(soldout)는 리스트 카드에서 읽어온다. 없으면 판매중으로 본다.
+        $available = ! (bool) ($row['soldout'] ?? false);
+        // 마크업이 노출하는 상품 고유값(자체 품번/모델명 등). 보통은 비어 있고,
+        // 그 경우 CrawlSyncService 가 제목에서 JAN/품번을 추출해 보강한다.
+        $makerCode = trim((string) ($row['makercode'] ?? ''));
+
         return new CrawledProductDto(
             shopCode: $this->getShopCode(),
             externalId: $externalId,
@@ -244,6 +369,8 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
             releaseDate: null,
             shippingFee: null,
             imageUrl: $this->resolveImage((string) ($row['img'] ?? '')),
+            available: $available,
+            makerCode: $makerCode !== '' ? $makerCode : null,
         );
     }
 

@@ -5,6 +5,7 @@ namespace App\Console\Commands\OtakuShop;
 use App\Services\OtakuShop\Crawler\CrawlSyncService;
 use App\Services\OtakuShop\Crawler\ShopCrawlRunner;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 /**
  * 전량 크롤 (최초 1회 적재용).
@@ -39,16 +40,20 @@ class OtakuShopFullCrawlCommand extends Command
         $syncService->syncIps();
 
         // 샵 하나가 끝날 때마다 바로 DB에 저장한다. 뒤 샵이 실패해도 앞 샵 데이터는 안전하다.
+        // 사라짐 기반 품절 처리를 위해 회차 시작 시각과 실제 수집된 샵 코드를 기록한다.
         $this->info('2. 전량 크롤 + 샵별 즉시 저장 (카테고리 자동 발견 + 끝 페이지까지)...');
+        $runStartedAt = Carbon::now();
+        $crawledShopCodes = [];
         $stats = ['products_created' => 0, 'products_matched' => 0, 'offers_created' => 0, 'offers_updated' => 0];
         $total = $runner->run(
             full: true,
             onLine: fn (string $line) => $this->line('  '.$line),
-            onShop: function (string $name, array $items) use ($syncService, &$stats): void {
+            onShop: function (string $name, array $items) use ($syncService, &$stats, &$crawledShopCodes): void {
                 $s = $syncService->syncProductsAndOffers($items, incremental: false);
                 foreach ($stats as $key => $value) {
                     $stats[$key] += $s[$key];
                 }
+                $crawledShopCodes[] = $items[0]->shopCode;
                 $this->line("    ↳ [{$name}] 저장: 신규상품 {$s['products_created']} · 매칭 {$s['products_matched']} · 신규오퍼 {$s['offers_created']} · 갱신오퍼 {$s['offers_updated']}");
             }
         );
@@ -60,7 +65,13 @@ class OtakuShopFullCrawlCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('3. 누적 저장 결과:');
+        // 전량 크롤은 카테고리 전체를 돌므로, 이번에 못 본 오퍼는 사라진(품절) 것으로 본다.
+        // 품절을 리스트에 안 띄우는 쇼핑몰(애니메이트 등)의 품절을 이 단계가 잡는다.
+        $this->info('3. 사라진(미수집) 오퍼 품절 처리...');
+        $soldOut = $syncService->markUnseenOffersUnavailable($crawledShopCodes, $runStartedAt);
+        $this->line("    ↳ 품절 전환된 오퍼: {$soldOut}건");
+
+        $this->info('4. 누적 저장 결과:');
         $this->table(
             ['항목', '건수'],
             [
@@ -68,6 +79,7 @@ class OtakuShopFullCrawlCommand extends Command
                 ['매칭 상품', $stats['products_matched']],
                 ['신규 오퍼', $stats['offers_created']],
                 ['업데이트 오퍼', $stats['offers_updated']],
+                ['품절 전환 오퍼', $soldOut],
             ]
         );
 
