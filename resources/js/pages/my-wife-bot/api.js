@@ -9,10 +9,20 @@ import axios from 'axios';
 
 const BASE = '/api/my-wife-bot';
 
+// 세션 인증(web 그룹) 라우트라 CSRF 토큰 + 쿠키 동봉이 필요하다.
+function csrfToken() {
+  const el = document.querySelector('meta[name="csrf-token"]');
+  return el ? el.getAttribute('content') : '';
+}
+
 const jsonHeaders = {
   Accept: 'application/json',
   'Content-Type': 'application/json',
+  'X-Requested-With': 'XMLHttpRequest',
+  'X-CSRF-TOKEN': csrfToken(),
 };
+
+const requestConfig = { headers: jsonHeaders, withCredentials: true };
 
 export const myWifeBotChatApi = {
   /**
@@ -23,7 +33,7 @@ export const myWifeBotChatApi = {
   async initChat(characterId, sessionId = null) {
     const payload = { character_id: String(characterId) };
     if (sessionId) payload.session_id = String(sessionId);
-    const { data } = await axios.post(`${BASE}/chat/init`, payload, { headers: jsonHeaders });
+    const { data } = await axios.post(`${BASE}/chat/init`, payload, requestConfig);
     return data.data;
   },
 
@@ -37,7 +47,7 @@ export const myWifeBotChatApi = {
     const { data } = await axios.post(
       `${BASE}/chat/send`,
       { session_id: String(sessionId), content: String(content).trim() },
-      { headers: jsonHeaders }
+      requestConfig
     );
     return data.data;
   },
@@ -51,7 +61,7 @@ export const myWifeBotChatApi = {
     const { data } = await axios.post(
       `${BASE}/chat/suggest`,
       { session_id: String(sessionId) },
-      { headers: jsonHeaders }
+      requestConfig
     );
     return Array.isArray(data?.data?.suggestions) ? data.data.suggestions : [];
   },
@@ -65,7 +75,7 @@ export const myWifeBotChatApi = {
     const { data } = await axios.post(
       `${BASE}/chat/narrate`,
       { session_id: String(sessionId) },
-      { headers: jsonHeaders }
+      requestConfig
     );
     return typeof data?.data?.narration === 'string' ? data.data.narration : '';
   },
