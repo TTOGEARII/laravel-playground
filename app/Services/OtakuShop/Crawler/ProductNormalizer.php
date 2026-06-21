@@ -29,12 +29,17 @@ class ProductNormalizer
     /** @var array<string, array<int, string>> IP코드(원본 표기) => [매칭 검색어(소문자)] — 분류용 */
     private array $ipClassify;
 
+    /** @var array<string, string> 코드 접두사 => 추출 정규식 — 고유값(품번) 추출용 */
+    private array $makerCodePatterns;
+
     public function __construct(
         ?int $titleMinLength = null,
         ?array $stripPatterns = null,
         ?array $stopwords = null,
         ?array $aliases = null,
+        ?array $makerCodePatterns = null,
     ) {
+        $this->makerCodePatterns = $makerCodePatterns ?? config('otaku-crawler.product_match.maker_code_patterns', []);
         // 인자를 명시하지 않으면(컨테이너 자동 주입 포함) config 값을 사용한다.
         $this->stripPatterns = $stripPatterns ?? config('otaku-crawler.product_match.strip_patterns', []);
         $this->titleMinLength = $titleMinLength ?? (int) config('otaku-crawler.product_match.title_min_length', 5);
@@ -66,6 +71,21 @@ class ProductNormalizer
                 if ($term !== '' && mb_strpos($low, $term) !== false) {
                     return $code;
                 }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 제목에서 상품 고유값(제조사 품번/모델 번호)을 추출한다. 패턴은 위에서부터 먼저 매칭되는 것을 쓴다.
+     * 반환 형식은 "접두사_번호"(예: nendo_2930, jan_4571368459701). 없으면 null.
+     */
+    public function extractMakerCode(string $title): ?string
+    {
+        foreach ($this->makerCodePatterns as $prefix => $pattern) {
+            if (preg_match($pattern, $title, $m) && isset($m[1]) && $m[1] !== '') {
+                return $prefix.'_'.$m[1];
             }
         }
 

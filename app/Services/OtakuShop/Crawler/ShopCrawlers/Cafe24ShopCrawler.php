@@ -48,7 +48,11 @@ abstract class Cafe24ShopCrawler extends AbstractShopCrawler
                 if (!pm) pm = text.match(/(\d{1,3}(?:,\d{3})+)\s*원/);
                 if (pm) price = pm[1].replace(/,/g, '');
 
-                out.push({ id: idMatch[1], title, price, url: href, img });
+                // 품절 판정(cafe24): 품절 상품은 .icon 영역에 기본 품절 아이콘
+                // (ico_product_soldout.gif, alt="품절")이 렌더된다. 실측 확인된 신호.
+                const soldout = !!li.querySelector('img[src*="soldout" i], img[alt*="품절"]');
+
+                out.push({ id: idMatch[1], title, price, url: href, img, soldout });
             });
             return JSON.stringify(out);
             JS;
