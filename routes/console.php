@@ -27,9 +27,11 @@ Schedule::command('otaku-shop:crawl --incremental')
     ->withoutOverlapping(120)
     ->runInBackground();
 
-// 매주 일요일 04:00 전체 크롤 (오퍼 전면 재수집·정합성 보정)
-Schedule::command('otaku-shop:crawl')
+// 매주 일요일 04:00 전량 크롤 (모든 카테고리 재수집 + 사라짐 기반 품절 정합성 보정)
+// crawl-full 은 카테고리 전체를 끝 페이지까지 돌아, 이번에 안 보인 오퍼를 품절 처리한다.
+// (품절을 리스트에 안 띄우는 쇼핑몰의 품절을 이 주간 정합성 보정이 잡는다.)
+Schedule::command('otaku-shop:crawl-full --yes')
     ->weeklyOn(0, '04:00')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
-    ->withoutOverlapping(180)
+    ->withoutOverlapping(360)
     ->runInBackground();
