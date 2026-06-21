@@ -27,6 +27,7 @@ class ProductController extends Controller
             'category_id' => $request->input('category_id'),
             'ip_id' => $request->input('ip_id'),
             'has_release' => $request->boolean('has_release'),
+            'upcoming' => $request->boolean('upcoming'),
             'sort' => $request->input('sort', 'price_asc'),
             'compared_only' => $request->boolean('compared_only'),
         ];

@@ -126,6 +126,73 @@ class ProductApiTest extends TestCase
             ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
     }
 
+    public function test_price_sort_orders_by_lowest_available_offer(): void
+    {
+        $data = $this->seedCatalog(); // pr_aaa: 최저가 13000
+
+        // 더 저렴한 상품(최저 5000)과 더 비싼 상품(최저 20000) 추가.
+        $cheap = OtakuProduct::create([
+            'ok_product_code' => 'pr_cheap',
+            'ok_product_title' => '저가 키링',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $cheap->ok_product_id,
+            'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_currency' => 'KRW', 'ok_offer_price' => 5000, 'ok_offer_available_flg' => true,
+        ]);
+
+        $pricey = OtakuProduct::create([
+            'ok_product_code' => 'pr_pricey',
+            'ok_product_title' => '고가 피규어',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $pricey->ok_product_id,
+            'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_currency' => 'KRW', 'ok_offer_price' => 20000, 'ok_offer_available_flg' => true,
+        ]);
+
+        // 최저가 순: cheap(5000) → aaa(13000) → pricey(20000)
+        $this->getJson('/api/otaku-shop/products?sort=price_asc')
+            ->assertOk()
+            ->assertJsonPath('data.0.ok_product_code', 'pr_cheap')
+            ->assertJsonPath('data.2.ok_product_code', 'pr_pricey');
+
+        // 가격 높은 순: pricey → aaa → cheap
+        $this->getJson('/api/otaku-shop/products?sort=price_desc')
+            ->assertOk()
+            ->assertJsonPath('data.0.ok_product_code', 'pr_pricey')
+            ->assertJsonPath('data.2.ok_product_code', 'pr_cheap');
+    }
+
+    public function test_upcoming_filter_returns_only_future_release_products(): void
+    {
+        $data = $this->seedCatalog();
+
+        OtakuProduct::create([
+            'ok_product_code' => 'pr_future',
+            'ok_product_title' => '미래 발매 피규어',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+            'ok_product_release_date' => now()->addMonth()->toDateString(),
+        ]);
+        OtakuProduct::create([
+            'ok_product_code' => 'pr_past',
+            'ok_product_title' => '과거 발매 피규어',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+            'ok_product_release_date' => now()->subMonth()->toDateString(),
+        ]);
+
+        $this->getJson('/api/otaku-shop/products?upcoming=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_future');
+    }
+
     public function test_per_page_is_capped_at_50(): void
     {
         $this->seedCatalog();

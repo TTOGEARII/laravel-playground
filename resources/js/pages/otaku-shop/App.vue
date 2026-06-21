@@ -57,12 +57,49 @@
 
       <div class="filter-section">
         <h2 class="filter-title">작품 (IP)</h2>
-        <select class="filter-select" v-model="selectedIpId">
-          <option :value="null">전체 작품</option>
-          <option v-for="ip in ips" :key="ip.ok_ip_id" :value="ip.ok_ip_id">
-            {{ ip.ok_ip_label }} ({{ ip.products_count }})
-          </option>
-        </select>
+        <div class="ip-combobox" :class="{ 'is-open': ipOpen }" ref="ipComboboxEl">
+          <button type="button" class="ip-combobox-trigger" @click="toggleIpDropdown">
+            <span class="ip-combobox-value">{{ selectedIpLabel }}</span>
+            <svg viewBox="0 0 24 24" class="ip-combobox-caret" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          <div v-if="ipOpen" class="ip-combobox-panel">
+            <div class="ip-combobox-search">
+              <input
+                ref="ipSearchInput"
+                type="text"
+                v-model="ipSearch"
+                placeholder="작품명 검색..."
+                @keydown.esc="closeIpDropdown"
+              />
+            </div>
+            <ul class="ip-combobox-list">
+              <li>
+                <button
+                  type="button"
+                  class="ip-option"
+                  :class="{ 'is-selected': selectedIpId === null }"
+                  @click="selectIp(null)"
+                >
+                  전체 작품
+                </button>
+              </li>
+              <li v-for="ip in filteredIps" :key="ip.ok_ip_id">
+                <button
+                  type="button"
+                  class="ip-option"
+                  :class="{ 'is-selected': selectedIpId === ip.ok_ip_id }"
+                  @click="selectIp(ip.ok_ip_id)"
+                >
+                  <span class="ip-option-label">{{ ip.ok_ip_label }}</span>
+                  <span class="ip-option-count">{{ ip.products_count }}</span>
+                </button>
+              </li>
+              <li v-if="!filteredIps.length" class="ip-option-empty">검색 결과가 없습니다.</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       <div class="filter-section">
@@ -130,8 +167,8 @@
           </button>
           <button
             class="compare-only-toggle"
-            :class="{ 'is-active': hasReleaseOnly }"
-            @click="hasReleaseOnly = !hasReleaseOnly"
+            :class="{ 'is-active': upcomingOnly }"
+            @click="upcomingOnly = !upcomingOnly"
           >
             <span class="toggle-dot"></span>
             발매예정만
@@ -162,8 +199,9 @@
             v-for="(product, index) in products"
             :key="product.ok_product_id"
             class="product-card-row"
-            :class="{ 'is-featured': index === 0 }"
+            :class="{ 'is-featured': index === 0, 'is-upcoming': isUpcoming(product) }"
           >
+            <span v-if="isUpcoming(product)" class="upcoming-ribbon">발매예정</span>
             <div class="product-thumbnail">
               <div
                 v-if="product.ok_product_image_url"
@@ -184,6 +222,9 @@
             </div>
             <div class="product-main">
               <div class="product-meta">
+                <span v-if="isUpcoming(product)" class="badge badge-upcoming">
+                  📅 발매예정 · {{ upcomingDDay(product) }}
+                </span>
                 <span v-if="offerCount(product) >= 2" class="badge badge-compare">
                   🔥 {{ offerCount(product) }}개 쇼핑몰 비교<template v-if="savingStr(product)"> · 최대 {{ savingStr(product) }} 절약</template>
                 </span>
@@ -297,7 +338,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { otakuShopApi } from './api.js';
 
 const categories = ref([]);
@@ -319,8 +360,46 @@ const sortBy = ref('price_asc');
 const priceMin = ref(0);
 const priceMax = ref(200000);
 const comparedOnly = ref(false);
-const hasReleaseOnly = ref(false);
+const upcomingOnly = ref(false);
 const popularKeywords = ['넨도로이드', '블루아카이브', '원신', '하츠네 미쿠', '피규어'];
+
+// IP(작품) 검색 셀렉트박스 상태
+const ipOpen = ref(false);
+const ipSearch = ref('');
+const ipComboboxEl = ref(null);
+const ipSearchInput = ref(null);
+
+const filteredIps = computed(() => {
+  const q = ipSearch.value.trim().toLowerCase();
+  if (!q) return ips.value;
+  return ips.value.filter((ip) => (ip.ok_ip_label || '').toLowerCase().includes(q));
+});
+
+const selectedIpLabel = computed(() => {
+  if (selectedIpId.value === null) return '전체 작품';
+  const ip = ips.value.find((i) => i.ok_ip_id === selectedIpId.value);
+  return ip ? `${ip.ok_ip_label} (${ip.products_count})` : '전체 작품';
+});
+
+function toggleIpDropdown() {
+  ipOpen.value = !ipOpen.value;
+  if (ipOpen.value) {
+    ipSearch.value = '';
+    nextTick(() => ipSearchInput.value?.focus());
+  }
+}
+function closeIpDropdown() {
+  ipOpen.value = false;
+}
+function selectIp(id) {
+  selectedIpId.value = id;
+  closeIpDropdown();
+}
+function onDocClick(e) {
+  if (ipOpen.value && ipComboboxEl.value && !ipComboboxEl.value.contains(e.target)) {
+    closeIpDropdown();
+  }
+}
 
 // 빠른 가격 비교 표는 2개 이상 쇼핑몰에 오퍼가 있어 실제로 비교가 되는 상품만 노출.
 const comparableProducts = computed(() => products.value.filter((p) => (p.offers || []).length >= 2));
@@ -358,6 +437,31 @@ function releaseStr(product) {
     }
   }
   return '-';
+}
+
+// 발매일이 오늘 이후면 발매예정.
+function releaseDateOf(product) {
+  const d = product.ok_product_release_date;
+  if (!d || typeof d !== 'string') return null;
+  const date = new Date(d.slice(0, 10) + 'T00:00:00');
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function isUpcoming(product) {
+  const date = releaseDateOf(product);
+  if (!date) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date >= today;
+}
+
+function upcomingDDay(product) {
+  const date = releaseDateOf(product);
+  if (!date) return '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((date - today) / 86400000);
+  return diff <= 0 ? 'D-DAY' : `D-${diff}`;
 }
 
 function minOfferPrice(product) {
@@ -476,7 +580,7 @@ async function fetchProducts(page = 1) {
       shop_id: selectedShopIds.value,
       sort: sortBy.value,
       compared_only: comparedOnly.value,
-      has_release: hasReleaseOnly.value,
+      upcoming: upcomingOnly.value,
     });
     products.value = res.data || [];
     meta.value = res.meta || meta.value;
@@ -496,7 +600,7 @@ function resetFilters() {
   priceMin.value = 0;
   priceMax.value = 200000;
   comparedOnly.value = false;
-  hasReleaseOnly.value = false;
+  upcomingOnly.value = false;
   fetchProducts(1);
 }
 
@@ -504,8 +608,13 @@ onMounted(() => {
   fetchCategories();
   fetchIps();
   fetchShops().then(() => fetchProducts(1));
+  document.addEventListener('mousedown', onDocClick);
 });
 
-watch([selectedCategoryId, selectedIpId, sortBy, comparedOnly, hasReleaseOnly], () => fetchProducts(1));
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onDocClick);
+});
+
+watch([selectedCategoryId, selectedIpId, sortBy, comparedOnly, upcomingOnly], () => fetchProducts(1));
 watch(selectedShopIds, () => fetchProducts(1), { deep: true });
 </script>
