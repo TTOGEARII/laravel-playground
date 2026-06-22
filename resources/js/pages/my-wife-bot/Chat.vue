@@ -701,19 +701,43 @@ onBeforeUnmount(cancelTimer);
 .mw-send:hover:not(:disabled) { transform: scale(1.05); }
 .mw-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* 좁은 화면: 일러스트를 상단 배너로 쌓는다 */
+/* 좁은 화면: 일러스트를 채팅 전체의 배경으로 깔고 살짝 어둡게 → 글자 가독성 확보 */
 @media (max-width: 860px) {
   .mw-chat { flex-direction: column; height: calc(100dvh - 110px); border-radius: 16px; }
+
+  /* 일러스트 패널을 채팅 컨테이너 뒤로 절대배치 (배너 대신 배경) */
   .mw-art {
-    flex: 0 0 auto;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    flex: none;
     max-width: none;
-    height: 38vh;
-    min-height: 200px;
     border-left: none;
-    border-bottom: 1px solid var(--mw-line);
-    order: -1;
+    pointer-events: none; /* 채팅 조작을 방해하지 않게 */
   }
-  .mw-chat-pane { min-height: 0; }
+  /* 이미지 위에 어두운 스크림 — 위는 덜, 아래(입력부)로 갈수록 더 어둡게 */
+  .mw-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(8, 8, 14, 0.45) 0%,
+      rgba(8, 8, 14, 0.55) 45%,
+      rgba(8, 8, 14, 0.78) 100%
+    );
+  }
+
+  /* 채팅 패널을 투명 처리해 뒤의 이미지가 비치게 */
+  .mw-chat-pane { min-height: 0; background: transparent; position: relative; z-index: 1; }
+
+  /* 상단 바·입력부는 배경 위에서도 읽히도록 좀 더 어둡게 */
+  .mw-bar { background: rgba(8, 8, 14, 0.55); backdrop-filter: blur(4px); }
+  .mw-input-wrap { background: rgba(8, 8, 14, 0.55); backdrop-filter: blur(4px); }
+
+  /* 말풍선 대비 강화 */
+  .mw-bubble.character { background: rgba(12, 12, 18, 0.9); }
+
   .mw-row { max-width: 94%; }
 }
 </style>
