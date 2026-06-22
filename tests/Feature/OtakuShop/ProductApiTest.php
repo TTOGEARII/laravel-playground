@@ -255,6 +255,29 @@ class ProductApiTest extends TestCase
             ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
     }
 
+    public function test_created_desc_sort_orders_by_registration_date(): void
+    {
+        $data = $this->seedCatalog(); // pr_aaa: 가장 먼저 등록
+
+        // 등록일을 명시적으로 벌려 둔다(seed 상품은 과거, 신규 상품은 최신).
+        OtakuProduct::where('ok_product_code', 'pr_aaa')
+            ->update(['create_dt' => now()->subDays(3)]);
+
+        $newer = OtakuProduct::create([
+            'ok_product_code' => 'pr_newer',
+            'ok_product_title' => '신규 등록 굿즈',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        $newer->update(['create_dt' => now()]);
+
+        // 최근 등록순: pr_newer 가 먼저.
+        $this->getJson('/api/otaku-shop/products?sort=created_desc')
+            ->assertOk()
+            ->assertJsonPath('data.0.ok_product_code', 'pr_newer')
+            ->assertJsonPath('data.1.ok_product_code', 'pr_aaa');
+    }
+
     public function test_in_stock_only_excludes_fully_soldout_products(): void
     {
         $data = $this->seedCatalog();
