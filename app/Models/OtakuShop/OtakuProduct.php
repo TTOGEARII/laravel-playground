@@ -28,6 +28,7 @@ class OtakuProduct extends Model
         'ok_product_cate_id',
         'ok_product_ip_id',
         'ok_product_image_url',
+        'ok_product_match_sig',
     ];
 
     protected function casts(): array

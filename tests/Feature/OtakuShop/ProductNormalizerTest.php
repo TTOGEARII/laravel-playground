@@ -125,4 +125,36 @@ class ProductNormalizerTest extends TestCase
         // 사전에 없는 작품은 null.
         $this->assertNull($n->extractIpCode('이름없는 무명 작품 아크릴 스탠드'));
     }
+
+    public function test_extract_maker_code_handles_number_prefixes(): void
+    {
+        $n = $this->normalizer();
+
+        // 넨도로이드 번호 앞 표기(공백/#/No./№/넘버)가 달라도 같은 코드로 뽑힌다.
+        $this->assertSame('nendo_2611', $n->extractMakerCode('블루 아카이브 넨도로이드 2611 이치노세 아스나'));
+        $this->assertSame('nendo_2611', $n->extractMakerCode('블루 아카이브 넨도로이드 No.2611 이치노세 아스나'));
+        $this->assertSame('nendo_2611', $n->extractMakerCode('블루 아카이브 넨도로이드 #2611 아스나'));
+        $this->assertSame('nendo_2611', $n->extractMakerCode('블루 아카이브 넨도로이드 넘버2611 아스나'));
+
+        // 피규어츠는 전체 표기를 요구한다(바 "츠" 오탐 방지).
+        $this->assertSame('figuarts_123', $n->extractMakerCode('S.H.피규어츠 No.123 손오공'));
+        $this->assertSame('figuarts_77', $n->extractMakerCode('figuarts 77 가면라이더'));
+        // "리츠 10th", "미네츠키" 같은 일반어의 "츠 + 숫자"는 매칭되면 안 된다.
+        $this->assertNull($n->extractMakerCode('BanG Dream! 아크릴스탠드 미네츠키 리츠 10th Anniversary'));
+        $this->assertNull($n->extractMakerCode('파츠 5종 세트'));
+    }
+
+    public function test_signature_tokens_returns_sorted_distinctive_tokens(): void
+    {
+        $n = $this->normalizer();
+
+        $tokens = $n->signatureTokens('[예약] 블루 아카이브 아스나 교복 메모리얼 로비 피규어');
+        // 노이즈(예약/피규어/단독숫자)는 빠지고 변별 토큰만, 정렬되어 반환.
+        $this->assertContains('아스나', $tokens);
+        $this->assertContains('블루아카이브', $tokens);
+        $this->assertNotContains('피규어', $tokens);
+        $sorted = $tokens;
+        sort($sorted, SORT_STRING);
+        $this->assertSame($sorted, $tokens);
+    }
 }
