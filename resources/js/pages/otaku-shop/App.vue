@@ -184,9 +184,9 @@
           <div class="sort-select">
             <label for="sort">정렬</label>
             <select id="sort" v-model="sortBy">
+              <option value="created_desc">최근 등록순</option>
               <option value="price_asc">최저가 순</option>
               <option value="price_desc">가격 높은 순</option>
-              <option value="created_desc">최근 등록순</option>
               <option value="release_desc">발매일 늦은 순</option>
               <option value="release_asc">발매일 빠른 순</option>
             </select>
@@ -373,7 +373,7 @@ const keyword = ref('');
 const selectedCategoryId = ref(null);
 const selectedIpId = ref(null);
 const selectedShopIds = ref([]);
-const sortBy = ref('price_asc');
+const sortBy = ref('created_desc');
 const priceMin = ref(0);
 const priceMax = ref(200000);
 const comparedOnly = ref(false);
