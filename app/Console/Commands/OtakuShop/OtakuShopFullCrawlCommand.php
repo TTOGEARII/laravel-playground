@@ -67,8 +67,13 @@ class OtakuShopFullCrawlCommand extends Command
 
         // 전량 크롤은 카테고리 전체를 돌므로, 이번에 못 본 오퍼는 사라진(품절) 것으로 본다.
         // 품절을 리스트에 안 띄우는 쇼핑몰(애니메이트 등)의 품절을 이 단계가 잡는다.
+        // 단, 부분 수집(예: 굿스마일=카테고리별 1페이지) 샵은 '안 보임≠품절'이라 제외한다.
         $this->info('3. 사라진(미수집) 오퍼 품절 처리...');
-        $soldOut = $syncService->markUnseenOffersUnavailable($crawledShopCodes, $runStartedAt);
+        $noDisappear = (array) config('otaku-crawler.crawl.no_disappear_soldout_shops', []);
+        $disappearShops = array_values(array_diff($crawledShopCodes, $noDisappear));
+        $soldOut = $disappearShops === []
+            ? 0
+            : $syncService->markUnseenOffersUnavailable($disappearShops, $runStartedAt);
         $this->line("    ↳ 품절 전환된 오퍼: {$soldOut}건");
 
         $this->info('4. 누적 저장 결과:');

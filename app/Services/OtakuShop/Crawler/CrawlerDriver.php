@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Log;
  */
 class CrawlerDriver
 {
+    /** 기본 유저에이전트 (실제 데스크톱 Chrome). config(otaku-crawler.selenium.user_agent)로 덮어쓸 수 있다. */
+    private const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
     private ?RemoteWebDriver $driver = null;
 
     public function __construct(
@@ -22,6 +25,7 @@ class CrawlerDriver
         private int $connectionTimeout = 30,
         private int $requestTimeout = 60,
         private string $pageLoadStrategy = 'eager',
+        private string $userAgent = '',
     ) {}
 
     /**
@@ -39,6 +43,7 @@ class CrawlerDriver
             (int) ($config['connection_timeout_sec'] ?? 30),
             (int) ($config['request_timeout_sec'] ?? 60),
             (string) ($config['page_load_strategy'] ?? 'eager'),
+            (string) ($config['user_agent'] ?? ''),
         );
     }
 
@@ -52,11 +57,22 @@ class CrawlerDriver
         }
 
         $caps = DesiredCapabilities::chrome();
-        $options = new ChromeOptions();
+        $options = new ChromeOptions;
         if ($this->headless) {
             $options->addArguments(['--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage']);
         }
-        $options->addArguments(['--window-size=1920,1080']);
+        $options->addArguments(['--window-size=1920,1080', '--lang=ko-KR']);
+
+        // 실제 브라우저처럼 보이도록 항상 UA를 지정하고(빈 값이면 기본 UA), 자동화 탐지 신호를 줄인다.
+        // (네이버 등 일부 사이트는 navigator.webdriver / 헤드리스 UA로 봇을 차단한다.)
+        $userAgent = $this->userAgent !== '' ? $this->userAgent : self::DEFAULT_USER_AGENT;
+        $options->addArguments([
+            '--user-agent='.$userAgent,
+            '--disable-blink-features=AutomationControlled',
+        ]);
+        $options->setExperimentalOption('excludeSwitches', ['enable-automation']);
+        $options->setExperimentalOption('useAutomationExtension', false);
+
         $caps->setCapability(ChromeOptions::CAPABILITY, $options);
         // DOM 준비까지만 기다리도록(이미지·트래커 대기 안 함) → 멈춘 서브리소스로 인한 렌더러 타임아웃 완화.
         if ($this->pageLoadStrategy !== '') {

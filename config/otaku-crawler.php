@@ -22,6 +22,11 @@ return [
             'ok_shop_name' => '따빼몰',
             'ok_shop_url' => 'https://ttabbaemall.co.kr/',
         ],
+        [
+            'ok_shop_code' => 'goodsmilekr',
+            'ok_shop_name' => '굿스마일코리아',
+            'ok_shop_url' => 'https://brand.naver.com/goodsmilekr',
+        ],
     ],
 
     /*
@@ -69,6 +74,17 @@ return [
             ['path' => '/product/list.html?cate_no=145', 'category' => 'book', 'pages' => 1],
             ['path' => '/product/list.html?cate_no=24', 'category' => 'goods', 'pages' => 1],
         ],
+        // 굿스마일 네이버 브랜드스토어. category/<해시> 단위, 페이지네이션이 JS 클릭식이라
+        // 카테고리별 최신 1페이지(40개)만 수집한다. category 는 제목 키워드로 보정되며 fallback 으로 둔다.
+        'goodsmilekr' => [
+            ['path' => 'category/4c33be6ce4f44c339ed824cdcfc50d20', 'category' => 'figure', 'pages' => 1], // 넨도로이드
+            ['path' => 'category/2e9567ebfd264392b694fa367e9929c6', 'category' => 'figure', 'pages' => 1], // 피그마
+            ['path' => 'category/2a0e44cbcc0443c5aaaf7a49d2d08f73', 'category' => 'figure', 'pages' => 1], // POP UP PARADE
+            ['path' => 'category/ac2d3e7c51bd4725b756d5d39353cd96', 'category' => 'figure', 'pages' => 1], // 피규어
+            ['path' => 'category/576f470eafa14e6ea5ee02f3c63a82f1', 'category' => 'figure', 'pages' => 1], // 프라모델
+            ['path' => 'category/32670fa45d6a420a829dc19e8f1a30ae', 'category' => 'plush', 'pages' => 1],  // 인형
+            ['path' => 'category/294cc84fabf0471db16bcbae5ba43827', 'category' => 'goods', 'pages' => 1],  // 그외상품
+        ],
     ],
 
     /*
@@ -105,6 +121,8 @@ return [
         // 커서 정상 페이지를 안 끊되, 진짜 hang 은 잘라 try/catch 로 흘려보낸다.
         'connection_timeout_sec' => (int) env('OTAKU_CONNECTION_TIMEOUT', 30),
         'request_timeout_sec' => (int) env('OTAKU_REQUEST_TIMEOUT', 60),
+        // 크롤 시 항상 실제 브라우저 UA로 요청한다(헤드리스/봇 차단 회피). 빈 값이면 CrawlerDriver 기본 UA 사용.
+        'user_agent' => env('OTAKU_USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'),
     ],
 
     /*
@@ -251,5 +269,9 @@ return [
             'delay_ms_between_shops' => (int) env('OTAKU_FULL_DELAY_BETWEEN_SHOPS_MS', 8000),
             'max_pages' => (int) env('OTAKU_FULL_MAX_PAGES', 100),
         ],
+        // 전량 크롤의 '사라짐=품절' 대상에서 제외할 샵. 카테고리 전체를 돌지 않고(부분 수집)
+        // 품절을 리스트 배지로 직접 읽는 샵은, 안 보였다고 품절 처리하면 오탐이 난다.
+        // (굿스마일: 페이지네이션이 JS 클릭식이라 카테고리별 1페이지만 수집)
+        'no_disappear_soldout_shops' => ['goodsmilekr'],
     ],
 ];
