@@ -43,6 +43,7 @@ class ProductApiTest extends TestCase
         OtakuOffer::create([
             'ok_offer_product_id' => $product->ok_product_id,
             'ok_offer_shop_id' => $shopA->ok_shop_id,
+            'ok_offer_external_id' => 'aaa-shopA',
             'ok_offer_currency' => 'KRW',
             'ok_offer_price' => 15000,
             'ok_offer_available_flg' => true,
@@ -50,6 +51,7 @@ class ProductApiTest extends TestCase
         OtakuOffer::create([
             'ok_offer_product_id' => $product->ok_product_id,
             'ok_offer_shop_id' => $shopB->ok_shop_id,
+            'ok_offer_external_id' => 'aaa-shopB',
             'ok_offer_currency' => 'KRW',
             'ok_offer_price' => 13000,
             'ok_offer_available_flg' => true,
@@ -111,6 +113,7 @@ class ProductApiTest extends TestCase
         OtakuOffer::create([
             'ok_offer_product_id' => $single->ok_product_id,
             'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_external_id' => 'single-shopA',
             'ok_offer_currency' => 'KRW',
             'ok_offer_price' => 8000,
             'ok_offer_available_flg' => true,
@@ -140,6 +143,7 @@ class ProductApiTest extends TestCase
         OtakuOffer::create([
             'ok_offer_product_id' => $cheap->ok_product_id,
             'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_external_id' => 'cheap-shopA',
             'ok_offer_currency' => 'KRW', 'ok_offer_price' => 5000, 'ok_offer_available_flg' => true,
         ]);
 
@@ -152,6 +156,7 @@ class ProductApiTest extends TestCase
         OtakuOffer::create([
             'ok_offer_product_id' => $pricey->ok_product_id,
             'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_external_id' => 'pricey-shopA',
             'ok_offer_currency' => 'KRW', 'ok_offer_price' => 20000, 'ok_offer_available_flg' => true,
         ]);
 
@@ -208,5 +213,96 @@ class ProductApiTest extends TestCase
 
         $this->getJson('/api/otaku-shop/categories')->assertOk()->assertJsonCount(1, 'data');
         $this->getJson('/api/otaku-shop/shops')->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    public function test_soldout_offer_is_returned_for_display(): void
+    {
+        $data = $this->seedCatalog();
+
+        // B샵(애니메이트) 오퍼를 품절로 변경 → 숨기지 않고 품절로 함께 내려와야 한다.
+        OtakuOffer::where('ok_offer_product_id', $data['product']->ok_product_id)
+            ->where('ok_offer_shop_id', $data['shopB']->ok_shop_id)
+            ->update(['ok_offer_available_flg' => false]);
+
+        $res = $this->getJson('/api/otaku-shop/products')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+
+        // 두 오퍼(판매중 1 + 품절 1)가 모두 응답에 포함된다.
+        $offers = $res->json('data.0.offers');
+        $this->assertCount(2, $offers);
+
+        $flags = collect($offers)->keyBy('ok_offer_shop_id');
+        $this->assertTrue((bool) $flags[$data['shopA']->ok_shop_id]['ok_offer_available_flg']);
+        $this->assertFalse((bool) $flags[$data['shopB']->ok_shop_id]['ok_offer_available_flg']);
+
+        // 판매중 오퍼가 먼저 정렬된다.
+        $this->assertTrue((bool) $offers[0]['ok_offer_available_flg']);
+    }
+
+    public function test_compared_only_includes_products_with_a_soldout_offer(): void
+    {
+        $data = $this->seedCatalog();
+
+        // 2개 샵 상품 중 한쪽을 품절로 바꿔도 '가격 vs 품절'로 비교 노출되어야 한다.
+        OtakuOffer::where('ok_offer_product_id', $data['product']->ok_product_id)
+            ->where('ok_offer_shop_id', $data['shopB']->ok_shop_id)
+            ->update(['ok_offer_available_flg' => false]);
+
+        $this->getJson('/api/otaku-shop/products?compared_only=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
+    }
+
+    public function test_created_desc_sort_orders_by_registration_date(): void
+    {
+        $data = $this->seedCatalog(); // pr_aaa: 가장 먼저 등록
+
+        // 등록일을 명시적으로 벌려 둔다(seed 상품은 과거, 신규 상품은 최신).
+        OtakuProduct::where('ok_product_code', 'pr_aaa')
+            ->update(['create_dt' => now()->subDays(3)]);
+
+        $newer = OtakuProduct::create([
+            'ok_product_code' => 'pr_newer',
+            'ok_product_title' => '신규 등록 굿즈',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        $newer->update(['create_dt' => now()]);
+
+        // 최근 등록순: pr_newer 가 먼저.
+        $this->getJson('/api/otaku-shop/products?sort=created_desc')
+            ->assertOk()
+            ->assertJsonPath('data.0.ok_product_code', 'pr_newer')
+            ->assertJsonPath('data.1.ok_product_code', 'pr_aaa');
+    }
+
+    public function test_in_stock_only_excludes_fully_soldout_products(): void
+    {
+        $data = $this->seedCatalog();
+
+        // 모든 오퍼가 품절인 상품(재고 없음) 추가.
+        $soldout = OtakuProduct::create([
+            'ok_product_code' => 'pr_soldout',
+            'ok_product_title' => '전량 품절 피규어',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $soldout->ok_product_id,
+            'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_external_id' => 'soldout-shopA',
+            'ok_offer_currency' => 'KRW', 'ok_offer_price' => 9000, 'ok_offer_available_flg' => false,
+        ]);
+
+        // 전체는 2건, 재고 있는 상품만은 1건(pr_aaa).
+        $this->getJson('/api/otaku-shop/products')
+            ->assertOk()->assertJsonPath('meta.total', 2);
+
+        $this->getJson('/api/otaku-shop/products?in_stock_only=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
     }
 }

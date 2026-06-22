@@ -26,6 +26,7 @@ export const otakuShopApi = {
     if (params.upcoming) q.set('upcoming', '1');
     if (params.sort) q.set('sort', params.sort);
     if (params.compared_only) q.set('compared_only', '1');
+    if (params.in_stock_only) q.set('in_stock_only', '1');
     (params.shop_id || []).forEach((id) => q.append('shop_id[]', id));
     const { data } = await axios.get(`${BASE}/products?${q}`);
     return data;
