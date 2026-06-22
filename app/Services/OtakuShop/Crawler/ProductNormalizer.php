@@ -132,7 +132,42 @@ class ProductNormalizer
     public function signature(string $title): string
     {
         $normalized = $this->normalizeTitle($title);
+        $kept = $this->distinctiveTokens($normalized);
 
+        if (count($kept) < 2) {
+            return str_replace(' ', '', $normalized);
+        }
+
+        sort($kept, SORT_STRING);  // 단어 순서 차이 흡수
+
+        return implode(' ', $kept);
+    }
+
+    /**
+     * 이름 유사(포함관계) 매칭용 변별 토큰 집합. 정렬·중복제거된 토큰 배열을 반환한다.
+     * 토큰이 2개 미만이면 과매칭 방지를 위해 빈 배열을 반환한다(퍼지 매칭 제외).
+     *
+     * @return array<int, string>
+     */
+    public function signatureTokens(string $title): array
+    {
+        $tokens = $this->distinctiveTokens($this->normalizeTitle($title));
+        if (count($tokens) < 2) {
+            return [];
+        }
+
+        sort($tokens, SORT_STRING);
+
+        return $tokens;
+    }
+
+    /**
+     * 정규화된 제목에서 변별 토큰(불용어·단독 숫자·1글자 제외, 중복 제거)을 뽑는다.
+     *
+     * @return array<int, string>
+     */
+    private function distinctiveTokens(string $normalized): array
+    {
         $kept = [];
         foreach (explode(' ', $normalized) as $token) {
             if ($token === '' || isset($this->stopwords[$token])) {
@@ -147,14 +182,7 @@ class ProductNormalizer
             $kept[$token] = true;                  // 중복 토큰 제거
         }
 
-        $kept = array_keys($kept);
-        if (count($kept) < 2) {
-            return str_replace(' ', '', $normalized);
-        }
-
-        sort($kept, SORT_STRING);  // 단어 순서 차이 흡수
-
-        return implode(' ', $kept);
+        return array_keys($kept);
     }
 
     /**

@@ -21,7 +21,15 @@ class CrawlSyncServiceTest extends TestCase
         OtakuShop::create(['ok_shop_code' => 'ttabbaemall', 'ok_shop_name' => '따빼몰', 'ok_shop_active_flg' => true]);
     }
 
-    private function dto(string $shop, string $extId, string $title, float $price, bool $available = true, ?string $makerCode = null, ?string $maker = null): CrawledProductDto
+    /** 이름 유사(포함관계) 매칭은 ip+카테고리가 필요하므로 카테고리·IP 사전을 함께 시드한다. */
+    private function seedRefs(CrawlSyncService $service): void
+    {
+        $this->seedShops();
+        $service->syncCategories();
+        $service->syncIps();
+    }
+
+    private function dto(string $shop, string $extId, string $title, float $price, bool $available = true, ?string $makerCode = null, ?string $maker = null, string $categoryCode = 'goods'): CrawledProductDto
     {
         return new CrawledProductDto(
             shopCode: $shop,
@@ -32,7 +40,7 @@ class CrawlSyncServiceTest extends TestCase
             price: $price,
             currency: 'KRW',
             productUrl: 'https://example.com/'.$extId,
-            categoryCode: 'goods',
+            categoryCode: $categoryCode,
             imageUrl: 'https://example.com/'.$extId.'.jpg',
             available: $available,
             makerCode: $makerCode,
@@ -148,6 +156,90 @@ class CrawlSyncServiceTest extends TestCase
         $product = OtakuProduct::first();
         $this->assertSame('jan_4580828667556', $product->ok_product_maker_code);
         $this->assertSame('굿스마일 컴퍼니(GOOD SMILE)', $product->ok_product_maker_name);
+    }
+
+    public function test_cross_shop_matches_nendo_number_with_no_dot_prefix(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // "넨도로이드 2611"과 "넨도로이드 No.2611"은 같은 품번 → 동일 상품.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[입고 완료] 블루 아카이브 굿스마일 컴퍼니 넨도로이드 2611 피규어 - 이치노세 아스나', 70000),
+            $this->dto('ttabbaemall', 'B1', '[예약] 블루 아카이브 넨도로이드 No.2611 이치노세 아스나', 68000),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+        $this->assertSame('nendo_2611', OtakuProduct::first()->ok_product_maker_code);
+    }
+
+    public function test_cross_shop_matches_by_name_containment_same_ip_and_category(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // maker code 없고 토큰 1개(교스나) 차이지만, 같은 ip+카테고리(피규어) + 포함관계 → 동일 상품.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[예약] 블루 아카이브 아스나 교복 메모리얼 로비 Ver. 1/7 피규어', 250000, categoryCode: 'figure'),
+            $this->dto('ttabbaemall', 'B1', '블루 아카이브 굿스마일 아스나 교복 메모리얼 로비 교스나 1/7 스케일 피규어', 240000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
+    public function test_different_character_not_merged_by_containment(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 같은 ip+카테고리·같은 변형이라도 캐릭터(아스나 vs 시로코)가 다르면 묶이지 않는다(과병합 방지).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 아스나 교복 메모리얼 로비 1/7 피규어', 250000, categoryCode: 'figure'),
+            $this->dto('ttabbaemall', 'B1', '블루 아카이브 시로코 교복 메모리얼 로비 1/7 피규어', 240000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count());
+    }
+
+    public function test_goods_category_is_not_fuzzy_merged_even_when_containment(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 굿즈는 캐릭터/번호만 다른 변형이 많아 이름 유사 매칭을 적용하지 않는다(포함관계여도 별도 상품).
+        // 추가 토큰(아키하바라)은 불용어가 아니라 시그니처가 달라져 정확 매칭으로도 안 묶인다 → 포함관계 매칭만이 묶을 수 있는 케이스.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 아스나 클리어 파일', 5000, categoryCode: 'goods'),
+            $this->dto('ttabbaemall', 'B1', '블루 아카이브 아스나 아키하바라 클리어 파일', 4500, categoryCode: 'goods'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count());
+    }
+
+    public function test_merge_products_transfers_offers_and_dedupes_per_shop(): void
+    {
+        $this->seedShops();
+        $service = $this->app->make(CrawlSyncService::class);
+        $shopA = OtakuShop::where('ok_shop_code', 'dokidokigoods')->first()->ok_shop_id;
+        $shopB = OtakuShop::where('ok_shop_code', 'ttabbaemall')->first()->ok_shop_id;
+
+        $canonical = OtakuProduct::create(['ok_product_code' => 'p_canon', 'ok_product_title' => '교복 아스나 피규어', 'ok_product_active_flg' => true]);
+        $dup = OtakuProduct::create(['ok_product_code' => 'p_dup', 'ok_product_title' => '교복 아스나 교스나 피규어', 'ok_product_active_flg' => true]);
+
+        // canonical: 도키도키 1건. dup: 도키도키(같은 샵, 더 쌈) + 따빼몰 1건.
+        OtakuOffer::create(['ok_offer_product_id' => $canonical->ok_product_id, 'ok_offer_shop_id' => $shopA, 'ok_offer_external_id' => 'A1', 'ok_offer_currency' => 'KRW', 'ok_offer_price' => 250000, 'ok_offer_available_flg' => true]);
+        OtakuOffer::create(['ok_offer_product_id' => $dup->ok_product_id, 'ok_offer_shop_id' => $shopA, 'ok_offer_external_id' => 'A2', 'ok_offer_currency' => 'KRW', 'ok_offer_price' => 240000, 'ok_offer_available_flg' => true]);
+        OtakuOffer::create(['ok_offer_product_id' => $dup->ok_product_id, 'ok_offer_shop_id' => $shopB, 'ok_offer_external_id' => 'B1', 'ok_offer_currency' => 'KRW', 'ok_offer_price' => 230000, 'ok_offer_available_flg' => true]);
+
+        $service->mergeProducts($canonical, [$dup]);
+
+        // 중복 상품은 삭제되고, 오퍼는 canonical로 이전 + 같은 샵(도키도키)은 1건(더 싼 240000)만 남는다.
+        $this->assertNull(OtakuProduct::find($dup->ok_product_id));
+        $this->assertSame(2, OtakuOffer::where('ok_offer_product_id', $canonical->ok_product_id)->count());
+        $this->assertSame('240000.00', OtakuOffer::where('ok_offer_product_id', $canonical->ok_product_id)->where('ok_offer_shop_id', $shopA)->first()->ok_offer_price);
+        $this->assertSame(0, OtakuOffer::where('ok_offer_shop_id', $shopA)->where('ok_offer_external_id', 'A1')->count());
     }
 
     public function test_mark_unseen_offers_unavailable_handles_disappeared_products(): void

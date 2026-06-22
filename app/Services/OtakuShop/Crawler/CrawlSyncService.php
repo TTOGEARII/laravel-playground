@@ -16,6 +16,9 @@ use Illuminate\Support\Carbon;
  */
 class CrawlSyncService
 {
+    /** 이름 유사(포함관계) 매칭을 허용하는 카테고리 코드 (변별적 이름이 보장되는 피규어만). */
+    private const FUZZY_CATEGORY = 'figure';
+
     public function __construct(
         private ProductNormalizer $normalizer
     ) {}
@@ -178,27 +181,42 @@ class CrawlSyncService
         $releaseDate = $dto->releaseDate ?? $this->normalizer->extractReleaseDate($dto->title);
         $ipCode = $this->normalizer->extractIpCode($dto->title);
         $ipId = $ipCode !== null ? ($ipIdByCode[$ipCode] ?? null) : null;
+        $categoryId = $dto->categoryCode ? ($categoryByCode[$dto->categoryCode] ?? null) : null;
+        $tokens = $this->normalizer->signatureTokens($dto->title);
+        $matchSig = $tokens === [] ? null : implode(' ', $tokens);
 
         $product = $this->resolveProductByExistingOffers($bundle['offers'])
             ?? OtakuProduct::where('ok_product_code', $bundle['key'])->first();
 
-        if ($product === null) {
-            $categoryId = $dto->categoryCode ? ($categoryByCode[$dto->categoryCode] ?? null) : null;
-            $stats['products_created']++;
+        // 정확 키로 못 묶었고 고유값(maker code)도 없으면, 같은 ip+카테고리 안에서
+        // 이름 토큰이 포함관계인 기존 상품을 찾아 묶는다(보수적 이름 유사 매칭).
+        // 굿즈류(클리어파일/스티커/케이스 등)는 캐릭터·번호만 다른 변형이 많아 오병합 위험이 커,
+        // 이름이 충분히 변별적인 '피규어' 카테고리에만 적용한다.
+        $scale = self::extractScale($dto->title);
+        if ($product === null && $makerCode === null && $ipId !== null && $categoryId !== null
+            && $dto->categoryCode === self::FUZZY_CATEGORY && $scale !== null) {
+            $product = $this->fuzzyMatchProduct($ipId, (int) $categoryId, $tokens, $scale);
+        }
 
-            return OtakuProduct::create([
+        if ($product === null) {
+            $stats['products_created']++;
+            $product = OtakuProduct::create([
                 'ok_product_code' => $bundle['key'],
                 'ok_product_title' => $dto->title,
                 'ok_product_subtitle' => $dto->subtitle,
                 'ok_product_brand_label' => $dto->brandLabel,
                 'ok_product_maker_code' => $makerCode,
                 'ok_product_maker_name' => $dto->maker,
+                'ok_product_match_sig' => $matchSig,
                 'ok_product_release_date' => $releaseDate,
                 'ok_product_active_flg' => true,
                 'ok_product_cate_id' => $categoryId,
                 'ok_product_ip_id' => $ipId,
                 'ok_product_image_url' => $dto->imageUrl,
             ]);
+            $this->indexProduct($product, $tokens);
+
+            return $product;
         }
 
         // 기존 상품: 키가 바뀌었으면 최신 정규화 키로 갱신하고, 비어 있는 분류값을 채운다(재크롤 점진 보강).
@@ -220,12 +238,129 @@ class CrawlSyncService
         if ($product->ok_product_maker_name === null && $dto->maker !== null) {
             $product->ok_product_maker_name = $dto->maker;
         }
+        if ($product->ok_product_match_sig === null && $matchSig !== null) {
+            $product->ok_product_match_sig = $matchSig;
+        }
         if ($product->isDirty()) {
             $product->save();
         }
         $stats['products_matched']++;
 
         return $product;
+    }
+
+    /** @var array<string, array<int, array{id:int, tokens:array<int,string>}>> (ip:cate) 버킷 후보 캐시 */
+    private array $bucketCache = [];
+
+    /**
+     * 같은 ip+카테고리 안에서 이름 토큰이 포함관계(작은 집합 ⊆ 큰 집합)인 기존 상품을 찾는다.
+     * 보수적 규칙: 양쪽 토큰 ≥ 3, 한쪽이 다른쪽에 완전 포함될 때만 동일상품으로 본다.
+     * (대칭차가 가장 작은 후보를 고른다.)
+     *
+     * @param  array<int, string>  $tokens
+     */
+    public function fuzzyMatchProduct(int $ipId, int $cateId, array $tokens, ?string $scale = null): ?OtakuProduct
+    {
+        if (count($tokens) < 3) {
+            return null;
+        }
+
+        $best = null;
+        $bestDiff = PHP_INT_MAX;
+        foreach ($this->bucketCandidates($ipId, $cateId) as $cand) {
+            if ($cand['scale'] !== $scale) {  // 스케일(1/7 vs 1/6 등)이 다르면 다른 상품
+                continue;
+            }
+            $ct = $cand['tokens'];
+            if (count($ct) < 3) {
+                continue;
+            }
+            if (! $this->isSubset($tokens, $ct) && ! $this->isSubset($ct, $tokens)) {
+                continue;
+            }
+            $diff = abs(count($tokens) - count($ct));  // 추가 토큰이 적을수록 더 확실한 동일상품
+            if ($diff < $bestDiff) {
+                $bestDiff = $diff;
+                $best = $cand['id'];
+            }
+        }
+
+        return $best !== null ? OtakuProduct::find($best) : null;
+    }
+
+    /**
+     * (ip,cate) 버킷의 후보 상품 목록(id + 토큰). 런 1회만 DB에서 로드해 캐시한다.
+     *
+     * @return array<int, array{id:int, tokens:array<int,string>}>
+     */
+    private function bucketCandidates(int $ipId, int $cateId): array
+    {
+        $key = $ipId.':'.$cateId;
+        if (! isset($this->bucketCache[$key])) {
+            $this->bucketCache[$key] = OtakuProduct::query()
+                ->where('ok_product_ip_id', $ipId)
+                ->where('ok_product_cate_id', $cateId)
+                ->whereNull('ok_product_maker_code')
+                ->get(['ok_product_id', 'ok_product_match_sig', 'ok_product_title'])
+                ->filter(fn ($p) => self::looksLikeScaleFigure((string) $p->ok_product_title))
+                ->map(fn ($p) => [
+                    'id' => (int) $p->ok_product_id,
+                    'scale' => self::extractScale((string) $p->ok_product_title),
+                    'tokens' => $p->ok_product_match_sig
+                        ? explode(' ', $p->ok_product_match_sig)
+                        : $this->normalizer->signatureTokens((string) $p->ok_product_title),
+                ])
+                ->values()
+                ->all();
+        }
+
+        return $this->bucketCache[$key];
+    }
+
+    /** 스케일 표기(1/7, 1/8 등)를 정규화해 반환. 없으면 null. */
+    public static function extractScale(string $title): ?string
+    {
+        return preg_match('#(\d)\s*/\s*(\d{1,2})#u', $title, $m) ? $m[1].'/'.$m[2] : null;
+    }
+
+    /** 스케일 피규어(1/7, 1/8 등)인지 — 굿즈류 오병합을 막기 위한 추가 신호. */
+    public static function looksLikeScaleFigure(string $title): bool
+    {
+        return self::extractScale($title) !== null;
+    }
+
+    /** 새로/매칭된 상품을 버킷 캐시에 반영해 같은 런의 후속 상품이 이어서 묶이도록 한다. */
+    private function indexProduct(OtakuProduct $product, array $tokens): void
+    {
+        if ($product->ok_product_ip_id === null || $product->ok_product_cate_id === null || $tokens === []) {
+            return;
+        }
+        $key = $product->ok_product_ip_id.':'.$product->ok_product_cate_id;
+        if (isset($this->bucketCache[$key])) {
+            $this->bucketCache[$key][] = [
+                'id' => (int) $product->ok_product_id,
+                'scale' => self::extractScale((string) $product->ok_product_title),
+                'tokens' => $tokens,
+            ];
+        }
+    }
+
+    /**
+     * $a 의 모든 토큰이 $b 에 들어 있으면 true (a ⊆ b).
+     *
+     * @param  array<int, string>  $a
+     * @param  array<int, string>  $b
+     */
+    private function isSubset(array $a, array $b): bool
+    {
+        $set = array_flip($b);
+        foreach ($a as $token) {
+            if (! isset($set[$token])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -323,6 +458,81 @@ class CrawlSyncService
         }
 
         return $affected;
+    }
+
+    /**
+     * 중복으로 적재된 상품들을 canonical 하나로 병합한다(재매칭 소급 적용).
+     * 나머지 상품의 오퍼를 canonical로 옮기고, 샵당 오퍼가 중복되면 최선(재고>가격) 1건만 남긴다.
+     * 비어 있는 분류값은 canonical로 채운다. 최저가 플래그 재계산은 호출 측에서 일괄 수행한다.
+     *
+     * @param  array<int, OtakuProduct>  $others
+     */
+    public function mergeProducts(OtakuProduct $canonical, array $others): void
+    {
+        foreach ($others as $other) {
+            if ((int) $other->ok_product_id === (int) $canonical->ok_product_id) {
+                continue;
+            }
+
+            OtakuOffer::where('ok_offer_product_id', $other->ok_product_id)
+                ->update(['ok_offer_product_id' => $canonical->ok_product_id]);
+
+            $this->fillMissingClassification($canonical, $other);
+            $other->delete();
+        }
+
+        $this->dedupeOffersPerShop($canonical);
+
+        if ($canonical->isDirty()) {
+            $canonical->save();
+        }
+    }
+
+    /** 최저가 플래그 재계산 (재매칭 커맨드에서 일괄 호출용). */
+    public function refreshLowestPriceFlags(): void
+    {
+        $this->updateLowestPriceFlags();
+    }
+
+    /** canonical 상품의 비어 있는 분류값을 병합 대상에서 채운다. */
+    private function fillMissingClassification(OtakuProduct $canonical, OtakuProduct $other): void
+    {
+        foreach ([
+            'ok_product_ip_id', 'ok_product_cate_id', 'ok_product_release_date',
+            'ok_product_maker_code', 'ok_product_maker_name', 'ok_product_image_url',
+            'ok_product_match_sig',
+        ] as $col) {
+            if ($canonical->{$col} === null && $other->{$col} !== null) {
+                $canonical->{$col} = $other->{$col};
+            }
+        }
+    }
+
+    /** 한 상품에 같은 샵 오퍼가 여러 건이면 최선(재고>가격) 1건만 남기고 삭제한다. */
+    private function dedupeOffersPerShop(OtakuProduct $product): void
+    {
+        $byShop = OtakuOffer::where('ok_offer_product_id', $product->ok_product_id)
+            ->get()
+            ->groupBy('ok_offer_shop_id');
+
+        foreach ($byShop as $shopOffers) {
+            if ($shopOffers->count() < 2) {
+                continue;
+            }
+            $best = $shopOffers->sort(function ($a, $b) {
+                if ($a->ok_offer_available_flg !== $b->ok_offer_available_flg) {
+                    return $b->ok_offer_available_flg <=> $a->ok_offer_available_flg;  // 재고 있는 쪽 우선
+                }
+
+                return $a->ok_offer_price <=> $b->ok_offer_price;  // 더 싼 쪽 우선
+            })->first();
+
+            foreach ($shopOffers as $offer) {
+                if ((int) $offer->ok_offer_id !== (int) $best->ok_offer_id) {
+                    $offer->delete();
+                }
+            }
+        }
     }
 
     /**
