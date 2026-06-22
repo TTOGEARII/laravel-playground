@@ -26,7 +26,7 @@
             <div class="card-icon">🛒</div>
             <h2 class="card-title">Otaku Shop</h2>
             <p class="card-description">
-                오타쿠 굿즈 쇼핑몰
+                오타쿠 굿즈 통합검색
             </p>
             <div class="card-tags">
                 <span class="tag">Laravel</span>
