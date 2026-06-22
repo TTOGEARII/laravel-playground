@@ -122,7 +122,7 @@ class ProductService
         }
 
         // sort: price_asc|price_desc(판매중 오퍼 최저가 기준)|release_desc(최신 발매순)|release_asc(발매 임박순)|created_desc(최근 등록순)
-        $sort = $filters['sort'] ?? 'price_asc';
+        $sort = $filters['sort'] ?? 'created_desc';
         if ($sort === 'price_asc' || $sort === 'price_desc') {
             // 가격은 offer 테이블에 있으므로 판매중 오퍼의 최저가를 상관 서브쿼리로 끌어와 정렬한다.
             $minPriceSub = OtakuOffer::query()
