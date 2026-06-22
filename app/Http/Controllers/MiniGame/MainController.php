@@ -25,6 +25,16 @@ class MainController extends Controller
                 'status' => 'available',
                 'route' => 'mini-game.vampire-survival.index',
             ],
+            [
+                'id' => 2,
+                'name' => '테트리스',
+                'description' => '블록을 쌓아 줄을 지우고 점수를 쌓아라. 홀드·티스핀까지!',
+                'icon' => '🟦',
+                'color' => 'accent-teal',
+                'tags' => ['퍼즐', '고전', '중독성'],
+                'status' => 'available',
+                'route' => 'mini-game.tetris.index',
+            ],
         ];
 
         return view('mini-game.index', compact('games'));
@@ -33,5 +43,10 @@ class MainController extends Controller
     public function vampireSurvival(): View
     {
         return view('mini-game.vampire-survival.index');
+    }
+
+    public function tetris(): View
+    {
+        return view('mini-game.tetris.index');
     }
 }
