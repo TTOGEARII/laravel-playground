@@ -173,6 +173,14 @@
             <span class="toggle-dot"></span>
             발매예정만
           </button>
+          <button
+            class="compare-only-toggle"
+            :class="{ 'is-active': inStockOnly }"
+            @click="inStockOnly = !inStockOnly"
+          >
+            <span class="toggle-dot"></span>
+            재고 있는 상품만
+          </button>
           <div class="sort-select">
             <label for="sort">정렬</label>
             <select id="sort" v-model="sortBy">
@@ -369,6 +377,7 @@ const priceMin = ref(0);
 const priceMax = ref(200000);
 const comparedOnly = ref(false);
 const upcomingOnly = ref(false);
+const inStockOnly = ref(false);
 const popularKeywords = ['넨도로이드', '블루아카이브', '원신', '하츠네 미쿠', '피규어'];
 
 // IP(작품) 검색 셀렉트박스 상태
@@ -601,6 +610,7 @@ async function fetchProducts(page = 1) {
       sort: sortBy.value,
       compared_only: comparedOnly.value,
       upcoming: upcomingOnly.value,
+      in_stock_only: inStockOnly.value,
     });
     products.value = res.data || [];
     meta.value = res.meta || meta.value;
@@ -621,6 +631,7 @@ function resetFilters() {
   priceMax.value = 200000;
   comparedOnly.value = false;
   upcomingOnly.value = false;
+  inStockOnly.value = false;
   fetchProducts(1);
 }
 
@@ -635,6 +646,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onDocClick);
 });
 
-watch([selectedCategoryId, selectedIpId, sortBy, comparedOnly, upcomingOnly], () => fetchProducts(1));
+watch([selectedCategoryId, selectedIpId, sortBy, comparedOnly, upcomingOnly, inStockOnly], () => fetchProducts(1));
 watch(selectedShopIds, () => fetchProducts(1), { deep: true });
 </script>

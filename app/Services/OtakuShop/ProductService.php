@@ -89,6 +89,13 @@ class ProductService
             $query->has('offers', '>=', 2);
         }
 
+        // 재고 있는 상품만 (어느 한 샵이라도 판매중 오퍼가 있는 상품).
+        if (! empty($filters['in_stock_only'])) {
+            $query->whereHas('offers', function ($q) {
+                $q->where('ok_offer_available_flg', true);
+            });
+        }
+
         if (isset($filters['category_id']) && $filters['category_id'] !== '' && $filters['category_id'] !== null) {
             $categoryId = (int) $filters['category_id'];
             if ($categoryId > 0) {
