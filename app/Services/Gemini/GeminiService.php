@@ -11,17 +11,22 @@ class GeminiService
 
     private const DEFAULT_MODEL = 'gemini-3-flash-preview';
 
-    private const MAX_TOKENS = 1000;
+    // 사고(thinking) 토큰이 출력 예산을 함께 소비하므로 넉넉히 잡아 대사가 중간에 잘리는 것을 막는다.
+    private const MAX_TOKENS = 2048;
 
     private string $apiKey;
 
     private string $model;
+
+    private string $thinkingLevel;
 
     public function __construct()
     {
         // config 값이 명시적 null(GEMINI_API_KEY 미설정)일 수 있으므로 문자열로 강제 변환.
         $this->apiKey = (string) config('services.gemini.api_key', '');
         $this->model = (string) config('services.gemini.model') ?: self::DEFAULT_MODEL;
+        // Gemini 3 계열은 thinkingLevel(low/medium/high)로 사고량을 조절한다. 빈 값이면 미지정(모델 기본값).
+        $this->thinkingLevel = trim((string) config('services.gemini.thinking_level', ''));
     }
 
     public function hasApiKey(): bool
@@ -59,6 +64,10 @@ class GeminiService
             'maxOutputTokens' => $maxOutputTokens ?? self::MAX_TOKENS,
             'temperature' => $temperature,
         ];
+        // Gemini 3 계열은 사고 토큰이 출력 예산을 잠식한다 → thinkingLevel을 낮춰(low) 실제 대사 분량을 확보.
+        if ($this->thinkingLevel !== '') {
+            $generationConfig['thinkingConfig'] = ['thinkingLevel' => $this->thinkingLevel];
+        }
         // 구조화 JSON이 필요한 호출은 응답 MIME을 JSON으로 강제해 코드펜스/이스케이프 깨짐을 방지.
         if ($json) {
             $generationConfig['responseMimeType'] = 'application/json';
@@ -87,6 +96,17 @@ class GeminiService
             return [];
         }
 
-        return $response->json() ?? [];
+        $json = $response->json() ?? [];
+
+        // 출력 예산 초과로 응답이 잘린 경우를 관측 가능하게 남긴다 (대사 중간 끊김 진단용).
+        if (data_get($json, 'candidates.0.finishReason') === 'MAX_TOKENS') {
+            Log::warning('Gemini 응답이 MAX_TOKENS로 잘림', [
+                'model' => $this->model,
+                'maxOutputTokens' => $generationConfig['maxOutputTokens'],
+                'usage' => data_get($json, 'usageMetadata'),
+            ]);
+        }
+
+        return $json;
     }
 }
