@@ -9,8 +9,10 @@ services:
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
-            - '${APP_PORT:-80}:80'
-            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+            # 보안: 호스트의 127.0.0.1(로컬)에만 바인딩해 외부 네트워크 노출을 막는다.
+            # 서버에서는 리버스 프록시가 localhost 로 접근하므로 외부 직접 접속만 차단된다.
+            - '127.0.0.1:${APP_PORT:-80}:80'
+            - '127.0.0.1:${VITE_PORT:-5173}:${VITE_PORT:-5173}'
         environment:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1
