@@ -688,6 +688,31 @@
     background: rgba(129, 140, 248, 0.2);
 }
 
+/* 품절 오퍼: 행 전체를 흐리게 + '품절' 표기 */
+.shop-row.is-soldout {
+    background: rgba(15, 23, 42, 0.6);
+    opacity: 0.7;
+}
+
+.shop-badge-soldout {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+}
+
+.price-soldout {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.shop-link-disabled {
+    color: var(--text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: transparent;
+    cursor: default;
+    text-align: center;
+}
+
 @media (max-width: 480px) {
     .shop-row {
         grid-template-columns: 1fr auto;

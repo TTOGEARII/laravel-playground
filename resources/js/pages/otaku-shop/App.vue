@@ -262,17 +262,24 @@
                 v-for="offer in (product.offers || [])"
                 :key="offer.ok_offer_id"
                 class="shop-row"
-                :class="{ 'is-lowest': isLowestOffer(product, offer) }"
+                :class="{ 'is-lowest': isLowestOffer(product, offer), 'is-soldout': isSoldout(offer) }"
               >
                 <div class="shop-info">
                   <span class="shop-name">{{ offer.shop?.ok_shop_name || '-' }}</span>
-                  <span v-if="isLowestOffer(product, offer)" class="shop-badge">최저가</span>
+                  <span v-if="isSoldout(offer)" class="shop-badge shop-badge-soldout">품절</span>
+                  <span v-else-if="isLowestOffer(product, offer)" class="shop-badge">최저가</span>
                 </div>
                 <div class="shop-price">
-                  <div class="price-main">{{ formatPrice(offer) }}</div>
-                  <div class="price-sub">{{ priceSub(offer) }}</div>
+                  <template v-if="isSoldout(offer)">
+                    <div class="price-main price-soldout">품절</div>
+                  </template>
+                  <template v-else>
+                    <div class="price-main">{{ formatPrice(offer) }}</div>
+                    <div class="price-sub">{{ priceSub(offer) }}</div>
+                  </template>
                 </div>
                 <a
+                  v-if="!isSoldout(offer)"
                   :href="offer.ok_offer_external_url || '#'"
                   class="shop-link"
                   target="_blank"
@@ -280,6 +287,7 @@
                 >
                   보러가기
                 </a>
+                <span v-else class="shop-link shop-link-disabled">품절</span>
               </div>
             </div>
           </article>
@@ -401,20 +409,31 @@ function onDocClick(e) {
   }
 }
 
-// 빠른 가격 비교 표는 2개 이상 쇼핑몰에 오퍼가 있어 실제로 비교가 되는 상품만 노출.
-const comparableProducts = computed(() => products.value.filter((p) => (p.offers || []).length >= 2));
+// 품절 여부 (백엔드 ok_offer_available_flg=false → 품절). 값이 없으면 판매중으로 간주.
+function isSoldout(offer) {
+  return offer?.ok_offer_available_flg === false;
+}
+
+// 판매중(가격 비교에 쓰는) 오퍼만 추린다.
+function availableOffers(product) {
+  return (product.offers || []).filter((o) => !isSoldout(o));
+}
+
+// 빠른 가격 비교 표는 판매중 오퍼가 2개 이상이라 실제로 가격 비교가 되는 상품만 노출.
+const comparableProducts = computed(() => products.value.filter((p) => availableOffers(p).length >= 2));
 
 function quickSearch(kw) {
   keyword.value = kw;
   fetchProducts(1);
 }
 
+// 비교 배지는 '판매중' 오퍼 수 기준 (품절은 가격 비교 대상이 아님).
 function offerCount(product) {
-  return (product.offers || []).length;
+  return availableOffers(product).length;
 }
 
 function savingStr(product) {
-  const offers = product.offers || [];
+  const offers = availableOffers(product);
   if (offers.length < 2) return '';
   const prices = offers.map((o) => Number(o.ok_offer_price));
   const diff = Math.max(...prices) - Math.min(...prices);
@@ -465,12 +484,13 @@ function upcomingDDay(product) {
 }
 
 function minOfferPrice(product) {
-  const offers = product.offers || [];
+  const offers = availableOffers(product);
   if (!offers.length) return null;
   return Math.min(...offers.map((o) => Number(o.ok_offer_price)));
 }
 
 function isLowestOffer(product, offer) {
+  if (isSoldout(offer)) return false;
   const min = minOfferPrice(product);
   return min !== null && Number(offer.ok_offer_price) === min;
 }
@@ -491,7 +511,7 @@ function compareTitle(p) {
 }
 
 function compareMin(p) {
-  const offers = p.offers || [];
+  const offers = availableOffers(p);
   if (!offers.length) return '-';
   const min = Math.min(...offers.map((o) => Number(o.ok_offer_price)));
   const curr = offers[0]?.ok_offer_currency || 'KRW';
@@ -500,7 +520,7 @@ function compareMin(p) {
 }
 
 function compareAvg(p) {
-  const offers = p.offers || [];
+  const offers = availableOffers(p);
   if (!offers.length) return '-';
   const avg = offers.reduce((s, o) => s + Number(o.ok_offer_price), 0) / offers.length;
   const curr = offers[0]?.ok_offer_currency || 'KRW';
@@ -509,7 +529,7 @@ function compareAvg(p) {
 }
 
 function compareMax(p) {
-  const offers = p.offers || [];
+  const offers = availableOffers(p);
   if (!offers.length) return '-';
   const max = Math.max(...offers.map((o) => Number(o.ok_offer_price)));
   const curr = offers[0]?.ok_offer_currency || 'KRW';
@@ -518,7 +538,7 @@ function compareMax(p) {
 }
 
 function compareDiff(p) {
-  const offers = p.offers || [];
+  const offers = availableOffers(p);
   if (offers.length < 2) return '-';
   const min = Math.min(...offers.map((o) => Number(o.ok_offer_price)));
   const max = Math.max(...offers.map((o) => Number(o.ok_offer_price)));
@@ -528,7 +548,7 @@ function compareDiff(p) {
 }
 
 function compareDiffClass(p) {
-  const offers = p.offers || [];
+  const offers = availableOffers(p);
   if (offers.length < 2) return 'neutral';
   const min = Math.min(...offers.map((o) => Number(o.ok_offer_price)));
   const max = Math.max(...offers.map((o) => Number(o.ok_offer_price)));
