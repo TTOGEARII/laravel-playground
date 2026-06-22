@@ -121,7 +121,7 @@ class ProductService
                 ->whereDate('ok_product_release_date', '>=', now()->toDateString());
         }
 
-        // sort: price_asc|price_desc(판매중 오퍼 최저가 기준)|release_desc(최신 발매순)|release_asc(발매 임박순)
+        // sort: price_asc|price_desc(판매중 오퍼 최저가 기준)|release_desc(최신 발매순)|release_asc(발매 임박순)|created_desc(최근 등록순)
         $sort = $filters['sort'] ?? 'price_asc';
         if ($sort === 'price_asc' || $sort === 'price_desc') {
             // 가격은 offer 테이블에 있으므로 판매중 오퍼의 최저가를 상관 서브쿼리로 끌어와 정렬한다.
@@ -141,6 +141,9 @@ class ProductService
         } elseif ($sort === 'release_asc') {
             $query->orderByRaw('ok_product_release_date IS NULL')
                 ->orderBy('ok_product_release_date')->orderByDesc('ok_product_id');
+        } elseif ($sort === 'created_desc') {
+            // 최근 등록순: 등록일(create_dt) 최신순, 동일하면 id 내림차순.
+            $query->orderByDesc('create_dt')->orderByDesc('ok_product_id');
         } else {
             $query->orderByDesc('ok_product_id');
         }

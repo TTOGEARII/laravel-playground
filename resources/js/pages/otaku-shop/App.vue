@@ -186,6 +186,7 @@
             <select id="sort" v-model="sortBy">
               <option value="price_asc">최저가 순</option>
               <option value="price_desc">가격 높은 순</option>
+              <option value="created_desc">최근 등록순</option>
               <option value="release_desc">발매일 늦은 순</option>
               <option value="release_asc">발매일 빠른 순</option>
             </select>
