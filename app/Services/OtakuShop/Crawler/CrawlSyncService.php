@@ -83,7 +83,7 @@ class CrawlSyncService
      * 이렇게 해야 쇼핑몰 간 가격비교가 같은 기준(샵별 최저가)으로 이뤄진다.
      *
      * @param  array<int, CrawledProductDto>  $crawledProducts
-     * @param  bool  $incremental  현재 오퍼는 (상품,샵) 단위로 항상 upsert 되므로 동작 차이는 없고,
+     * @param  bool  $incremental  현재 오퍼는 (샵, external_id) 단위로 항상 upsert 되므로 동작 차이는 없고,
      *                             증분/전체 호출 호환을 위해 시그니처만 유지한다.
      * @return array{products_created:int, products_matched:int, offers_created:int, offers_updated:int}
      */
@@ -159,7 +159,13 @@ class CrawlSyncService
     }
 
     /**
-     * 정규화 키로 상품을 찾거나 생성. 기존 상품에 이미지가 비어 있으면 채워준다.
+     * 상품 동일성을 정해 상품을 찾거나 생성. 기존 상품엔 비어 있는 분류값을 채워준다.
+     *
+     * 우선순위:
+     *  1) 기존 listing 앵커 — bundle 안의 (샵, external_id)로 이미 오퍼가 있으면 그 상품을 재사용한다.
+     *     매칭 사전(정규화)이 바뀌어 키가 달라져도 같은 listing은 같은 상품으로 유지된다.
+     *     (키를 식별자로 쓰면 사전 변경 시 동일 상품이 대량 재생성되고, 옛 오퍼가 '사라짐=품절'로 오인된다.)
+     *  2) 정규화 키 매칭 — 쇼핑몰 간 동일상품 묶기(신규 listing용).
      *
      * @param  array{key: string, makerCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
      * @param  array<string, int>  $categoryByCode
@@ -172,7 +178,9 @@ class CrawlSyncService
         $releaseDate = $dto->releaseDate ?? $this->normalizer->extractReleaseDate($dto->title);
         $ipCode = $this->normalizer->extractIpCode($dto->title);
         $ipId = $ipCode !== null ? ($ipIdByCode[$ipCode] ?? null) : null;
-        $product = OtakuProduct::where('ok_product_code', $bundle['key'])->first();
+
+        $product = $this->resolveProductByExistingOffers($bundle['offers'])
+            ?? OtakuProduct::where('ok_product_code', $bundle['key'])->first();
 
         if ($product === null) {
             $categoryId = $dto->categoryCode ? ($categoryByCode[$dto->categoryCode] ?? null) : null;
@@ -193,7 +201,10 @@ class CrawlSyncService
             ]);
         }
 
-        // 기존 상품: 비어 있는 분류값을 채워준다(재크롤로 점진 보강).
+        // 기존 상품: 키가 바뀌었으면 최신 정규화 키로 갱신하고, 비어 있는 분류값을 채운다(재크롤 점진 보강).
+        if ($product->ok_product_code !== $bundle['key']) {
+            $product->ok_product_code = $bundle['key'];
+        }
         if (! $product->ok_product_image_url && $dto->imageUrl) {
             $product->ok_product_image_url = $dto->imageUrl;
         }
@@ -218,7 +229,35 @@ class CrawlSyncService
     }
 
     /**
-     * (상품, 샵) 단위로 오퍼를 upsert. 같은 조합이 이미 있으면 가격/URL 등을 갱신한다.
+     * bundle의 (샵, external_id) 조합으로 이미 존재하는 오퍼가 있으면 그 오퍼가 가리키는 상품을 돌려준다.
+     * 같은 실물 listing을 회차/매칭사전 변경과 무관하게 같은 상품으로 유지하기 위한 앵커.
+     *
+     * @param  array<int, CrawledProductDto>  $offers  shopId => dto
+     */
+    private function resolveProductByExistingOffers(array $offers): ?OtakuProduct
+    {
+        foreach ($offers as $shopId => $dto) {
+            if ($dto->externalId === null || $dto->externalId === '') {
+                continue;
+            }
+            $offer = OtakuOffer::where('ok_offer_shop_id', (int) $shopId)
+                ->where('ok_offer_external_id', $dto->externalId)
+                ->first();
+            if ($offer !== null) {
+                $product = OtakuProduct::find($offer->ok_offer_product_id);
+                if ($product !== null) {
+                    return $product;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 오퍼를 upsert. 동일성은 (샵, external_id=샵 내부 상품ID) 기준이다.
+     * external_id는 매칭 사전 변경과 무관하게 회차 간 불변이라, 같은 listing이 새 오퍼로 중복
+     * 생성되거나 '사라짐=품절'로 오인되지 않는다. 매칭으로 상품 키가 바뀌면 product_id를 재지정한다.
      */
     private function upsertOffer(OtakuProduct $product, int $shopId, CrawledProductDto $dto, Carbon $now, array &$stats): void
     {
@@ -233,8 +272,8 @@ class CrawlSyncService
             'ok_offer_collected_dt' => $now,
         ];
 
-        $offer = OtakuOffer::where('ok_offer_product_id', $product->ok_product_id)
-            ->where('ok_offer_shop_id', $shopId)
+        $offer = OtakuOffer::where('ok_offer_shop_id', $shopId)
+            ->where('ok_offer_external_id', $dto->externalId)
             ->first();
 
         if ($offer !== null) {
@@ -252,6 +291,8 @@ class CrawlSyncService
      * 일부 쇼핑몰(예: 애니메이트/godo)은 품절 상품을 리스트에서 숨겨, 품절을 마크업으로
      * 읽는 대신 "사라짐"으로 판단해야 한다. 이번 크롤에서 본 오퍼는 collected_dt 가 갱신되므로
      * (run 시작 시각 이후), 그보다 오래된 오퍼 = 이번에 못 본 오퍼 = 품절로 간주한다.
+     * 오퍼 동일성이 (샵, external_id)로 안정적이라, 키가 바뀌어도 같은 listing은 collected_dt가
+     * 갱신되어 오인 품절되지 않는다.
      *
      * 주의: 카테고리 전체를 도는 전량 크롤(crawl-full)에서만 안전하다. 일부 카테고리만 도는
      * 일반/증분 크롤에서는 "안 봤다 ≠ 사라졌다"이므로 호출하지 않는다. 또 크롤이 1건도 못 한
