@@ -254,4 +254,32 @@ class ProductApiTest extends TestCase
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
     }
+
+    public function test_in_stock_only_excludes_fully_soldout_products(): void
+    {
+        $data = $this->seedCatalog();
+
+        // 모든 오퍼가 품절인 상품(재고 없음) 추가.
+        $soldout = OtakuProduct::create([
+            'ok_product_code' => 'pr_soldout',
+            'ok_product_title' => '전량 품절 피규어',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $soldout->ok_product_id,
+            'ok_offer_shop_id' => $data['shopA']->ok_shop_id,
+            'ok_offer_external_id' => 'soldout-shopA',
+            'ok_offer_currency' => 'KRW', 'ok_offer_price' => 9000, 'ok_offer_available_flg' => false,
+        ]);
+
+        // 전체는 2건, 재고 있는 상품만은 1건(pr_aaa).
+        $this->getJson('/api/otaku-shop/products')
+            ->assertOk()->assertJsonPath('meta.total', 2);
+
+        $this->getJson('/api/otaku-shop/products?in_stock_only=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
+    }
 }
