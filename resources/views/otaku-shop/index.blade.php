@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Otaku Shop - 가격비교 쇼핑몰')
+@section('title', 'Otaku Shop - 오타쿠 굿즈 통합검색')
 
 @section('vite_extra')
     @vite(['resources/js/pages/otaku-shop.js'])
@@ -16,8 +16,8 @@
         </a>
     </div>
     <span class="header-badge">🛒 Otaku Shop</span>
-    <h1>오타쿠 굿즈 가격비교</h1>
-    <p>여러 쇼핑몰의 가격과 혜택을 한눈에 비교해 보세요.</p>
+    <h1>오타쿠 굿즈 통합검색</h1>
+    <p>여러 쇼핑몰을 한 번에 검색하고 가격을 비교해 보세요.</p>
 @endsection
 
 @section('content')
