@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\MyWifeBot\Api\ChatController as MyWifeBotChatController;
 use App\Http\Controllers\OtakuShop\Api\ProductController as OtakuShopProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,12 +19,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('my-wife-bot')->controller(MyWifeBotChatController::class)->group(function () {
-    Route::post('chat/init', 'init');
-    Route::post('chat/send', 'send');
-    Route::post('chat/suggest', 'suggest');
-    Route::post('chat/narrate', 'narrate');
-});
+// MyWifeBot 채팅 API는 세션 인증이 필요해 routes/web.php(web 그룹)로 이전됨.
 
 Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->group(function () {
     Route::get('products', 'index');
