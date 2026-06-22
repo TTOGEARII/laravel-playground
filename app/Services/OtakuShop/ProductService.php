@@ -48,8 +48,12 @@ class ProductService
         $query = OtakuProduct::query()->with([
             'category',
             'ip',
+            // 품절 오퍼도 화면에 '품절'로 노출하기 위해 함께 로드한다.
+            // (판매중 → 품절 순, 그 안에서 가격 오름차순)
             'offers' => function ($q) {
-                $q->where('ok_offer_available_flg', true)->with('shop')->orderBy('ok_offer_price');
+                $q->with('shop')
+                    ->orderByDesc('ok_offer_available_flg')
+                    ->orderBy('ok_offer_price');
             },
         ]);
 
@@ -79,11 +83,17 @@ class ProductService
             $query->where('ok_product_active_flg', true);
         }
 
-        // 가격비교 가능(2개 이상 쇼핑몰에 판매 중 오퍼가 있는) 상품만.
+        // 가격비교 가능(2개 이상 쇼핑몰에 오퍼가 있는) 상품만.
+        // 한쪽이 품절이어도 '가격 vs 품절'로 비교 노출되므로 오퍼 수 기준으로 센다.
         if (! empty($filters['compared_only'])) {
+            $query->has('offers', '>=', 2);
+        }
+
+        // 재고 있는 상품만 (어느 한 샵이라도 판매중 오퍼가 있는 상품).
+        if (! empty($filters['in_stock_only'])) {
             $query->whereHas('offers', function ($q) {
                 $q->where('ok_offer_available_flg', true);
-            }, '>=', 2);
+            });
         }
 
         if (isset($filters['category_id']) && $filters['category_id'] !== '' && $filters['category_id'] !== null) {
@@ -111,7 +121,7 @@ class ProductService
                 ->whereDate('ok_product_release_date', '>=', now()->toDateString());
         }
 
-        // sort: price_asc|price_desc(판매중 오퍼 최저가 기준)|release_desc(최신 발매순)|release_asc(발매 임박순)
+        // sort: price_asc|price_desc(판매중 오퍼 최저가 기준)|release_desc(최신 발매순)|release_asc(발매 임박순)|created_desc(최근 등록순)
         $sort = $filters['sort'] ?? 'price_asc';
         if ($sort === 'price_asc' || $sort === 'price_desc') {
             // 가격은 offer 테이블에 있으므로 판매중 오퍼의 최저가를 상관 서브쿼리로 끌어와 정렬한다.
@@ -131,6 +141,9 @@ class ProductService
         } elseif ($sort === 'release_asc') {
             $query->orderByRaw('ok_product_release_date IS NULL')
                 ->orderBy('ok_product_release_date')->orderByDesc('ok_product_id');
+        } elseif ($sort === 'created_desc') {
+            // 최근 등록순: 등록일(create_dt) 최신순, 동일하면 id 내림차순.
+            $query->orderByDesc('create_dt')->orderByDesc('ok_product_id');
         } else {
             $query->orderByDesc('ok_product_id');
         }

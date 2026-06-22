@@ -16,7 +16,8 @@ class ProductController extends Controller
     /**
      * 상품 목록 (페이지네이션, 필터).
      * 쿼리: page, per_page, keyword, category_id(상품종류), ip_id(작품), shop_id[],
-     *       has_release, sort (price_asc|price_desc|release_desc|release_asc)
+     *       has_release, compared_only, in_stock_only(재고 있는 상품만),
+     *       sort (price_asc|price_desc|created_desc|release_desc|release_asc)
      */
     public function index(Request $request): JsonResponse
     {
@@ -30,6 +31,7 @@ class ProductController extends Controller
             'upcoming' => $request->boolean('upcoming'),
             'sort' => $request->input('sort', 'price_asc'),
             'compared_only' => $request->boolean('compared_only'),
+            'in_stock_only' => $request->boolean('in_stock_only'),
         ];
         $shopIds = $request->input('shop_id', []);
         if (is_array($shopIds) && $shopIds !== []) {
