@@ -648,9 +648,18 @@
 
 .shop-name {
     font-weight: 500;
+    /* 샵 이름이 길면 말줄임 처리해 옆의 '최저가' 배지를 밀어내지 않게 한다. */
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .shop-badge {
+    /* 배지는 절대 줄어들거나 줄바꿈되지 않도록 고정 ('최저가' 문구 깨짐 방지). */
+    flex-shrink: 0;
+    white-space: nowrap;
     padding: 2px 6px;
     border-radius: 999px;
     font-size: 0.7rem;
