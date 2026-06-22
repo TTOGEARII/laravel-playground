@@ -48,8 +48,12 @@ class ProductService
         $query = OtakuProduct::query()->with([
             'category',
             'ip',
+            // 품절 오퍼도 화면에 '품절'로 노출하기 위해 함께 로드한다.
+            // (판매중 → 품절 순, 그 안에서 가격 오름차순)
             'offers' => function ($q) {
-                $q->where('ok_offer_available_flg', true)->with('shop')->orderBy('ok_offer_price');
+                $q->with('shop')
+                    ->orderByDesc('ok_offer_available_flg')
+                    ->orderBy('ok_offer_price');
             },
         ]);
 
@@ -79,11 +83,10 @@ class ProductService
             $query->where('ok_product_active_flg', true);
         }
 
-        // 가격비교 가능(2개 이상 쇼핑몰에 판매 중 오퍼가 있는) 상품만.
+        // 가격비교 가능(2개 이상 쇼핑몰에 오퍼가 있는) 상품만.
+        // 한쪽이 품절이어도 '가격 vs 품절'로 비교 노출되므로 오퍼 수 기준으로 센다.
         if (! empty($filters['compared_only'])) {
-            $query->whereHas('offers', function ($q) {
-                $q->where('ok_offer_available_flg', true);
-            }, '>=', 2);
+            $query->has('offers', '>=', 2);
         }
 
         if (isset($filters['category_id']) && $filters['category_id'] !== '' && $filters['category_id'] !== null) {
