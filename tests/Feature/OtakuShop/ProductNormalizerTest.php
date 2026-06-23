@@ -109,6 +109,23 @@ class ProductNormalizerTest extends TestCase
         // 발매 표기가 없으면 null.
         $this->assertNull($n->extractReleaseDate('[입고 완료] 명일방주 인형'));
         $this->assertNull($n->extractReleaseDate('블루 아카이브 아로나 피규어'));
+        // 입고예정·범위 표기도 첫 달로(피규어프레소 제목 포맷).
+        $this->assertSame('2027-01-01', $n->extractReleaseDate('[예약상품/27년 01월~02월 입고예정][반다이남코] 다마고치'));
+        // 키워드 없는 단순 연·월은 과추출 방지로 null.
+        $this->assertNull($n->extractReleaseDate('2024년 한정 굿즈'));
+    }
+
+    public function test_parse_release_from_text_without_keyword(): void
+    {
+        $n = $this->normalizer();
+
+        // 발매일 전용 필드값(예: cafe24 "발매 : 26년 11월")은 키워드 없이도 파싱.
+        $this->assertSame('2026-11-01', $n->parseReleaseFromText('26년 11월', false));
+        $this->assertSame('2027-03-01', $n->parseReleaseFromText('2027년 3월', false));
+        $this->assertNull($n->parseReleaseFromText('미정', false));
+        // 숫자 표기(굿스마일 "발매시기 2026/11" → "2026/11")도 파싱.
+        $this->assertSame('2026-11-01', $n->parseReleaseFromText('2026/11', false));
+        $this->assertSame('2026-11-01', $n->parseReleaseFromText('발매시기 2026-11', false));
     }
 
     public function test_extract_ip_code_from_title(): void

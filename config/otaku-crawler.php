@@ -27,6 +27,16 @@ return [
             'ok_shop_name' => '굿스마일코리아',
             'ok_shop_url' => 'https://brand.naver.com/goodsmilekr',
         ],
+        [
+            'ok_shop_code' => 'comicsart',
+            'ok_shop_name' => '코믹스아트',
+            'ok_shop_url' => 'https://comics-art.co.kr',
+        ],
+        [
+            'ok_shop_code' => 'figurepresso',
+            'ok_shop_name' => '피규어프레소',
+            'ok_shop_url' => 'https://figurepresso.com',
+        ],
     ],
 
     /*
@@ -85,7 +95,27 @@ return [
             ['path' => 'category/32670fa45d6a420a829dc19e8f1a30ae', 'category' => 'plush', 'pages' => 1],  // 인형
             ['path' => 'category/294cc84fabf0471db16bcbae5ba43827', 'category' => 'goods', 'pages' => 1],  // 그외상품
         ],
+        // 코믹스아트 (cafe24 표준 스킨). 신작·입고 카테고리 위주, 전량크롤은 cafe24 카테고리 자동발견.
+        'comicsart' => [
+            ['path' => '/product/list.html?cate_no=3132', 'category' => 'figure', 'pages' => 2], // 신작/당일입고
+            ['path' => '/product/list.html?cate_no=1215', 'category' => 'figure', 'pages' => 2], // 신작상품
+            ['path' => '/product/list.html?cate_no=49', 'category' => 'figure', 'pages' => 2],   // 입고완료/당일발송
+        ],
+        // 피규어프레소 (cafe24 SEO URL 스킨). 입고상품 + 제조사별(listmaker) 리스트.
+        // 전량크롤은 FigurePressoCrawler 가 list/listmaker/preorder/listgoods 를 자동 발견한다.
+        'figurepresso' => [
+            ['path' => '/product/list.html?cate_no=25', 'category' => 'figure', 'pages' => 3],       // 입고상품
+            ['path' => '/product/listmaker.html?cate_no=1671', 'category' => 'figure', 'pages' => 2], // 제조사별(신상)
+        ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | 수집 제외 키워드 (제목에 포함되면 그 상품은 적재하지 않음)
+    |--------------------------------------------------------------------------
+    | 예: '잔금결제'(예약 잔금 결제 전용 listing — 실제 판매 상품이 아니라 비교 대상이 아님).
+    */
+    'exclude_title_keywords' => ['잔금결제'],
 
     /*
     |--------------------------------------------------------------------------
@@ -259,6 +289,10 @@ return [
         // 바코드(JAN/자체상품코드=고유값)·제조사·품절을 보강한다. 상품마다 요청이 1건씩 더 늘어
         // 크롤 시간이 크게 증가하므로 기본은 끔. 필요 시 .env 에서 켠다.
         'fetch_detail' => (bool) env('OTAKU_CRAWL_FETCH_DETAIL', false),
+        // 전역 flag 없이도 상세 보강을 켤 샵 목록. 애니메이트는 리스트에 고유값이 없고
+        // 상세의 '자체상품코드'(바코드)만이 동일상품 매칭에 쓸 신뢰값이라 여기에 둔다.
+        // (cafe24는 상세에 추가 정보가 없고, 굿스마일은 리스트 JSON API로 이미 다 받으므로 불필요.)
+        'fetch_detail_shops' => ['animate'],
         'detail' => [
             'delay_ms' => (int) env('OTAKU_CRAWL_DETAIL_DELAY_MS', 1200),
             // 샵당 상세를 더 볼 최대 상품 수(0=제한 없음). 부분 보강·테스트용 안전장치.

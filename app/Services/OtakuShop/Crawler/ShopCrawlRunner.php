@@ -4,7 +4,9 @@ namespace App\Services\OtakuShop\Crawler;
 
 use App\Services\OtakuShop\Crawler\ShopCrawlers\AbstractShopCrawler;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\AnimateCrawler;
+use App\Services\OtakuShop\Crawler\ShopCrawlers\ComicsArtCrawler;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\DokidokigoodsCrawler;
+use App\Services\OtakuShop\Crawler\ShopCrawlers\FigurePressoCrawler;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\GoodsmileCrawler;
 use App\Services\OtakuShop\Crawler\ShopCrawlers\TtabbaemallCrawler;
 
@@ -86,6 +88,8 @@ class ShopCrawlRunner
             '애니메이트' => AnimateCrawler::class,
             '따빼몰' => TtabbaemallCrawler::class,
             '굿스마일코리아' => GoodsmileCrawler::class,
+            '코믹스아트' => ComicsArtCrawler::class,
+            '피규어프레소' => FigurePressoCrawler::class,
         ];
     }
 }

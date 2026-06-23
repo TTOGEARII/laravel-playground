@@ -52,7 +52,21 @@ abstract class Cafe24ShopCrawler extends AbstractShopCrawler
                 // (ico_product_soldout.gif, alt="품절")이 렌더된다. 실측 확인된 신호.
                 const soldout = !!li.querySelector('img[src*="soldout" i], img[alt*="품절"]');
 
-                out.push({ id: idMatch[1], title, price, url: href, img, soldout });
+                // 상품정보 행(제조사/발매 등)을 라벨:값으로 파싱(실측: 코믹스아트 카드에 제조사·발매 노출).
+                const specs = {};
+                li.querySelectorAll('.spec li, ul.spec li, .xans-record- li, .description li').forEach((r) => {
+                    const t = (r.textContent || '').replace(/\s+/g, ' ').trim();
+                    const ci = t.indexOf(':');
+                    if (ci > 0 && t.length < 70) {
+                        const k = t.slice(0, ci).trim();
+                        const v = t.slice(ci + 1).trim();
+                        if (k && v && !specs[k]) specs[k] = v;
+                    }
+                });
+                const maker = specs['제조사'] || specs['브랜드'] || '';
+                const release = specs['발매'] || specs['발매일'] || specs['출시'] || specs['출시일'] || '';
+
+                out.push({ id: idMatch[1], title, price, url: href, img, soldout, maker, release });
             });
             return JSON.stringify(out);
             JS;
