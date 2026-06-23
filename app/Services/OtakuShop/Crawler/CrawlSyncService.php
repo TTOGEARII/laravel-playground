@@ -402,6 +402,9 @@ class CrawlSyncService
             'ok_offer_external_id' => $dto->externalId,
             'ok_offer_currency' => $dto->currency,
             'ok_offer_price' => $dto->price,
+            // 현지가: KRW 샵이라 판매가와 동일. 배송비는 리스트에 없으면 null(상세 보강 시 채워짐).
+            'ok_offer_local_price' => $dto->price,
+            'ok_offer_shipping_fee' => $dto->shippingFee,
             'ok_offer_available_flg' => $dto->available,
             'ok_offer_external_url' => $dto->productUrl,
             'ok_offer_collected_dt' => $now,

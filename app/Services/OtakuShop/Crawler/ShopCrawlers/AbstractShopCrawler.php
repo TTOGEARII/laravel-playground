@@ -5,6 +5,7 @@ namespace App\Services\OtakuShop\Crawler\ShopCrawlers;
 use App\Services\OtakuShop\Crawler\Contracts\ShopCrawlerInterface;
 use App\Services\OtakuShop\Crawler\CrawlerDriver;
 use App\Services\OtakuShop\Crawler\DTO\CrawledProductDto;
+use App\Services\OtakuShop\Crawler\ProductNormalizer;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Illuminate\Support\Facades\Log;
 
@@ -112,7 +113,9 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
         }
 
         // 옵트인: 상세 페이지를 한 번 더 열어 바코드(고유값)·제조사·품절을 보강한다.
-        if (config('otaku-crawler.crawl.fetch_detail', false)) {
+        // 전역 flag 또는 샵별 화이트리스트(fetch_detail_shops) 중 하나라도 켜지면 수행.
+        $detailShops = config('otaku-crawler.crawl.fetch_detail_shops', []);
+        if (config('otaku-crawler.crawl.fetch_detail', false) || in_array($this->getShopCode(), $detailShops, true)) {
             $this->enrichWithDetails($all);
         }
 
@@ -350,28 +353,63 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
             return null;
         }
 
+        // 제외 키워드(예: '잔금결제')가 제목에 있으면 수집하지 않는다(예약 잔금 결제 전용 상품 등).
+        if ($this->isExcludedTitle($title)) {
+            return null;
+        }
+
         // 품절 신호(soldout)는 리스트 카드에서 읽어온다. 없으면 판매중으로 본다.
         $available = ! (bool) ($row['soldout'] ?? false);
         // 마크업이 노출하는 상품 고유값(자체 품번/모델명 등). 보통은 비어 있고,
         // 그 경우 CrawlSyncService 가 제목에서 JAN/품번을 추출해 보강한다.
         $makerCode = trim((string) ($row['makercode'] ?? ''));
+        // 리스트 spec에서 읽은 제조사·발매(있으면). 발매 필드는 전용값이라 키워드 없이 파싱.
+        $maker = trim((string) ($row['maker'] ?? ''));
+        $releaseRaw = trim((string) ($row['release'] ?? ''));
+        $releaseDate = $releaseRaw !== ''
+            ? $this->normalizer()->parseReleaseFromText($releaseRaw, requireKeyword: false)
+            : null;
+        // 배송비: 리스트 카드가 노출하면(예: 굿스마일 네이버) 채운다. 없으면 null.
+        $shippingRaw = trim((string) ($row['shipping'] ?? ''));
+        $shippingFee = ($shippingRaw !== '' && is_numeric($shippingRaw)) ? (float) $shippingRaw : null;
 
         return new CrawledProductDto(
             shopCode: $this->getShopCode(),
             externalId: $externalId,
             title: $title,
             subtitle: null,
-            brandLabel: null,
+            brandLabel: null,  // cafe24 '브랜드'와 매칭키가 얽혀 비워둔다(제조사는 maker로 저장).
             price: $price,
             currency: 'KRW',
             productUrl: $this->resolveUrl((string) ($row['url'] ?? '')),
             categoryCode: $this->refineCategory($title, $fallbackCategory),
-            releaseDate: null,
-            shippingFee: null,
+            releaseDate: $releaseDate,
+            shippingFee: $shippingFee,
             imageUrl: $this->resolveImage((string) ($row['img'] ?? '')),
             available: $available,
             makerCode: $makerCode !== '' ? $makerCode : null,
+            maker: $maker !== '' ? mb_substr($maker, 0, 120) : null,
         );
+    }
+
+    /** 제목에 config(exclude_title_keywords) 키워드가 포함되면 수집 제외. */
+    protected function isExcludedTitle(string $title): bool
+    {
+        foreach (config('otaku-crawler.exclude_title_keywords', []) as $keyword) {
+            if ($keyword !== '' && mb_strpos($title, (string) $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private ?ProductNormalizer $normalizerInstance = null;
+
+    /** 발매일 파싱 등에 쓰는 정규화 서비스(지연 resolve). */
+    private function normalizer(): ProductNormalizer
+    {
+        return $this->normalizerInstance ??= app(ProductNormalizer::class);
     }
 
     /**

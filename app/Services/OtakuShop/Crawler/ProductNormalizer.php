@@ -93,19 +93,44 @@ class ProductNormalizer
     }
 
     /**
-     * 제목의 "[NN년 NN월 발매]"(또는 4자리 연도)에서 발매(예정)일을 뽑아 Y-m-d(일=01)로 반환. 없으면 null.
+     * 제목에서 발매(예정)일을 뽑아 Y-m-d(일=01)로 반환. 없으면 null.
+     * 발매/입고/출시/예정 키워드가 함께 있을 때만 인정해 과추출을 막는다.
      */
     public function extractReleaseDate(string $title): ?string
     {
-        if (! preg_match('/(\d{2,4})\s*년\s*(\d{1,2})\s*월\s*발매/u', $title, $m)) {
+        return $this->parseReleaseFromText($title, requireKeyword: true);
+    }
+
+    /**
+     * 텍스트에서 "NN년 NN월"(범위면 첫 달)을 발매일로 파싱한다.
+     * - requireKeyword=true: 발매/입고/출시/예정 키워드가 있어야 인정(제목용, 과추출 방지).
+     * - requireKeyword=false: 발매일 전용 필드값(예: cafe24 "발매 : 26년 11월")을 그대로 파싱.
+     */
+    public function parseReleaseFromText(string $text, bool $requireKeyword = true): ?string
+    {
+        if ($requireKeyword && ! preg_match('/(발매|입고|출시|예정)/u', $text)) {
             return null;
         }
 
-        $year = (int) $m[1];
+        // 'NN년 NN월'(한국어 표기, 범위면 첫 달)
+        if (preg_match('/(\d{2,4})\s*년\s*(\d{1,2})\s*월/u', $text, $m)) {
+            return $this->buildReleaseDate((int) $m[1], (int) $m[2]);
+        }
+
+        // 'YYYY/MM' · 'YYYY-MM' · 'YYYY.MM'(숫자 표기, 예: 굿스마일 "발매시기 2026/11")
+        if (preg_match('#(20\d{2})\s*[/.\-]\s*(\d{1,2})#', $text, $m)) {
+            return $this->buildReleaseDate((int) $m[1], (int) $m[2]);
+        }
+
+        return null;
+    }
+
+    /** 연/월(2자리 연도는 2000년대로 보정)로 발매일 Y-m-01 문자열을 만든다. 월 범위 밖이면 null. */
+    private function buildReleaseDate(int $year, int $month): ?string
+    {
         if ($year < 100) {
             $year += 2000;  // 2자리 연도(26년 → 2026)
         }
-        $month = (int) $m[2];
         if ($month < 1 || $month > 12) {
             return null;
         }
