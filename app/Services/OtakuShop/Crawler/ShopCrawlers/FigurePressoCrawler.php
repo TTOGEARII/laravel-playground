@@ -89,4 +89,81 @@ class FigurePressoCrawler extends Cafe24ShopCrawler
             return JSON.stringify(out);
             JS;
     }
+
+    /**
+     * 전량 크롤 카테고리 발견(HTTP): list 외에 listmaker/preorder/listgoods 변형도 수집한다.
+     *
+     * @return array<int, string>
+     */
+    protected function parseCategoryPaths(string $html): array
+    {
+        $xp = $this->loadXPath($html);
+        if ($xp === null) {
+            return [];
+        }
+
+        $set = [];
+        foreach ($xp->query("//a[contains(@href, 'cate_no=')]") as $a) {
+            if (! $a instanceof \DOMElement) {
+                continue;
+            }
+            if (preg_match('#/product/(list|listmaker|preorder|listgoods)\.html\?cate_no=(\d+)#', $a->getAttribute('href'), $m)) {
+                $set['/product/'.$m[1].'.html?cate_no='.$m[2]] = true;
+            }
+        }
+
+        return array_keys($set);
+    }
+
+    /**
+     * 피규어프레소 리스트 HTML → 상품 행 배열(SEO URL 스킨: id 는 li 의 anchorBoxId 에서,
+     * 상세 URL 은 canonical(detail.html?product_no=)로 통일). 그 외는 Cafe24 공통 헬퍼 재사용.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function parseListRows(string $html): array
+    {
+        $xp = $this->loadXPath($html);
+        if ($xp === null) {
+            return [];
+        }
+
+        $lis = $xp->query(
+            "//ul[contains(concat(' ', normalize-space(@class), ' '), ' prdList ')"
+            ." or contains(concat(' ', normalize-space(@class), ' '), ' grid3 ')]"
+            ."//li[starts-with(@id, 'anchorBoxId_')]"
+        );
+        if ($lis === false) {
+            return [];
+        }
+
+        $rows = [];
+        $seen = [];
+        foreach ($lis as $li) {
+            if (! $li instanceof \DOMElement) {
+                continue;
+            }
+            if (! preg_match('/anchorBoxId_(\d+)/', $li->getAttribute('id'), $m)) {
+                continue;
+            }
+            $id = $m[1];
+            if (isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+
+            $rows[] = [
+                'id' => $id,
+                'title' => $this->extractTitle($xp, $li),
+                'price' => $this->extractPrice($li),
+                'url' => '/product/detail.html?product_no='.$id,
+                'img' => $this->extractImage($xp, $li),
+                'soldout' => $this->extractSoldout($xp, $li),
+                'maker' => $this->extractSpec($xp, $li, ['제조사', '브랜드']),
+                'release' => $this->extractSpec($xp, $li, ['발매', '발매일', '출시', '출시일']),
+            ];
+        }
+
+        return $rows;
+    }
 }

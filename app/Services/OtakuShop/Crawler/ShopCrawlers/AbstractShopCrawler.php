@@ -7,6 +7,7 @@ use App\Services\OtakuShop\Crawler\CrawlerDriver;
 use App\Services\OtakuShop\Crawler\DTO\CrawledProductDto;
 use App\Services\OtakuShop\Crawler\ProductNormalizer;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -286,6 +287,30 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
      */
     protected function discoverListingTargets(): array
     {
+        $paths = $this->discoverCategoryPaths();
+        if ($paths === []) {
+            return [];
+        }
+
+        $maxPages = max(1, (int) config('otaku-crawler.crawl.full.max_pages', 100));
+        $targets = [];
+        foreach (array_unique($paths) as $path) {
+            if (is_string($path) && $path !== '') {
+                $targets[] = ['path' => $path, 'category' => null, 'pages' => $maxPages];
+            }
+        }
+
+        return $targets;
+    }
+
+    /**
+     * 전량 크롤 카테고리 경로 발견. 기본은 Selenium(categoryDiscoveryScript)으로 메뉴를 읽는다.
+     * HTTP 모드 샵(Cafe24)은 이 메서드를 오버라이드해 HTTP+DOM 파싱으로 대체한다.
+     *
+     * @return array<int, string>
+     */
+    protected function discoverCategoryPaths(): array
+    {
         $script = $this->categoryDiscoveryScript();
         if ($script === null) {
             return [];
@@ -306,19 +331,8 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
         }
 
         $paths = is_string($raw) ? json_decode($raw, true) : $raw;
-        if (! is_array($paths)) {
-            return [];
-        }
 
-        $maxPages = max(1, (int) config('otaku-crawler.crawl.full.max_pages', 100));
-        $targets = [];
-        foreach (array_unique($paths) as $path) {
-            if (is_string($path) && $path !== '') {
-                $targets[] = ['path' => $path, 'category' => null, 'pages' => $maxPages];
-            }
-        }
-
-        return $targets;
+        return is_array($paths) ? array_values(array_filter($paths, 'is_string')) : [];
     }
 
     /**
@@ -330,12 +344,65 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
     }
 
     /**
+     * HTTP 직접 패치 모드 여부. true 면 리스트/카테고리 수집을 Selenium 대신 HTTP+DOM 파싱으로 한다.
+     * 서버렌더링(cafe24 등) 샵은 Chrome 없이 더 빠르고 메모리 부담 없이 수집할 수 있다.
+     */
+    protected function usesHttpFetch(): bool
+    {
+        return false;
+    }
+
+    /**
+     * 공통 HTTP GET (브라우저 헤더 + 재시도). 실패 시 null.
+     */
+    protected function httpGet(string $url): ?string
+    {
+        try {
+            $res = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language' => 'ko-KR,ko;q=0.9',
+            ])->timeout(20)->retry(2, 500)->get($url);
+        } catch (\Throwable $e) {
+            Log::warning('OtakuShop Crawler: http fetch failed', ['url' => $url, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if (! $res->successful()) {
+            Log::warning('OtakuShop Crawler: http fetch non-2xx', ['url' => $url, 'status' => $res->status()]);
+
+            return null;
+        }
+
+        return $res->body();
+    }
+
+    /**
+     * HTTP 모드 샵이 리스트 HTML 을 상품 행 배열로 파싱한다(listScript 의 PHP 대응).
+     * 반환 행 형식: ['id','title','price','url','img','soldout','maker','release'].
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function parseListRows(string $html): array
+    {
+        return [];
+    }
+
+    /**
      * 한 리스트 페이지를 열고 listScript() 로 상품 배열을 받아온다.
      *
      * @return array<int, array<string, mixed>>
      */
     private function fetchPage(string $url): array
     {
+        // 서버렌더링 샵(cafe24 등)은 Selenium 없이 HTTP 로 HTML 을 받아 파싱한다(훨씬 빠르고 Chrome 부담 없음).
+        if ($this->usesHttpFetch()) {
+            $html = $this->httpGet($url);
+
+            return $html === null ? [] : $this->parseListRows($html);
+        }
+
         $driver = $this->driverForNextPage();
 
         try {
