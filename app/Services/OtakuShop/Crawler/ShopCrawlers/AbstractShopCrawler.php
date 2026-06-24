@@ -106,6 +106,7 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
                 }
 
                 $newInCategory = 0;
+                $newGlobal = 0;
                 foreach ($rows as $row) {
                     // 끝 페이지 판정은 DTO 필터(제외 키워드/가격 누락 등) 전의 원본 상품번호로 한다.
                     // 제외 상품만 있는 페이지에서 0으로 잡혀 다음 페이지를 건너뛰는 것을 막기 위함.
@@ -126,7 +127,15 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
                     if (! isset($seen[$key])) {
                         $seen[$key] = true;
                         $all[] = $dto;
+                        $newGlobal++;
                     }
+                }
+
+                // 중복 카테고리 스킵: 첫 페이지가 전부 '이미 다른 카테고리에서 수집한 상품'이면
+                // (동일 상품을 다른 정렬/경로로 보여주는 중복 뷰 카테고리) 이 카테고리 전체를 건너뛴다.
+                // 신상위주 수집에서 같은 카탈로그를 여러 번 도는 낭비를 막는다.
+                if ($page === 1 && $newGlobal === 0) {
+                    break;
                 }
 
                 // 이 페이지가 이 카테고리에 새 상품번호를 하나도 더하지 않았다면(=끝 페이지를
