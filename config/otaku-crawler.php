@@ -302,9 +302,14 @@ return [
             'max_products' => (int) env('OTAKU_CRAWL_DETAIL_MAX', 0),
         ],
         'full' => [
-            'delay_ms_between_requests' => (int) env('OTAKU_FULL_DELAY_MS', 3000),
+            // cafe24 샵은 HTTP 수집(Chrome 미사용)이라 사이트 부담이 작아 1초로 단축한다.
+            // (Selenium 샵인 animate 도 이 값을 쓰지만 페이지 로딩 자체가 더 걸려 실효 간격은 큼)
+            'delay_ms_between_requests' => (int) env('OTAKU_FULL_DELAY_MS', 1000),
             'delay_ms_between_shops' => (int) env('OTAKU_FULL_DELAY_BETWEEN_SHOPS_MS', 8000),
-            'max_pages' => (int) env('OTAKU_FULL_MAX_PAGES', 100),
+            // 전량 수집: 안전 상한만 크게 둔다(카테고리 실제 끝은 "새 상품 0개" 감지가 잡아 멈춤).
+            // 실측 최대 끝페이지 665(도키도키 cate 28) 기준 여유를 둔 값. 중복 카테고리는 첫 페이지가
+            // 전부 기수집이면 자동 스킵(AbstractShopCrawler 참고)되어 동일본 재크롤 낭비를 막는다.
+            'max_pages' => (int) env('OTAKU_FULL_MAX_PAGES', 1000),
         ],
         // 전량 크롤의 '사라짐=품절' 대상에서 제외할 샵. 카테고리 전체를 돌지 않고(부분 수집)
         // 품절을 리스트 배지로 직접 읽는 샵은, 안 보였다고 품절 처리하면 오탐이 난다.
