@@ -87,4 +87,33 @@ class OtakuShopRematchTest extends TestCase
 
         $this->assertSame(2, OtakuProduct::count());
     }
+
+    public function test_cleanup_excluded_deletes_split_payment_products(): void
+    {
+        config(['otaku-crawler.exclude_title_keywords' => ['잔금결제', '예약금결제']]);
+
+        $keep = $this->product('p1', '후지타 코토네 Re;IRIS 비 갠 뒤의 아이리스 Ver. 1/7', null, $this->shopA, 'A1', 250000);
+        $this->product('p2', '후지타 코토네 Re;IRIS 비 갠 뒤의 아이리스 Ver. 1/7 (예약금결제)', null, $this->shopB, 'B1', 50000);
+        $this->product('p3', '원신 유라 1/7 피규어 (잔금결제)', null, $this->shopB, 'B2', 180000);
+
+        $this->artisan('otaku-shop:rematch --cleanup-excluded')->assertSuccessful();
+
+        // 예약금/잔금결제 상품과 그 오퍼만 삭제, 정상 상품은 유지.
+        $this->assertSame(1, OtakuProduct::count());
+        $this->assertSame($keep->ok_product_id, OtakuProduct::first()->ok_product_id);
+        $this->assertSame(1, OtakuOffer::count());
+    }
+
+    public function test_cleanup_excluded_dry_run_keeps_products(): void
+    {
+        config(['otaku-crawler.exclude_title_keywords' => ['예약금결제']]);
+
+        $this->product('p1', '후지타 코토네 1/7', null, $this->shopA, 'A1', 250000);
+        $this->product('p2', '후지타 코토네 1/7 (예약금결제)', null, $this->shopB, 'B1', 50000);
+
+        $this->artisan('otaku-shop:rematch --cleanup-excluded --dry-run')->assertSuccessful();
+
+        $this->assertSame(2, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+    }
 }

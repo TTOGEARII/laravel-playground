@@ -4,6 +4,7 @@ namespace App\Console\Commands\OtakuShop;
 
 use App\Models\OtakuShop\OtakuCategory;
 use App\Models\OtakuShop\OtakuIp;
+use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
 use App\Services\OtakuShop\Crawler\CrawlSyncService;
 use App\Services\OtakuShop\Crawler\ProductNormalizer;
@@ -19,8 +20,9 @@ use Illuminate\Console\Command;
 class OtakuShopRematchCommand extends Command
 {
     protected $signature = 'otaku-shop:rematch
-                            {--dry-run : 실제 병합 없이 대상 건수만 출력}
-                            {--force : IP/발매일이 이미 있어도 다시 분류해 덮어쓴다}';
+                            {--dry-run : 실제 병합/삭제 없이 대상 건수만 출력}
+                            {--force : IP/발매일이 이미 있어도 다시 분류해 덮어쓴다}
+                            {--cleanup-excluded : exclude_title_keywords(잔금/예약금결제 등)에 걸리는 기존 상품·오퍼만 삭제하고 종료}';
 
     protected $description = '기존 상품을 재분류·재매칭해 동일상품을 병합(가격비교 소급 적용)';
 
@@ -33,6 +35,11 @@ class OtakuShopRematchCommand extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
         $force = (bool) $this->option('force');
+
+        // 정리 전용 모드: 제외 키워드(분할결제 등) 상품만 삭제하고 종료(무거운 재분류 생략).
+        if ($this->option('cleanup-excluded')) {
+            return $this->cleanupExcluded($sync, $dryRun);
+        }
 
         $this->info('1. 재분류(고유값·시그니처·IP·발매일)...');
         $ipIdByCode = OtakuIp::pluck('ok_ip_id', 'ok_ip_code')->all();
@@ -75,6 +82,63 @@ class OtakuShopRematchCommand extends Command
         $sync->refreshLowestPriceFlags();
 
         $this->info("완료: {$mergeCount}개 중복 상품을 병합했습니다.");
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * config(exclude_title_keywords)에 걸리는 기존 상품과 그 오퍼를 삭제한다.
+     * (분할결제 전용 listing 등은 실제 상품가가 아니라 비교 대상이 아니므로 소급 제거.)
+     * 크롤은 앞으로 이런 제목을 수집하지 않지만, 이미 적재된 것은 이 명령으로 정리한다.
+     */
+    private function cleanupExcluded(CrawlSyncService $sync, bool $dryRun): int
+    {
+        $keywords = array_values(array_filter(
+            (array) config('otaku-crawler.exclude_title_keywords', []),
+            fn ($kw) => is_string($kw) && $kw !== '',
+        ));
+
+        if ($keywords === []) {
+            $this->warn('exclude_title_keywords 가 비어 있어 정리할 대상이 없습니다.');
+
+            return self::SUCCESS;
+        }
+
+        $this->info('제외 키워드 상품 정리: "'.implode('", "', $keywords).'"');
+
+        $matched = OtakuProduct::query()->where(function ($query) use ($keywords) {
+            foreach ($keywords as $keyword) {
+                $query->orWhere('ok_product_title', 'like', '%'.$keyword.'%');
+            }
+        });
+
+        $ids = $matched->pluck('ok_product_id');
+        $this->line('  대상 상품: '.$ids->count().'건');
+
+        if ($ids->isEmpty()) {
+            return self::SUCCESS;
+        }
+
+        if ($dryRun) {
+            OtakuProduct::whereIn('ok_product_id', $ids)
+                ->limit(15)->pluck('ok_product_title')
+                ->each(fn ($title) => $this->line('   - '.mb_substr((string) $title, 0, 64)));
+            if ($ids->count() > 15) {
+                $this->line('   ... 외 '.($ids->count() - 15).'건');
+            }
+            $this->warn('[dry-run] 삭제하지 않았습니다.');
+
+            return self::SUCCESS;
+        }
+
+        $deletedOffers = OtakuOffer::whereIn('ok_offer_product_id', $ids)->delete();
+        $deletedProducts = OtakuProduct::whereIn('ok_product_id', $ids)->delete();
+        $this->line("  삭제: 오퍼 {$deletedOffers}개 · 상품 {$deletedProducts}개");
+
+        $this->info('최저가 플래그 재계산...');
+        $sync->refreshLowestPriceFlags();
+
+        $this->info('완료: 제외 키워드 상품을 정리했습니다.');
 
         return self::SUCCESS;
     }
