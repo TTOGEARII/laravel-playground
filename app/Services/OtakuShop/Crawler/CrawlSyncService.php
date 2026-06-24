@@ -221,7 +221,18 @@ class CrawlSyncService
 
         // 기존 상품: 키가 바뀌었으면 최신 정규화 키로 갱신하고, 비어 있는 분류값을 채운다(재크롤 점진 보강).
         if ($product->ok_product_code !== $bundle['key']) {
-            $product->ok_product_code = $bundle['key'];
+            // 그 키(maker code 등)를 이미 다른 상품이 점유 중이면, 같은 실물 상품이 두 행으로
+            // 갈라진 것이므로 덮어쓰기(유니크 키 충돌, SQLSTATE 23000) 대신 병합한다.
+            // 키를 가진 쪽을 canonical 로 두고 현재 상품을 그쪽으로 합친다.
+            $keyOwner = OtakuProduct::where('ok_product_code', $bundle['key'])
+                ->where('ok_product_id', '!=', $product->ok_product_id)
+                ->first();
+            if ($keyOwner !== null) {
+                $this->mergeProducts($keyOwner, [$product]);
+                $product = $keyOwner;
+            } else {
+                $product->ok_product_code = $bundle['key'];
+            }
         }
         if (! $product->ok_product_image_url && $dto->imageUrl) {
             $product->ok_product_image_url = $dto->imageUrl;
