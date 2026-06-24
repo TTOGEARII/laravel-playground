@@ -86,6 +86,12 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
             $category = $target['category'] ?? null;
             $pages = max(1, (int) ($target['pages'] ?? 1));
 
+            // 이 카테고리에서 이미 본 상품번호 집합. cafe24/고도몰 등은 끝 페이지를 넘겨도
+            // 빈 배열이 아니라 '이미 본 상품'을 반복해서 돌려준다(실측: page=999 에도 카드 잔존).
+            // 따라서 "빈 페이지" 대신 "이 카테고리에 새 상품번호가 0개인 페이지"를 끝 신호로 본다.
+            // 전역 $seen 으로 판단하면 카테고리 간 공유 상품 탓에 조기 종료될 수 있어 카테고리별로 분리한다.
+            $catSeen = [];
+
             for ($page = 1; $page <= $pages; $page++) {
                 $this->delayBetweenRequests();
                 $url = $this->baseUrl().'/'.ltrim($path, '/');
@@ -98,7 +104,19 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
                     break; // 더 이상 상품이 없으면 다음 페이지를 요청하지 않는다.
                 }
 
+                $newInCategory = 0;
                 foreach ($rows as $row) {
+                    // 끝 페이지 판정은 DTO 필터(제외 키워드/가격 누락 등) 전의 원본 상품번호로 한다.
+                    // 제외 상품만 있는 페이지에서 0으로 잡혀 다음 페이지를 건너뛰는 것을 막기 위함.
+                    $externalId = trim((string) ($row['id'] ?? ''));
+                    if ($externalId !== '') {
+                        $rowKey = $this->getShopCode().':'.$externalId;
+                        if (! isset($catSeen[$rowKey])) {
+                            $catSeen[$rowKey] = true;
+                            $newInCategory++;
+                        }
+                    }
+
                     $dto = $this->toDto($row, $category);
                     if ($dto === null) {
                         continue;
@@ -108,6 +126,12 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
                         $seen[$key] = true;
                         $all[] = $dto;
                     }
+                }
+
+                // 이 페이지가 이 카테고리에 새 상품번호를 하나도 더하지 않았다면(=끝 페이지를
+                // 넘겨 반복 응답을 받는 중) 더 요청하지 않고 다음 카테고리로 넘어간다.
+                if ($newInCategory === 0) {
+                    break;
                 }
             }
         }
