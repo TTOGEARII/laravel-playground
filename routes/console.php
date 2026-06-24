@@ -20,9 +20,13 @@ Artisan::command('inspire', function () {
 |      또는 호스트 cron: * * * * * cd /path/to/project && ./vendor/bin/sail artisan schedule:run
 | Selenium 엔드포인트는 .env 의 OTAKU_SELENIUM_URL (기본: http://selenium:4444)을 따릅니다.
 */
-// 매일 03:00 증분 크롤 (가격/재고 갱신)
+// 매일 03:00 증분 크롤 (가격/재고 갱신) — 단, 일요일(0)은 제외한다.
+// 일요일 04:00 전량 크롤과 시간이 가까워, 증분이 1시간 넘게 돌면 둘이 겹쳐
+// 단일 Selenium 세션을 두고 경합 → 세션 타임아웃으로 크롤이 실패한다.
+// withoutOverlapping 은 같은 명령어끼리만 막아주므로(증분↔전량은 못 막음) 요일로 분리한다.
 Schedule::command('otaku-shop:crawl --incremental')
     ->dailyAt('03:00')
+    ->days([1, 2, 3, 4, 5, 6]) // 월~토 (일요일 제외)
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(120)
     ->runInBackground();
