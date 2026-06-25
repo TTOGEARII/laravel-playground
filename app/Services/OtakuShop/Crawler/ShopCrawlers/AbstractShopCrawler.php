@@ -360,10 +360,11 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
     }
 
     /**
-     * HTTP 직접 패치 모드 여부. true 면 리스트/카테고리 수집을 Selenium 대신 HTTP+DOM 파싱으로 한다.
-     * 서버렌더링(cafe24 등) 샵은 Chrome 없이 더 빠르고 메모리 부담 없이 수집할 수 있다.
+     * HTTP 직접 패치 모드 여부. true 면 리스트/카테고리/상세 수집을 Selenium 대신 HTTP+DOM 파싱으로 한다.
+     * 서버렌더링(cafe24/godo 등) 샵은 Chrome 없이 더 빠르고, Selenium 장애와 무관하게 동작한다.
+     * (runner 가 이 값으로 드라이버 start 를 건너뛸지 판단하므로 public.)
      */
-    protected function usesHttpFetch(): bool
+    public function usesHttpFetch(): bool
     {
         return false;
     }

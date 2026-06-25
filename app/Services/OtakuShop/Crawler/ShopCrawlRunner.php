@@ -54,21 +54,26 @@ class ShopCrawlRunner
             }
             $first = false;
 
-            // 샵마다 새 브라우저 세션(장시간 단일 세션 degradation 방지 + 샵 간 격리).
+            // 드라이버 객체는 만들되, HTTP 샵(cafe24/animate)은 Selenium 세션을 시작하지 않는다.
+            // → Selenium 장애·과부하 시에도 HTTP 샵은 정상 크롤된다(예전엔 driver start 실패 시 스킵됨).
             $driver = CrawlerDriver::fromConfig();
-            try {
-                $driver->start();
-            } catch (\Throwable $e) {
-                report($e);
-                $onLine && $onLine("크롤링: {$name}... Selenium 연결 실패: ".$e->getMessage());
-
-                continue;
-            }
 
             /** @var AbstractShopCrawler $crawler */
             $crawler = new $crawlerClass($driver);
             if ($full) {
                 $crawler->enableFullMode();
+            }
+
+            $needsDriver = ! $crawler->usesHttpFetch();
+            if ($needsDriver) {
+                try {
+                    $driver->start();  // 샵마다 새 세션(장시간 단일 세션 degradation 방지 + 격리).
+                } catch (\Throwable $e) {
+                    report($e);
+                    $onLine && $onLine("크롤링: {$name}... Selenium 연결 실패: ".$e->getMessage());
+
+                    continue;
+                }
             }
 
             $onLine && $onLine("크롤링: {$name}...");
@@ -83,7 +88,9 @@ class ShopCrawlRunner
                 report($e);
                 $onLine && $onLine('  오류: '.$e->getMessage());
             } finally {
-                $driver->quit();
+                if ($needsDriver) {
+                    $driver->quit();
+                }
             }
         }
 
