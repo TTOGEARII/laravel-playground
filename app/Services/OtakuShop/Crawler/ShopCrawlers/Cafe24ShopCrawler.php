@@ -91,7 +91,7 @@ abstract class Cafe24ShopCrawler extends AbstractShopCrawler
     /**
      * cafe24 리스트 페이지는 서버렌더링이라 Selenium 없이 HTTP+DOM 파싱으로 처리한다.
      */
-    protected function usesHttpFetch(): bool
+    public function usesHttpFetch(): bool
     {
         return true;
     }

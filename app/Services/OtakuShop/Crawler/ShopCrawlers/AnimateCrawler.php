@@ -116,13 +116,26 @@ class AnimateCrawler extends AbstractShopCrawler
     /**
      * 고도몰 리스트/상세도 서버렌더링이라 Selenium 없이 HTTP+DOM 파싱으로 처리한다.
      */
-    protected function usesHttpFetch(): bool
+    public function usesHttpFetch(): bool
     {
         return true;
     }
 
     /**
-     * 전량 크롤 카테고리 발견(HTTP): 메뉴 HTML 에서 goods_list.php?cateCd= 경로를 수집.
+     * 전량 크롤 카테고리 발견(HTTP). 오버라이드 안 하면 부모의 Selenium 버전을 타므로,
+     * HTTP 샵은 반드시 여기서 HTTP+DOM 파싱으로 대체한다(Selenium 세션 안 만듦).
+     *
+     * @return array<int, string>
+     */
+    protected function discoverCategoryPaths(): array
+    {
+        $html = $this->httpGet($this->baseUrl().'/');
+
+        return $html === null ? [] : $this->parseCategoryPaths($html);
+    }
+
+    /**
+     * 메뉴 HTML 에서 goods_list.php?cateCd= 경로를 수집.
      *
      * @return array<int, string>
      */
