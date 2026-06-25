@@ -292,14 +292,15 @@ return [
         // 바코드(JAN/자체상품코드=고유값)·제조사·품절을 보강한다. 상품마다 요청이 1건씩 더 늘어
         // 크롤 시간이 크게 증가하므로 기본은 끔. 필요 시 .env 에서 켠다.
         'fetch_detail' => (bool) env('OTAKU_CRAWL_FETCH_DETAIL', false),
-        // 전역 flag 없이도 상세 보강을 켤 샵 목록. 애니메이트는 리스트에 고유값이 없고
-        // 상세의 '자체상품코드'(바코드)만이 동일상품 매칭에 쓸 신뢰값이라 여기에 둔다.
-        // (cafe24는 상세에 추가 정보가 없고, 굿스마일은 리스트 JSON API로 이미 다 받으므로 불필요.)
+        // 전역 flag 없이도 상세 보강을 켤 샵 목록. 애니메이트는 리스트에 고유값이 없고 상세의
+        // '자체상품코드'(바코드)만이 동일상품 매칭에 쓸 신뢰값이라 켠다. 단 HTTP 상세(Selenium 아님)+
+        // max_products 캡으로 신상 일부만 보강한다(전량 ~13k 상세는 너무 오래 걸림).
         'fetch_detail_shops' => ['animate'],
         'detail' => [
-            'delay_ms' => (int) env('OTAKU_CRAWL_DETAIL_DELAY_MS', 1200),
-            // 샵당 상세를 더 볼 최대 상품 수(0=제한 없음). 부분 보강·테스트용 안전장치.
-            'max_products' => (int) env('OTAKU_CRAWL_DETAIL_MAX', 0),
+            // HTTP 상세라 딜레이를 짧게.
+            'delay_ms' => (int) env('OTAKU_CRAWL_DETAIL_DELAY_MS', 400),
+            // 샵당 상세를 볼 최대 상품 수(0=무제한). 신상 위주로 일부만 바코드 보강(전량 상세 폭주 방지).
+            'max_products' => (int) env('OTAKU_CRAWL_DETAIL_MAX', 1500),
         ],
         'full' => [
             // cafe24 샵은 HTTP 수집(Chrome 미사용)이라 사이트 부담이 작아 1초로 단축한다.

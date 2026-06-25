@@ -182,42 +182,6 @@ abstract class Cafe24ShopCrawler extends AbstractShopCrawler
     }
 
     /**
-     * HTML 문자열을 UTF-8 로 로드해 DOMXPath 를 만든다. 빈/실패 시 null.
-     */
-    protected function loadXPath(string $html): ?\DOMXPath
-    {
-        if (trim($html) === '') {
-            return null;
-        }
-
-        $doc = new \DOMDocument;
-        $prev = libxml_use_internal_errors(true);
-        $loaded = $doc->loadHTML('<?xml encoding="UTF-8" ?>'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
-        libxml_clear_errors();
-        libxml_use_internal_errors($prev);
-
-        return $loaded ? new \DOMXPath($doc) : null;
-    }
-
-    /**
-     * context 하위에서 XPath 첫 노드. 없으면 null.
-     */
-    protected function firstNode(\DOMXPath $xp, string $query, \DOMNode $context): ?\DOMNode
-    {
-        $nodes = $xp->query($query, $context);
-
-        return ($nodes !== false && $nodes->length > 0) ? $nodes->item(0) : null;
-    }
-
-    /**
-     * 연속 공백을 한 칸으로 정리하고 trim.
-     */
-    protected function cleanText(?string $text): string
-    {
-        return trim(preg_replace('/\s+/u', ' ', (string) $text) ?? '');
-    }
-
-    /**
      * 카드에서 상품명 추출(숨김 "상품명 :" 접두사 제거, 없으면 이미지 alt 폴백).
      */
     protected function extractTitle(\DOMXPath $xp, \DOMNode $li): string

@@ -211,6 +211,13 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
      */
     private function fetchDetail(string $url, string $script): ?array
     {
+        // HTTP 모드 샵(animate 등)은 상세 HTML 을 받아 parseDetail() 로 파싱한다(Selenium 불필요).
+        if ($this->usesHttpFetch()) {
+            $html = $this->httpGet($url);
+
+            return $html === null ? null : $this->parseDetail($html);
+        }
+
         $driver = $this->driverForNextPage();
 
         try {
@@ -396,6 +403,52 @@ abstract class AbstractShopCrawler implements ShopCrawlerInterface
     protected function parseListRows(string $html): array
     {
         return [];
+    }
+
+    /**
+     * HTTP 모드 샵이 상세 HTML 에서 {barcode, maker, soldout} 를 파싱한다(detailScript 의 PHP 대응).
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function parseDetail(string $html): ?array
+    {
+        return null;
+    }
+
+    /**
+     * HTML 문자열을 UTF-8 로 로드해 DOMXPath 를 만든다. 빈/실패 시 null.
+     */
+    protected function loadXPath(string $html): ?\DOMXPath
+    {
+        if (trim($html) === '') {
+            return null;
+        }
+
+        $doc = new \DOMDocument;
+        $prev = libxml_use_internal_errors(true);
+        $loaded = $doc->loadHTML('<?xml encoding="UTF-8" ?>'.$html, LIBXML_NOERROR | LIBXML_NOWARNING);
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+
+        return $loaded ? new \DOMXPath($doc) : null;
+    }
+
+    /**
+     * context 하위에서 XPath 첫 노드. 없으면 null.
+     */
+    protected function firstNode(\DOMXPath $xp, string $query, \DOMNode $context): ?\DOMNode
+    {
+        $nodes = $xp->query($query, $context);
+
+        return ($nodes !== false && $nodes->length > 0) ? $nodes->item(0) : null;
+    }
+
+    /**
+     * 연속 공백을 한 칸으로 정리하고 trim.
+     */
+    protected function cleanText(?string $text): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', (string) $text) ?? '');
     }
 
     /**

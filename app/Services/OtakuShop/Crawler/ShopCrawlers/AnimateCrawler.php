@@ -114,6 +114,172 @@ class AnimateCrawler extends AbstractShopCrawler
     }
 
     /**
+     * 고도몰 리스트/상세도 서버렌더링이라 Selenium 없이 HTTP+DOM 파싱으로 처리한다.
+     */
+    protected function usesHttpFetch(): bool
+    {
+        return true;
+    }
+
+    /**
+     * 전량 크롤 카테고리 발견(HTTP): 메뉴 HTML 에서 goods_list.php?cateCd= 경로를 수집.
+     *
+     * @return array<int, string>
+     */
+    protected function parseCategoryPaths(string $html): array
+    {
+        $xp = $this->loadXPath($html);
+        if ($xp === null) {
+            return [];
+        }
+
+        $set = [];
+        foreach ($xp->query("//a[contains(@href, 'goods_list.php?cateCd=')]") as $a) {
+            if (! $a instanceof \DOMElement) {
+                continue;
+            }
+            if (preg_match('/cateCd=(\d+)/', $a->getAttribute('href'), $m)) {
+                $set['/goods/goods_list.php?cateCd='.$m[1]] = true;
+            }
+        }
+
+        return array_keys($set);
+    }
+
+    /**
+     * 고도몰 리스트 HTML → 상품 행 배열(listScript()의 PHP 대응).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function parseListRows(string $html): array
+    {
+        $xp = $this->loadXPath($html);
+        if ($xp === null) {
+            return [];
+        }
+
+        $items = $xp->query(
+            "//*[contains(concat(' ', normalize-space(@class), ' '), ' item_cont ')]"
+            ."[.//a[contains(@href, 'goods_view.php?goodsNo=')]]"
+        );
+        if ($items === false) {
+            return [];
+        }
+
+        $rows = [];
+        $seen = [];
+        foreach ($items as $item) {
+            $a = $this->firstNode($xp, ".//a[contains(@href, 'goods_view.php?goodsNo=')]", $item);
+            if (! $a instanceof \DOMElement) {
+                continue;
+            }
+            if (! preg_match('/goodsNo=(\d+)/', $a->getAttribute('href'), $m)) {
+                continue;
+            }
+            $id = $m[1];
+            if (isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+
+            $nameEl = $this->firstNode($xp, ".//*[contains(concat(' ', normalize-space(@class), ' '), ' item_name ')]", $item);
+
+            $rows[] = [
+                'id' => $id,
+                'title' => $this->cleanText($nameEl?->textContent),
+                'price' => $this->animatePrice($xp, $item),
+                'url' => 'goods/goods_view.php?goodsNo='.$id,
+                'img' => $this->animateImage($xp, $item),
+                'soldout' => $this->animateSoldout($xp, $item),
+                'makercode' => '',
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * 고도몰 상세 HTML → {barcode, soldout}. 라벨이 '자체상품코드/상품코드/바코드'인 행의 값에서
+     * 8~13자리 숫자(JAN/EAN)를 바코드로 채택한다(동일상품 매칭용 고유값).
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function parseDetail(string $html): ?array
+    {
+        $xp = $this->loadXPath($html);
+        if ($xp === null) {
+            return null;
+        }
+
+        $barcode = '';
+        $rows = $xp->query('//table//tr | //dl');
+        if ($rows !== false) {
+            foreach ($rows as $row) {
+                $th = $this->firstNode($xp, './/th | .//dt', $row);
+                $td = $this->firstNode($xp, './/td | .//dd', $row);
+                if ($th === null || $td === null) {
+                    continue;
+                }
+                $label = preg_replace('/\s+/u', '', $th->textContent) ?? '';
+                if (preg_match('/자체상품코드|상품코드|바코드/u', $label)) {
+                    $digits = preg_replace('/\D/', '', $td->textContent) ?? '';
+                    if (strlen($digits) >= 8 && strlen($digits) <= 13) {
+                        $barcode = $digits;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $soldoutNodes = $xp->query("//*[contains(@class, 'btn_soldout') or contains(@class, 'item_soldout_bg') or contains(@class, 'btn_shop_soldout')] | //img[contains(@alt, '품절')]");
+        $soldout = $soldoutNodes !== false && $soldoutNodes->length > 0;
+
+        return ['barcode' => $barcode, 'maker' => '', 'soldout' => $soldout];
+    }
+
+    /** 카드 텍스트에서 가격(숫자) 추출. */
+    private function animatePrice(\DOMXPath $xp, \DOMNode $item): string
+    {
+        $priceEl = $this->firstNode($xp, ".//*[contains(@class, 'item_price') or contains(@class, 'item_money_box')]", $item);
+        $text = $this->cleanText($priceEl !== null ? $priceEl->textContent : $item->textContent);
+        if (preg_match('/(\d{1,3}(?:,\d{3})*)\s*원/u', $text, $m)) {
+            return str_replace(',', '', $m[1]);
+        }
+
+        return '';
+    }
+
+    /** 아이콘/버튼류를 건너뛰고 실제 상품 이미지 src 를 고른다. */
+    private function animateImage(\DOMXPath $xp, \DOMNode $item): string
+    {
+        $imgs = $xp->query('.//img', $item);
+        if ($imgs === false) {
+            return '';
+        }
+        foreach ($imgs as $im) {
+            if (! $im instanceof \DOMElement) {
+                continue;
+            }
+            $src = $im->getAttribute('src');
+            if ($src === '' || preg_match('#/icon/|goods_icon|tokuten|/_btn/|blank|btn_#i', $src)) {
+                continue;
+            }
+
+            return $src;
+        }
+
+        return '';
+    }
+
+    /** 품절 판정(godo): item_soldout 클래스(자신/조상) 또는 품절 오버레이/버튼/alt. */
+    private function animateSoldout(\DOMXPath $xp, \DOMNode $item): bool
+    {
+        return $this->firstNode($xp, "ancestor-or-self::*[contains(concat(' ', normalize-space(@class), ' '), ' item_soldout ')]", $item) !== null
+            || $this->firstNode($xp, ".//*[contains(@class, 'item_soldout_bg') or contains(@class, 'btn_shop_soldout') or contains(@class, 'btn_add_soldout')]", $item) !== null
+            || $this->firstNode($xp, ".//img[contains(@alt, '품절')]", $item) !== null;
+    }
+
+    /**
      * 애니메이트 상품 이미지는 godohosting/cdn 모두 https 를 지원하므로 https 로 강제해
      * https 배포 환경에서의 mixed-content 차단을 방지한다.
      */
