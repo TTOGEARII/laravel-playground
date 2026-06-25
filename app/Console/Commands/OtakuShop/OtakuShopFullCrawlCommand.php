@@ -17,7 +17,8 @@ use Illuminate\Support\Carbon;
 class OtakuShopFullCrawlCommand extends Command
 {
     protected $signature = 'otaku-shop:crawl-full
-                            {--yes : 확인 프롬프트 없이 바로 실행(스케줄/CI용)}';
+                            {--yes : 확인 프롬프트 없이 바로 실행(스케줄/CI용)}
+                            {--shop= : 특정 몰만 크롤(쉼표 구분, 코드 또는 이름). 예: --shop=animate / --shop=animate,comicsart}';
 
     protected $description = '오타쿠샵 3사 전량 크롤 (최초 1회, 모든 카테고리·끝 페이지·차단 방지 딜레이)';
 
@@ -27,6 +28,14 @@ class OtakuShopFullCrawlCommand extends Command
         $shopMs = (int) config('otaku-crawler.crawl.full.delay_ms_between_shops', 8000);
         $this->warn('전량 크롤은 모든 카테고리를 끝 페이지까지 수집하므로 수십 분 이상 걸릴 수 있습니다.');
         $this->line("  요청 간 딜레이 {$reqMs}ms / 샵 간 딜레이 {$shopMs}ms (차단 방지)");
+
+        // 특정 몰만 수동 크롤(스케줄러는 --shop 미지정이라 전체 그대로). 코드/이름 쉼표 구분.
+        $onlyShops = null;
+        $shopOpt = trim((string) $this->option('shop'));
+        if ($shopOpt !== '') {
+            $onlyShops = array_values(array_filter(array_map('trim', explode(',', $shopOpt))));
+            $this->line('  대상 몰: '.implode(', ', $onlyShops).' (지정된 몰만 크롤)');
+        }
 
         if (! $this->option('yes') && ! $this->confirm('계속할까요?', true)) {
             $this->info('취소되었습니다.');
@@ -55,7 +64,8 @@ class OtakuShopFullCrawlCommand extends Command
                 }
                 $crawledShopCodes[] = $items[0]->shopCode;
                 $this->line("    ↳ [{$name}] 저장: 신규상품 {$s['products_created']} · 매칭 {$s['products_matched']} · 신규오퍼 {$s['offers_created']} · 갱신오퍼 {$s['offers_updated']}");
-            }
+            },
+            onlyShops: $onlyShops
         );
         $this->info('수집 상품 수: '.$total);
 

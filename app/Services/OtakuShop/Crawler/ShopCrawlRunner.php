@@ -26,8 +26,11 @@ class ShopCrawlRunner
      *                                                                                                                 한 샵 수집 완료 시 (샵명, DTO목록) 콜백. 보통 여기서 DB 저장을 한다.
      * @return int 전체 수집 상품(DTO) 수.
      */
-    public function run(bool $full = false, ?\Closure $onLine = null, ?\Closure $onShop = null): int
+    public function run(bool $full = false, ?\Closure $onLine = null, ?\Closure $onShop = null, ?array $onlyShops = null): int
     {
+        // --shop 필터(소문자 정규화). null 이면 전체 샵 크롤(스케줄러는 미지정이라 전체 그대로).
+        $only = $onlyShops !== null ? array_map(fn ($s) => strtolower(trim((string) $s)), $onlyShops) : null;
+
         $shopDelayMs = (int) config(
             $full ? 'otaku-crawler.crawl.full.delay_ms_between_shops' : 'otaku-crawler.crawl.delay_ms_between_shops',
             $full ? 8000 : 2000
@@ -36,7 +39,16 @@ class ShopCrawlRunner
         $total = 0;
         $first = true;
 
-        foreach ($this->shopCrawlerClasses() as $name => $crawlerClass) {
+        foreach ($this->shopDefinitions() as $def) {
+            // --shop 지정 시 코드 또는 이름이 일치하는 샵만 크롤(미지정이면 전부).
+            if ($only !== null
+                && ! in_array(strtolower($def['code']), $only, true)
+                && ! in_array(strtolower($def['name']), $only, true)) {
+                continue;
+            }
+            $name = $def['name'];
+            $crawlerClass = $def['class'];
+
             if (! $first && $shopDelayMs > 0) {
                 usleep($shopDelayMs * 1000);
             }
@@ -79,17 +91,17 @@ class ShopCrawlRunner
     }
 
     /**
-     * @return array<string, class-string<AbstractShopCrawler>>
+     * @return array<int, array{name: string, code: string, class: class-string<AbstractShopCrawler>}>
      */
-    private function shopCrawlerClasses(): array
+    private function shopDefinitions(): array
     {
         return [
-            '도키도키굿즈' => DokidokigoodsCrawler::class,
-            '애니메이트' => AnimateCrawler::class,
-            '따빼몰' => TtabbaemallCrawler::class,
-            '굿스마일코리아' => GoodsmileCrawler::class,
-            '코믹스아트' => ComicsArtCrawler::class,
-            '피규어프레소' => FigurePressoCrawler::class,
+            ['name' => '도키도키굿즈', 'code' => 'dokidokigoods', 'class' => DokidokigoodsCrawler::class],
+            ['name' => '애니메이트', 'code' => 'animate', 'class' => AnimateCrawler::class],
+            ['name' => '따빼몰', 'code' => 'ttabbaemall', 'class' => TtabbaemallCrawler::class],
+            ['name' => '굿스마일코리아', 'code' => 'goodsmilekr', 'class' => GoodsmileCrawler::class],
+            ['name' => '코믹스아트', 'code' => 'comicsart', 'class' => ComicsArtCrawler::class],
+            ['name' => '피규어프레소', 'code' => 'figurepresso', 'class' => FigurePressoCrawler::class],
         ];
     }
 }
