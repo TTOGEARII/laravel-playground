@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\OtakuShop\Api\ProductController as OtakuShopProductController;
+use App\Http\Controllers\SubcultureGameInfo\Api\CodeController as SubcultureCodeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,12 @@ Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->grou
     Route::get('categories', 'categories');
     Route::get('ips', 'ips');
     Route::get('shops', 'shops');
+});
+
+// SubcultureGameInfo (BASE = /api/subculture-game-info)
+//   GET /api/subculture-game-info/codes  ?game, community(0/1), expired(0/1)
+Route::prefix('subculture-game-info')->controller(SubcultureCodeController::class)->group(function () {
+    Route::get('codes', 'index');
 });
 
 /*

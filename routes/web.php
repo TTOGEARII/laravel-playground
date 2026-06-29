@@ -30,6 +30,9 @@ Route::prefix('mini-game')->group(base_path('routes/mini-game.php'));
 // MyWifeBot (캐릭터 모아보기)
 Route::prefix('my-wife-bot')->group(base_path('routes/my-wife-bot.php'));
 
+// SubcultureGameInfo (서브컬쳐 게임 리딤코드/정보)
+Route::prefix('subculture-game-info')->group(base_path('routes/subculture-game-info.php'));
+
 // MyWifeBot 채팅 API — 세션 인증이 필요(로그인 사용자 대화 저장/이어가기)하므로 web 그룹에 둔다.
 Route::prefix('api/my-wife-bot')->controller(MyWifeBotChatController::class)->group(function () {
     Route::post('chat/init', 'init');
