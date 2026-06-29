@@ -163,8 +163,10 @@ abstract class AbstractSourceDriver implements SourceDriver
         ];
         foreach ($patterns as $re) {
             if (preg_match($re, $text, $m)) {
+                // 점 구분(2026.06.30)은 Carbon 이 직접 파싱 못 하므로 날짜부의 점을 하이픈으로 정규화.
+                $candidate = preg_replace('/^(\d{4})\.(\d{1,2})\.(\d{1,2})/', '$1-$2-$3', $m[0]) ?? $m[0];
                 try {
-                    return Carbon::parse($m[0], $tz);
+                    return Carbon::parse($candidate, $tz);
                 } catch (\Throwable) {
                     // 다음 패턴 시도
                 }
