@@ -80,6 +80,26 @@
                 </svg>
             </a>
         </article>
+
+        <!-- 프로젝트 4 -->
+        <article class="project-card accent-teal">
+            <div class="card-icon">🎮</div>
+            <h2 class="card-title">서브컬쳐 리딤코드</h2>
+            <p class="card-description">
+                호요버스·블아·명조·트릭컬 코드 모아보기
+            </p>
+            <div class="card-tags">
+                <span class="tag">Laravel</span>
+                <span class="tag">크롤링</span>
+                <span class="tag">집계</span>
+            </div>
+            <a href="{{ route('subculture-game-info.index') }}" class="card-button">
+                프로젝트 보기
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+            </a>
+        </article>
     </section>
 
     <section class="projects-grid" style="margin-top: 40px;">
