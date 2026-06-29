@@ -185,6 +185,24 @@
 
 .sgi-rewards {
     color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.sgi-badge-verified {
+    background: rgba(34, 197, 94, 0.15);
+    color: #bbf7d0;
+    border-color: rgba(34, 197, 94, 0.6);
+}
+
+.sgi-badge-expiry {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fde68a;
+    border-color: rgba(251, 191, 36, 0.5);
+}
+
+.sgi-code-card.sgi-verified {
+    border-color: rgba(34, 197, 94, 0.45);
 }
 
 .sgi-code-actions {
