@@ -43,16 +43,16 @@
             {{-- 모바일 전용 가상 컨트롤 (JS가 터치 기기일 때만 표시) --}}
             <div class="doom-controls" id="doomControls" aria-hidden="true">
                 <div class="doom-dpad">
-                    <button class="doom-btn up" data-key="38" aria-label="전진">▲</button>
-                    <button class="doom-btn left" data-key="37" aria-label="왼쪽 회전">◀</button>
-                    <button class="doom-btn down" data-key="40" aria-label="후진">▼</button>
-                    <button class="doom-btn right" data-key="39" aria-label="오른쪽 회전">▶</button>
+                    <button class="doom-btn up" data-key="87" aria-label="전진(W)">▲</button>
+                    <button class="doom-btn left" data-key="81" aria-label="왼쪽 회전(Q)">◀</button>
+                    <button class="doom-btn down" data-key="83" aria-label="후진(S)">▼</button>
+                    <button class="doom-btn right" data-key="69" aria-label="오른쪽 회전(E)">▶</button>
                 </div>
                 <div class="doom-actions">
-                    <button class="doom-btn fire" data-key="17" aria-label="발사">발사</button>
-                    <button class="doom-btn use" data-key="32" aria-label="사용/문">사용</button>
-                    <button class="doom-btn enter" data-key="13" aria-label="확인">↵</button>
-                    <button class="doom-btn esc" data-key="27" aria-label="메뉴">ESC</button>
+                    <button class="doom-btn fire" data-act="fire" aria-label="발사(마우스)">발사</button>
+                    <button class="doom-btn use" data-key="32" aria-label="사용/문(Space)">사용</button>
+                    <button class="doom-btn enter" data-key="13" aria-label="확인(Enter)">↵</button>
+                    <button class="doom-btn esc" data-key="27" aria-label="메뉴(Esc)">ESC</button>
                 </div>
             </div>
         </div>
@@ -104,15 +104,16 @@
     }
 
     // prboom(SDL)에 가상 버튼 입력을 합성 KeyboardEvent 로 전달한다.
-    // 메뉴는 keyCode 만으로 동작하지만, 게임플레이 입력(makeCEvent)은 key/code 도 읽으므로
-    // keyCode + key + code 를 모두 채워야 이동/발사가 실제로 먹힌다.
+    // 이 빌드(webDOOM) 키맵: W/S 전후·Q/E 회전·Space 사용·발사는 마우스 좌클릭.
+    // 게임플레이 입력(makeCEvent)은 key/code 도 읽으므로 keyCode + key + code 를 모두 채운다.
     var KEY_INFO = {
-        37: { key: 'ArrowLeft', code: 'ArrowLeft' },
-        38: { key: 'ArrowUp', code: 'ArrowUp' },
-        39: { key: 'ArrowRight', code: 'ArrowRight' },
-        40: { key: 'ArrowDown', code: 'ArrowDown' },
-        17: { key: 'Control', code: 'ControlLeft' },
-        32: { key: ' ', code: 'Space' },
+        87: { key: 'w', code: 'KeyW' },   // 전진
+        83: { key: 's', code: 'KeyS' },   // 후진
+        81: { key: 'q', code: 'KeyQ' },   // 좌회전
+        69: { key: 'e', code: 'KeyE' },   // 우회전
+        65: { key: 'a', code: 'KeyA' },   // 좌측 이동(스트레이프)
+        68: { key: 'd', code: 'KeyD' },   // 우측 이동(스트레이프)
+        32: { key: ' ', code: 'Space' },  // 사용
         13: { key: 'Enter', code: 'Enter' },
         27: { key: 'Escape', code: 'Escape' },
     };
@@ -124,6 +125,18 @@
         Object.defineProperty(e, 'keyCode', { get: function () { return keyCode; } });
         Object.defineProperty(e, 'which', { get: function () { return keyCode; } });
         document.dispatchEvent(e);
+    }
+
+    // 발사는 키가 아니라 캔버스 마우스 좌클릭(button 0)으로 동작한다.
+    function dispatchFire(isDown) {
+        var canvas = document.getElementById('doom');
+        if (!canvas) return;
+        var rect = canvas.getBoundingClientRect();
+        var ev = new MouseEvent(isDown ? 'mousedown' : 'mouseup', {
+            bubbles: true, cancelable: true, button: 0, buttons: isDown ? 1 : 0,
+            clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2,
+        });
+        canvas.dispatchEvent(ev);
     }
 
     function isTouchDevice() {
@@ -157,11 +170,13 @@
         var canvas = document.getElementById('doom');
         controls.querySelectorAll('.doom-btn').forEach(function (btn) {
             btn.tabIndex = -1; // 버튼이 포커스를 가져가지 않도록
+            var act = btn.dataset.act;
             var code = parseInt(btn.dataset.key, 10);
             var pressed = false;
+            var send = function (isDown) { if (act === 'fire') dispatchFire(isDown); else dispatchKey(code, isDown); };
             // 게임플레이 입력은 캔버스가 포커스를 가져야 처리되므로 누를 때마다 포커스를 보장한다.
-            var down = function (ev) { ev.preventDefault(); if (canvas) canvas.focus(); if (pressed) return; pressed = true; btn.classList.add('is-down'); dispatchKey(code, true); };
-            var up = function (ev) { ev.preventDefault(); if (!pressed) return; pressed = false; btn.classList.remove('is-down'); dispatchKey(code, false); };
+            var down = function (ev) { ev.preventDefault(); if (canvas) canvas.focus(); if (pressed) return; pressed = true; btn.classList.add('is-down'); send(true); };
+            var up = function (ev) { ev.preventDefault(); if (!pressed) return; pressed = false; btn.classList.remove('is-down'); send(false); };
             btn.addEventListener('touchstart', down, { passive: false });
             btn.addEventListener('touchend', up, { passive: false });
             btn.addEventListener('touchcancel', up, { passive: false });
@@ -250,12 +265,12 @@
     @endpush
 
     <div class="game-instructions">
-        <h3>조작 방법 (PC 키보드)</h3>
+        <h3>조작 방법 (PC 키보드 / 마우스)</h3>
         <ul>
-            <li><kbd>↑</kbd> <kbd>↓</kbd> 전진/후진 · <kbd>←</kbd> <kbd>→</kbd> 회전 · <kbd>Alt</kbd>+방향 = 좌우 이동(스트레이프)</li>
-            <li><kbd>Ctrl</kbd> 발사 · <kbd>Space</kbd> 문 열기/사용 · <kbd>Shift</kbd> 달리기</li>
+            <li><kbd>W</kbd> <kbd>S</kbd> 전진/후진 · <kbd>Q</kbd> <kbd>E</kbd> 회전 · <kbd>A</kbd> <kbd>D</kbd> 좌우 이동(스트레이프)</li>
+            <li><strong>마우스 좌클릭</strong> 발사 · <kbd>Space</kbd> 문 열기/사용 · <kbd>Shift</kbd> 달리기 · <kbd>Alt</kbd> 스트레이프 전환</li>
             <li><kbd>1</kbd>~<kbd>7</kbd> 무기 교체 · 캔버스를 클릭하면 마우스로 시점을 돌릴 수 있습니다(포인터 락)</li>
-            <li class="mobile-only">모바일: 하단 가상 버튼(▲▼◀▶ 이동/회전 · 발사 · 사용 · ↵ 확인 · ESC 메뉴)으로 플레이</li>
+            <li class="mobile-only">모바일: 하단 가상 버튼(▲▼ 전후 · ◀▶ 회전 · 발사 · 사용 · ↵ 확인 · ESC 메뉴)으로 플레이</li>
             <li>오리지널 DOOM 셰어웨어(에피소드 1: Knee-Deep in the Dead) 데이터로 동작합니다.</li>
             <li>엔진: prboom (GPL) · WAD: id Software 셰어웨어(재배포 허용) · 포팅: webDOOM</li>
         </ul>
