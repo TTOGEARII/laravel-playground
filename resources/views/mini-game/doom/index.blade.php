@@ -35,6 +35,10 @@
                 <span class="doom-loader-progress" id="doomProgress">0%</span>
             </div>
             <button class="doom-fullscreen" id="doomFullscreen">⛶ 전체화면</button>
+            <button class="doom-crosshair-toggle" id="doomCrosshairToggle">＋ 조준선</button>
+
+            {{-- 화면 중앙(=발사 방향) 조준선 오버레이. 원본 DOOM에는 없어 직접 얹는다. --}}
+            <div class="doom-crosshair" id="doomCrosshair"></div>
 
             {{-- 모바일 전용 가상 컨트롤 (JS가 터치 기기일 때만 표시) --}}
             <div class="doom-controls" id="doomControls" aria-hidden="true">
@@ -94,6 +98,9 @@
             // 일부 빌드는 첫 입력으로 시작되므로 클릭 이벤트를 흘려준다
             canvas.dispatchEvent(new MouseEvent('mousedown'));
         }
+        // 캔버스 비디오 모드 확정 타이밍이 들쭉날쭉해 몇 번 더 맞춘다
+        placeCrosshair();
+        [200, 600, 1500].forEach(function (t) { setTimeout(placeCrosshair, t); });
     }
 
     // prboom(SDL)은 document 의 keydown/keyup 에서 event.keyCode 를 읽는다.
@@ -107,6 +114,22 @@
 
     function isTouchDevice() {
         return ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    }
+
+    // 조준선: 캔버스(=게임 화면) 기준 수평 중앙, 3D 뷰 중앙(상태바 고려해 약 42%)에 배치
+    var crosshairOn = true;
+    function placeCrosshair() {
+        var ch = document.getElementById('doomCrosshair');
+        var canvas = document.getElementById('doom');
+        var cont = document.getElementById('game-container');
+        if (!ch || !canvas || !cont) return;
+        if (!crosshairOn || !canvas.classList.contains('is-ready')) { ch.style.display = 'none'; return; }
+        var cr = canvas.getBoundingClientRect();
+        var pr = cont.getBoundingClientRect();
+        if (!cr.width || !cr.height) { ch.style.display = 'none'; return; }
+        ch.style.left = (cr.left - pr.left + cr.width / 2) + 'px';
+        ch.style.top = (cr.top - pr.top + cr.height * 0.42) + 'px';
+        ch.style.display = 'block';
     }
 
     function bindDoomControls() {
@@ -189,8 +212,21 @@
                     var el = document.getElementById('game-container');
                     if (el && el.requestFullscreen) el.requestFullscreen();
                 }
+                setTimeout(placeCrosshair, 300);
             });
         }
+
+        var chBtn = document.getElementById('doomCrosshairToggle');
+        if (chBtn) {
+            chBtn.addEventListener('click', function () {
+                crosshairOn = !crosshairOn;
+                chBtn.classList.toggle('is-off', !crosshairOn);
+                placeCrosshair();
+            });
+        }
+
+        window.addEventListener('resize', placeCrosshair);
+        document.addEventListener('fullscreenchange', function () { setTimeout(placeCrosshair, 300); });
     });
 })();
     </script>
