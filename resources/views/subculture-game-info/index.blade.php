@@ -35,30 +35,30 @@
                     <h2 class="sgi-game-title">
                         <span class="sgi-game-icon">{{ $g['game']->icon }}</span>
                         {{ $g['game']->name }}
-                        <span class="sgi-count">{{ $g['main']->count() }}</span>
+                        <span class="sgi-count">{{ $g['verified']->count() }}</span>
                     </h2>
                     @if ($g['game']->redeem_note)
                         <span class="sgi-game-note">{{ $g['game']->redeem_note }}</span>
                     @endif
                 </header>
 
-                @if ($g['main']->isEmpty() && $g['community']->isEmpty())
+                @if ($g['verified']->isEmpty() && $g['unverified']->isEmpty())
                     <p class="sgi-empty">현재 사용 가능한 코드가 없습니다.</p>
                 @endif
 
-                @if ($g['main']->isNotEmpty())
+                @if ($g['verified']->isNotEmpty())
                     <div class="sgi-codes">
-                        @foreach ($g['main'] as $code)
+                        @foreach ($g['verified'] as $code)
                             @include('subculture-game-info.partials.code-card', ['code' => $code])
                         @endforeach
                     </div>
                 @endif
 
-                @if ($g['community']->isNotEmpty())
+                @if ($g['unverified']->isNotEmpty())
                     <details class="sgi-community">
-                        <summary>💬 커뮤니티 제보 (미검증) · {{ $g['community']->count() }}건</summary>
+                        <summary>🔎 미검증 (단일 출처) · {{ $g['unverified']->count() }}건 — 사용 전 확인 필요</summary>
                         <div class="sgi-codes">
-                            @foreach ($g['community'] as $code)
+                            @foreach ($g['unverified'] as $code)
                                 @include('subculture-game-info.partials.code-card', ['code' => $code])
                             @endforeach
                         </div>

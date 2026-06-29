@@ -17,6 +17,7 @@ class CodeController extends Controller
     {
         $includeCommunity = $request->boolean('community', true);
         $includeExpired = $request->boolean('expired', false);
+        $verifiedOnly = $request->boolean('verified', false);
         $slug = $request->query('game');
 
         $query = RedeemCode::query()->with('game');
@@ -27,12 +28,16 @@ class CodeController extends Controller
         if (! $includeCommunity) {
             $query->main();
         }
+        if ($verifiedOnly) {
+            $query->verified();
+        }
         if ($slug) {
             $query->whereHas('game', fn ($q) => $q->where('slug', $slug));
         }
 
         $codes = $query
             ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'unverified' THEN 1 ELSE 2 END")
+            ->orderByDesc('corroboration_count')
             ->orderByDesc('found_at')
             ->get();
 
@@ -48,12 +53,16 @@ class CodeController extends Controller
             'rewards' => $c->rewards,
             'status' => $c->status->value,
             'status_label' => $c->status->label(),
+            'verified' => $c->is_verified,
+            'corroboration_count' => $c->corroboration_count,
+            'seen_sources' => $c->seen_sources,
             'source' => $c->source,
             'source_type' => $c->source_type->value,
             'source_url' => $c->source_url,
             'redeem_url' => $c->game?->redeemUrlFor($c->code),
             'redeem_note' => $c->game?->redeem_note,
             'expires_at' => $c->expires_at?->toIso8601String(),
+            'days_left' => $c->expires_at ? $c->days_left : null,
             'found_at' => $c->found_at?->toIso8601String(),
         ]);
 
