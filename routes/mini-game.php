@@ -11,3 +11,7 @@ Route::prefix('vampire-survival')->group(function () {
 Route::prefix('tetris')->group(function () {
     Route::get('/', [MainController::class, 'tetris'])->name('mini-game.tetris.index');
 });
+
+Route::prefix('doom')->group(function () {
+    Route::get('/', [MainController::class, 'doom'])->name('mini-game.doom.index');
+});

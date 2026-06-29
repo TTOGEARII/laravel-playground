@@ -35,6 +35,16 @@ class MainController extends Controller
                 'status' => 'available',
                 'route' => 'mini-game.tetris.index',
             ],
+            [
+                'id' => 3,
+                'name' => 'DOOM',
+                'description' => 'WebAssembly로 실행되는 오리지널 DOOM (셰어웨어 에피소드 1)',
+                'icon' => '🔫',
+                'color' => 'accent-pink',
+                'tags' => ['FPS', '고전', 'WASM'],
+                'status' => 'available',
+                'route' => 'mini-game.doom.index',
+            ],
         ];
 
         return view('mini-game.index', compact('games'));
@@ -48,5 +58,10 @@ class MainController extends Controller
     public function tetris(): View
     {
         return view('mini-game.tetris.index');
+    }
+
+    public function doom(): View
+    {
+        return view('mini-game.doom.index');
     }
 }
