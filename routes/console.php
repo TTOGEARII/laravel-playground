@@ -39,3 +39,17 @@ Schedule::command('otaku-shop:crawl-full --yes')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(360)
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| 서브컬쳐 게임 리딤코드 수집 (subculture:collect)
+|--------------------------------------------------------------------------
+| 호요버스 API(원신/스타레일/젠레스) + 정리 사이트(블아/명조/트릭컬) + 커뮤니티(보조).
+| 라이브 코드는 24~48h로 휘발성이 커, 평상시 하루 3회 정도로 자주 수집한다.
+| (버전 특별방송 시점엔 수동으로 더 자주 돌리는 것을 권장)
+*/
+Schedule::command('subculture:collect')
+    ->cron('0 9,15,21 * * *') // 매일 09/15/21시
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(20)
+    ->runInBackground();
