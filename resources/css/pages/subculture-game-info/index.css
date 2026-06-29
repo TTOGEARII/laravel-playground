@@ -1,0 +1,272 @@
+/* 서브컬쳐 게임 리딤코드 페이지 */
+
+.sgi-page {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+/* 게임 필터 탭 */
+.sgi-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sgi-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.sgi-tab:hover {
+    color: var(--text-primary);
+    border-color: rgba(129, 140, 248, 0.7);
+}
+
+.sgi-tab.is-active {
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.3), rgba(129, 140, 248, 0.1));
+    border-color: rgba(129, 140, 248, 0.9);
+    color: var(--text-primary);
+}
+
+.sgi-tab-icon {
+    font-size: 1rem;
+}
+
+/* 게임 섹션 */
+.sgi-game {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sgi-game-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.sgi-game-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.sgi-game-icon {
+    font-size: 1.3rem;
+}
+
+.sgi-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(129, 140, 248, 0.85);
+    border-radius: 999px;
+    min-width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 7px;
+}
+
+.sgi-game-note {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+/* 코드 카드 그리드 */
+.sgi-codes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.sgi-code-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+}
+
+.sgi-code-card.sgi-status-active {
+    border-color: rgba(34, 197, 94, 0.55);
+}
+
+.sgi-code-card.sgi-status-expired {
+    opacity: 0.55;
+}
+
+.sgi-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.sgi-code-text {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.sgi-copy {
+    flex: 0 0 auto;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sgi-copy:hover {
+    border-color: rgba(129, 140, 248, 0.9);
+    background: rgba(129, 140, 248, 0.2);
+}
+
+.sgi-copy.is-copied {
+    border-color: rgba(34, 197, 94, 0.8);
+    color: #bbf7d0;
+}
+
+.sgi-code-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+}
+
+.sgi-badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.sgi-badge-status {
+    background: rgba(129, 140, 248, 0.15);
+    color: #c7d2fe;
+    border-color: rgba(129, 140, 248, 0.6);
+}
+
+.sgi-status-active .sgi-badge-status {
+    background: rgba(34, 197, 94, 0.15);
+    color: #bbf7d0;
+    border-color: rgba(34, 197, 94, 0.7);
+}
+
+.sgi-rewards {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.sgi-badge-verified {
+    background: rgba(34, 197, 94, 0.15);
+    color: #bbf7d0;
+    border-color: rgba(34, 197, 94, 0.6);
+}
+
+.sgi-badge-expiry {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fde68a;
+    border-color: rgba(251, 191, 36, 0.5);
+}
+
+.sgi-code-card.sgi-verified {
+    border-color: rgba(34, 197, 94, 0.45);
+}
+
+.sgi-code-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 10px;
+}
+
+.sgi-redeem-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    transition: all 0.2s ease;
+}
+
+.sgi-redeem-btn:hover {
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+}
+
+.sgi-redeem-note {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.sgi-source {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+/* 커뮤니티(보조) 섹션 */
+.sgi-community {
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 8px 12px;
+}
+
+.sgi-community > summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 4px 0;
+}
+
+.sgi-community .sgi-codes {
+    margin-top: 12px;
+}
+
+.sgi-empty {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    padding: 8px 0;
+}
+
+@media (max-width: 480px) {
+    .sgi-codes {
+        grid-template-columns: 1fr;
+    }
+}
