@@ -146,6 +146,72 @@
     border-color: rgba(248, 113, 113, 0.9);
 }
 
+/* 조준선 토글 버튼 (전체화면 버튼 아래) */
+.doom-page .doom-crosshair-toggle {
+    position: absolute;
+    top: 52px;
+    right: 12px;
+    z-index: 3;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.9);
+    background: rgba(220, 38, 38, 0.25);
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    border-radius: 10px;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.doom-page .doom-crosshair-toggle:hover {
+    background: rgba(220, 38, 38, 0.45);
+}
+
+.doom-page .doom-crosshair-toggle.is-off {
+    opacity: 0.55;
+    color: rgba(248, 250, 252, 0.6);
+}
+
+/* 화면 중앙 조준선 (발사 방향 표시) */
+.doom-page .doom-crosshair {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 3;
+    display: none;
+    opacity: 0.7;
+}
+
+.doom-page .doom-crosshair::before,
+.doom-page .doom-crosshair::after {
+    content: '';
+    position: absolute;
+    background: #7CFC00;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+/* 세로선 (가운데 틈) */
+.doom-page .doom-crosshair::before {
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    transform: translateX(-50%);
+}
+
+/* 가로선 */
+.doom-page .doom-crosshair::after {
+    top: 50%;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    transform: translateY(-50%);
+}
+
 .doom-page .game-instructions kbd {
     display: inline-block;
     padding: 1px 7px;
