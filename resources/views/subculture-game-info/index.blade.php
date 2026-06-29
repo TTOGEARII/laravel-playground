@@ -75,6 +75,75 @@
 
     @push('scripts')
         <script>
+            (function () {
+                var IS_LOGGED_IN = @json($isLoggedIn);
+                var SERVER_REDEEMED = @json($redeemedIds);
+                var STORE_KEY = 'sgi_redeemed';
+                var CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                var STORE_URL = @json(route('subculture-game-info.redemptions.store'));
+                var DESTROY_BASE = @json(url('subculture-game-info/redemptions'));
+
+                // 교환완료 코드 ID 집합 로딩: 로그인=서버값, 비로그인=localStorage
+                function loadLocal() {
+                    try {
+                        var raw = localStorage.getItem(STORE_KEY);
+                        var arr = raw ? JSON.parse(raw) : [];
+                        return Array.isArray(arr) ? arr.map(Number) : [];
+                    } catch (e) { return []; }
+                }
+                function saveLocal(ids) {
+                    try { localStorage.setItem(STORE_KEY, JSON.stringify(ids)); } catch (e) {}
+                }
+
+                var redeemed = new Set((IS_LOGGED_IN ? SERVER_REDEEMED : loadLocal()).map(Number));
+
+                // 카드/버튼에 현재 상태 반영
+                function paint(id, on) {
+                    document.querySelectorAll('.sgi-code-card[data-code-id="' + id + '"]').forEach(function (card) {
+                        card.classList.toggle('is-redeemed', on);
+                    });
+                    document.querySelectorAll('.sgi-redeemed-toggle[data-code-id="' + id + '"]').forEach(function (btn) {
+                        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+                        btn.querySelector('.sgi-redeemed-label').textContent = on ? '교환완료됨' : '교환완료';
+                    });
+                }
+                redeemed.forEach(function (id) { paint(id, true); });
+
+                // 서버 동기화(로그인 시). 실패하면 false 반환 → 호출부에서 롤백.
+                function syncServer(id, on) {
+                    var opts = on
+                        ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: JSON.stringify({ redeem_code_id: id }) }
+                        : { method: 'DELETE', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' } };
+                    var url = on ? STORE_URL : (DESTROY_BASE + '/' + id);
+                    return fetch(url, opts).then(function (res) { return res.ok; }).catch(function () { return false; });
+                }
+
+                document.querySelectorAll('.sgi-redeemed-toggle').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = Number(btn.dataset.codeId);
+                        if (!id) return;
+                        var on = !redeemed.has(id);
+
+                        // 낙관적 UI 갱신
+                        if (on) redeemed.add(id); else redeemed.delete(id);
+                        paint(id, on);
+
+                        if (IS_LOGGED_IN) {
+                            btn.disabled = true;
+                            syncServer(id, on).then(function (ok) {
+                                btn.disabled = false;
+                                if (!ok) { // 롤백
+                                    if (on) redeemed.delete(id); else redeemed.add(id);
+                                    paint(id, !on);
+                                }
+                            });
+                        } else {
+                            saveLocal(Array.from(redeemed));
+                        }
+                    });
+                });
+            })();
+
             document.querySelectorAll('.sgi-copy').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     var code = btn.dataset.code || '';
