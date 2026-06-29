@@ -1,5 +1,6 @@
 @php($redeemUrl = $code->game?->redeemUrlFor($code->code))
-<article class="sgi-code-card sgi-status-{{ $code->status->value }} {{ $code->is_verified ? 'sgi-verified' : '' }}">
+<article class="sgi-code-card sgi-status-{{ $code->status->value }} {{ $code->is_verified ? 'sgi-verified' : '' }}"
+         data-code-id="{{ $code->id }}">
     <div class="sgi-code-row">
         <code class="sgi-code-text">{{ $code->code }}</code>
         <button type="button" class="sgi-copy" data-code="{{ $code->code }}">복사</button>
@@ -31,6 +32,10 @@
         @elseif ($code->game?->redeem_note)
             <span class="sgi-redeem-note">{{ $code->game->redeem_note }}</span>
         @endif
+        <button type="button" class="sgi-redeemed-toggle" data-code-id="{{ $code->id }}" aria-pressed="false">
+            <span class="sgi-redeemed-check">✓</span>
+            <span class="sgi-redeemed-label">교환완료</span>
+        </button>
         <span class="sgi-source">출처: {{ implode(', ', $code->seen_sources ?? [$code->source]) }}</span>
     </div>
 </article>
