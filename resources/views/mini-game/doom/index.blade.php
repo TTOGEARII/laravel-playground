@@ -103,10 +103,24 @@
         [200, 600, 1500].forEach(function (t) { setTimeout(placeCrosshair, t); });
     }
 
-    // prboom(SDL)은 document 의 keydown/keyup 에서 event.keyCode 를 읽는다.
-    // 가상 버튼 → 합성 KeyboardEvent(keyCode 강제 지정) 로 엔진에 입력을 전달.
+    // prboom(SDL)에 가상 버튼 입력을 합성 KeyboardEvent 로 전달한다.
+    // 메뉴는 keyCode 만으로 동작하지만, 게임플레이 입력(makeCEvent)은 key/code 도 읽으므로
+    // keyCode + key + code 를 모두 채워야 이동/발사가 실제로 먹힌다.
+    var KEY_INFO = {
+        37: { key: 'ArrowLeft', code: 'ArrowLeft' },
+        38: { key: 'ArrowUp', code: 'ArrowUp' },
+        39: { key: 'ArrowRight', code: 'ArrowRight' },
+        40: { key: 'ArrowDown', code: 'ArrowDown' },
+        17: { key: 'Control', code: 'ControlLeft' },
+        32: { key: ' ', code: 'Space' },
+        13: { key: 'Enter', code: 'Enter' },
+        27: { key: 'Escape', code: 'Escape' },
+    };
     function dispatchKey(keyCode, isDown) {
-        var e = new KeyboardEvent(isDown ? 'keydown' : 'keyup', { bubbles: true, cancelable: true });
+        var info = KEY_INFO[keyCode] || {};
+        var e = new KeyboardEvent(isDown ? 'keydown' : 'keyup', {
+            bubbles: true, cancelable: true, key: info.key, code: info.code, location: 0,
+        });
         Object.defineProperty(e, 'keyCode', { get: function () { return keyCode; } });
         Object.defineProperty(e, 'which', { get: function () { return keyCode; } });
         document.dispatchEvent(e);
@@ -140,10 +154,13 @@
         controls.setAttribute('aria-hidden', 'false');
         document.getElementById('game-container').classList.add('has-touch-controls');
 
+        var canvas = document.getElementById('doom');
         controls.querySelectorAll('.doom-btn').forEach(function (btn) {
+            btn.tabIndex = -1; // 버튼이 포커스를 가져가지 않도록
             var code = parseInt(btn.dataset.key, 10);
             var pressed = false;
-            var down = function (ev) { ev.preventDefault(); if (pressed) return; pressed = true; btn.classList.add('is-down'); dispatchKey(code, true); };
+            // 게임플레이 입력은 캔버스가 포커스를 가져야 처리되므로 누를 때마다 포커스를 보장한다.
+            var down = function (ev) { ev.preventDefault(); if (canvas) canvas.focus(); if (pressed) return; pressed = true; btn.classList.add('is-down'); dispatchKey(code, true); };
             var up = function (ev) { ev.preventDefault(); if (!pressed) return; pressed = false; btn.classList.remove('is-down'); dispatchKey(code, false); };
             btn.addEventListener('touchstart', down, { passive: false });
             btn.addEventListener('touchend', up, { passive: false });
