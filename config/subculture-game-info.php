@@ -78,6 +78,7 @@ return [
             'sort' => 4,
             'sources' => [
                 ['driver' => 'naver'],
+                ['driver' => 'twitter'],
                 ['driver' => 'html', 'url' => 'https://mollulog.net/coupons'],
                 ['driver' => 'html', 'url' => 'https://www.pocketgamer.com/blue-archive/coupon-codes/'],
                 ['driver' => 'dc'],
@@ -114,9 +115,10 @@ return [
             'redeem_note' => 'UID + 코드 입력 (게임 내 UID 확인)',
             'region_default' => 'kr',
             'sort' => 6,
-            // 한국게임: 네이버 게임 라운지(GM 공식 게시판)를 메인으로, 디씨/아카는 보조·검색검증.
+            // 한국게임: 네이버 게임 라운지(GM 공식 게시판)·공식 트위터를 메인으로, 디씨/아카는 보조·검색검증.
             'sources' => [
                 ['driver' => 'naver'],
+                ['driver' => 'twitter'],
                 ['driver' => 'dc'],
                 ['driver' => 'arca'],
             ],
@@ -132,6 +134,7 @@ return [
             'sort' => 7,
             'sources' => [
                 ['driver' => 'naver'],
+                ['driver' => 'twitter'],
                 ['driver' => 'dc'],
                 ['driver' => 'arca'],
             ],
@@ -147,6 +150,7 @@ return [
             'sort' => 8,
             'sources' => [
                 ['driver' => 'naver'],
+                ['driver' => 'twitter'],
                 ['driver' => 'dc'],
                 ['driver' => 'arca'],
             ],
@@ -195,10 +199,15 @@ return [
         ],
 
         // 게임 공식 트위터(X). nitter RSS 로 접근(X 본 사이트는 로그인 벽). accounts = 게임슬러그 → 계정.
+        // 공식 KR 계정이 있는 게임만 등록(호요버스는 KR 공식 계정이 없고 API로 이미 커버되어 제외).
         'twitter' => [
             'nitter_base' => env('SGI_NITTER_BASE', 'https://nitter.net'),
             'accounts' => [
                 'wuthering' => 'WW_KR_Official',
+                'bluearchive' => 'KR_BlueArchive',
+                'nikke' => 'NIKKE_kr',
+                'browndust2' => 'browndust2_kr',
+                'trickcal' => 'Trickcal_RE',
             ],
         ],
 
