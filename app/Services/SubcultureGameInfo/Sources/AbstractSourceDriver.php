@@ -4,6 +4,7 @@ namespace App\Services\SubcultureGameInfo\Sources;
 
 use App\Enums\SubcultureGameInfo\CodeRegion;
 use App\Services\SubcultureGameInfo\Sources\Contracts\SourceDriver;
+use App\Services\SubcultureGameInfo\Sources\DTO\CommunitySearchHit;
 use Carbon\Carbon;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -115,6 +116,10 @@ abstract class AbstractSourceDriver implements SourceDriver
         if (! preg_match('/^[A-Za-z0-9]{4,30}$/', $token)) {
             return false;
         }
+        // 순수 숫자(연도 2025·글번호 173188 등)는 코드가 아니다 — 실제 리딤코드는 거의 항상 영문을 포함.
+        if (! preg_match('/[A-Za-z]/', $token)) {
+            return false;
+        }
         $upper = preg_match_all('/[A-Z]/', $token);
         $alpha = preg_match_all('/[A-Za-z]/', $token);
         if ($alpha > 0 && $upper / max($alpha, 1) < 0.6) {
@@ -216,6 +221,40 @@ abstract class AbstractSourceDriver implements SourceDriver
         $parts = array_filter(array_map('trim', $parts));
 
         return $parts !== [] ? implode(', ', array_slice($parts, 0, 6)) : null;
+    }
+
+    /** 만료 단서(검색 글 제목에 함께 보이면 그 코드를 만료로 본다). */
+    protected const EXPIRED_SEARCH_HINTS = ['만료', '종료', '마감', '이미 사용', 'expired', 'ended'];
+
+    /**
+     * 검색 글 목록(제목+작성일)에서 코드 포함 여부·최근일·만료단서를 평가한다.
+     * 디씨/아카 검색 드라이버가 마크업별로 (제목, 작성일) 쌍을 만들어 넘긴다.
+     *
+     * @param  array<int, array{0: string, 1: ?\Carbon\CarbonInterface}>  $rows
+     */
+    protected function evaluateSearchRows(array $rows, string $code, string $source, ?string $url): CommunitySearchHit
+    {
+        $found = false;
+        $recentAt = null;
+        $expiredHint = false;
+
+        foreach ($rows as [$title, $date]) {
+            if ($title === '' || mb_stripos($title, $code) === false) {
+                continue;
+            }
+            $found = true;
+            if ($date !== null && ($recentAt === null || $date->gt($recentAt))) {
+                $recentAt = $date;
+            }
+            foreach (self::EXPIRED_SEARCH_HINTS as $hint) {
+                if (mb_stripos($title, $hint) !== false) {
+                    $expiredHint = true;
+                    break;
+                }
+            }
+        }
+
+        return new CommunitySearchHit($found, $source, $url, $recentAt, $expiredHint);
     }
 
     /** 코드 공유 키워드가 든 링크(제목)에서만 코드 토큰 추출(커뮤니티 보조용). */
