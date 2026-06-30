@@ -5,7 +5,7 @@
 <footer class="footer site-footer">
     <div class="site-footer-inner">
         <p class="site-footer-brand">
-            Laravel Playland
+            Kanenashi Togeari
             <span class="site-footer-sep">·</span>
             개인 포트폴리오 플레이그라운드
         </p>

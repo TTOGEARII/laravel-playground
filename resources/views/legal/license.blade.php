@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', '라이센스 | Laravel Playland')
+@section('title', '라이센스 | Kanenashi Togeari')
 
 @section('body-class', 'legal-page')
 
 @section('content')
     <x-legal-document title="라이센스" :updated="$updated">
         <p class="legal-lead">
-            <strong>Laravel Playland</strong>는 개인 학습·포트폴리오 목적의 비영리 사이트입니다.
+            <strong>Kanenashi Togeari</strong>는 개인 학습·포트폴리오 목적의 비영리 사이트입니다.
             사이트에서 다루는 게임·상품 데이터의 저작권은 각 권리자에게 있으며, 아래에 출처와 사용 라이브러리를 밝힙니다.
         </p>
 

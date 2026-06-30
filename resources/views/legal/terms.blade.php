@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', '이용약관 | Laravel Playland')
+@section('title', '이용약관 | Kanenashi Togeari')
 
 @section('body-class', 'legal-page')
 
 @section('content')
     <x-legal-document title="이용약관" :updated="$updated">
         <p class="legal-lead">
-            본 약관은 개인이 학습·포트폴리오 목적으로 운영하는 비영리 웹사이트 <strong>Laravel Playland</strong>(이하 "사이트")의
+            본 약관은 개인이 학습·포트폴리오 목적으로 운영하는 비영리 웹사이트 <strong>Kanenashi Togeari</strong>(이하 "사이트")의
             이용 조건을 안내합니다. 사이트를 이용함으로써 본 약관에 동의한 것으로 봅니다.
         </p>
 
