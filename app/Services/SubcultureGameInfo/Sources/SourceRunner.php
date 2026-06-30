@@ -7,6 +7,7 @@ use App\Services\SubcultureGameInfo\Sources\Drivers\ArcaCommunityDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\DcCommunityDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\EnneadApiDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\HtmlDriver;
+use App\Services\SubcultureGameInfo\Sources\Drivers\NaverGameLoungeDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\SeriaApiDriver;
 use Illuminate\Support\Facades\Log;
 
@@ -24,10 +25,11 @@ class SourceRunner
         EnneadApiDriver $ennead,
         SeriaApiDriver $seria,
         HtmlDriver $html,
+        NaverGameLoungeDriver $naver,
         DcCommunityDriver $dc,
         ArcaCommunityDriver $arca,
     ) {
-        foreach ([$ennead, $seria, $html, $dc, $arca] as $driver) {
+        foreach ([$ennead, $seria, $html, $naver, $dc, $arca] as $driver) {
             $this->drivers[$driver->driverKey()] = $driver;
         }
     }

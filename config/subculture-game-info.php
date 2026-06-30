@@ -35,7 +35,7 @@ return [
             'publisher' => 'HoYoverse',
             'icon' => '🚂',
             'color' => 'accent-indigo',
-            'redeem_url_template' => 'https://hsr.hoyoverse.com/ko-kr/gift?code={code}',
+            'redeem_url_template' => 'https://hsr.hoyoverse.com/gift?code={code}',
             'redeem_note' => null,
             'region_default' => 'asia',
             'sort' => 2,
@@ -77,6 +77,7 @@ return [
             'region_default' => 'kr',
             'sort' => 4,
             'sources' => [
+                ['driver' => 'naver'],
                 ['driver' => 'html', 'url' => 'https://mollulog.net/coupons'],
                 ['driver' => 'html', 'url' => 'https://www.pocketgamer.com/blue-archive/coupon-codes/'],
                 ['driver' => 'dc'],
@@ -110,10 +111,39 @@ return [
             'redeem_note' => 'UID + 코드 입력 (게임 내 UID 확인)',
             'region_default' => 'kr',
             'sort' => 6,
+            // 한국게임: 네이버 게임 라운지(GM 공식 게시판)를 메인으로, 디씨/아카는 보조·검색검증.
             'sources' => [
-                ['driver' => 'html', 'url' => 'https://honeybeejoa.co.kr/bbs/board.php?bo_table=Trickcal&wr_id=1'],
-                ['driver' => 'html', 'url' => 'http://www.gameinn.co.kr/news/articleView.html?idxno=12906'],
-                ['driver' => 'html', 'url' => 'https://www.mumuplayer.com/kr/blog/trickcal-revive-redeem-code.html'],
+                ['driver' => 'naver'],
+                ['driver' => 'dc'],
+                ['driver' => 'arca'],
+            ],
+        ],
+        'nikke' => [
+            'name' => '승리의 여신: 니케',
+            'publisher' => 'Shift Up',
+            'icon' => '🎯',
+            'color' => 'accent-pink',
+            'redeem_url_template' => null,
+            'redeem_note' => '게임 내 [메인 메뉴 > 쿠폰] 또는 공식 쿠폰 페이지에서 입력',
+            'region_default' => 'kr',
+            'sort' => 7,
+            'sources' => [
+                ['driver' => 'naver'],
+                ['driver' => 'dc'],
+                ['driver' => 'arca'],
+            ],
+        ],
+        'browndust2' => [
+            'name' => '브라운더스트2',
+            'publisher' => 'Neowiz',
+            'icon' => '🟤',
+            'color' => 'accent-indigo',
+            'redeem_url_template' => null,
+            'redeem_note' => '게임 내 [설정 > 쿠폰 등록] 또는 공식 쿠폰 페이지에서 입력',
+            'region_default' => 'kr',
+            'sort' => 8,
+            'sources' => [
+                ['driver' => 'naver'],
                 ['driver' => 'dc'],
                 ['driver' => 'arca'],
             ],
@@ -143,6 +173,8 @@ return [
                 'bluearchive' => 'projectmx',
                 'wuthering' => 'wutheringwaves',
                 'trickcal' => 'rollthechess',
+                'nikke' => 'victorynikke',
+                'browndust2' => 'browndust2',
             ],
         ],
         'arca' => [
@@ -154,6 +186,20 @@ return [
                 'bluearchive' => 'bluearchive',
                 'wuthering' => 'wutheringwaves',
                 'trickcal' => 'trickcal',
+                'nikke' => 'nikke',
+                'browndust2' => 'browndust',
+            ],
+        ],
+
+        // 네이버 게임 라운지(한국게임 공식 쿠폰). lounges = 게임슬러그 → 라운지 ID.
+        'naver' => [
+            'base' => env('SGI_NAVER_BASE', 'https://comm-api.game.naver.com/nng_main/v1'),
+            'feed_limit' => (int) env('SGI_NAVER_FEED_LIMIT', 20),
+            'lounges' => [
+                'bluearchive' => 'Blue_Archive',
+                'trickcal' => 'Trickcal',
+                'nikke' => 'nikke',
+                'browndust2' => 'BrownDust2',
             ],
         ],
     ],
@@ -171,4 +217,21 @@ return [
 
     // 수집 시 만료된 코드는 새로 저장하지 않는다(사용 가능한 코드만 저장).
     'store_usable_only' => true,
+
+    /*
+    |--------------------------------------------------------------------------
+    | 커뮤니티 검색 교차검증 (수집 후 디씨/아카에서 코드를 '검색'해 한 번 더 검증)
+    |--------------------------------------------------------------------------
+    | API가 없는 게임(트릭컬/블아/명조)은 정적 사이트의 오래된 코드를 살아있는 것처럼
+    | 수집하기 쉽다. 그래서 미검증 코드를 디씨 갤러리·아카 채널에서 직접 검색해:
+    |   - 최근 글에서 보이면 corroboration(교차검증) +1  → 신뢰도 상승
+    |   - 글 제목에 '만료/종료/expired' 가 함께 보이면 만료 처리
+    | 코드마다 요청이 1~2건 늘어나므로 게임당 상한·간격을 둔다.
+    */
+    'verify' => [
+        'enabled' => (bool) env('SGI_VERIFY_SEARCH', true),
+        'max_codes_per_game' => (int) env('SGI_VERIFY_MAX_PER_GAME', 20),
+        'recency_days' => (int) env('SGI_VERIFY_RECENCY_DAYS', 45),
+        'delay_ms' => (int) env('SGI_VERIFY_DELAY_MS', 400),
+    ],
 ];
