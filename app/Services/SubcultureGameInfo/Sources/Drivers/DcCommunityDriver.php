@@ -26,6 +26,10 @@ class DcCommunityDriver extends AbstractSourceDriver implements CodeSearchDriver
         return true;
     }
 
+    /**
+     * 코드를 이 게임 디씨 갤러리에서 검색해 (제목, 작성일) 목록을 만든 뒤 공통 평가기로 넘긴다.
+     * 디씨 마크업(tr.ub-content > td.gall_tit)은 아카와 달라 파싱은 여기서, 판정은 evaluateSearchRows()가 한다.
+     */
     public function searchCode(string $gameSlug, string $code): ?CommunitySearchHit
     {
         $cfg = config('subculture-game-info.drivers.dc');

@@ -28,6 +28,10 @@ class ArcaCommunityDriver extends AbstractSourceDriver implements CodeSearchDriv
         return true;
     }
 
+    /**
+     * 코드를 이 게임 아카 채널에서 검색해 (제목, 작성일) 목록을 만든 뒤 공통 평가기로 넘긴다.
+     * 아카 마크업(a.vrow.column > .col-title .title)은 디씨와 달라 파싱은 여기서, 판정은 evaluateSearchRows()가 한다.
+     */
     public function searchCode(string $gameSlug, string $code): ?CommunitySearchHit
     {
         $cfg = config('subculture-game-info.drivers.arca');
