@@ -9,6 +9,7 @@ use App\Services\SubcultureGameInfo\Sources\Drivers\EnneadApiDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\HtmlDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\NaverGameLoungeDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\SeriaApiDriver;
+use App\Services\SubcultureGameInfo\Sources\Drivers\TwitterDriver;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,10 +27,11 @@ class SourceRunner
         SeriaApiDriver $seria,
         HtmlDriver $html,
         NaverGameLoungeDriver $naver,
+        TwitterDriver $twitter,
         DcCommunityDriver $dc,
         ArcaCommunityDriver $arca,
     ) {
-        foreach ([$ennead, $seria, $html, $naver, $dc, $arca] as $driver) {
+        foreach ([$ennead, $seria, $html, $naver, $twitter, $dc, $arca] as $driver) {
             $this->drivers[$driver->driverKey()] = $driver;
         }
     }
