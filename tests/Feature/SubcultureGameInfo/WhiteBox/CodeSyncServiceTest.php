@@ -105,13 +105,15 @@ class CodeSyncServiceTest extends TestCase
         $this->assertSame(1, $code->corroboration_count);
     }
 
-    public function test_same_code_different_region_is_separate_row(): void
+    public function test_same_code_different_region_merges_into_one_row(): void
     {
+        // 동일성은 (게임, 코드)이라 리전만 다른 같은 코드는 한 행으로 합쳐진다(중복 방지).
+        // 같은 호요버스 코드를 API는 global, 정리사이트는 asia 로 넣어도 1행이어야 한다.
         $this->game();
         $this->sync->sync([$this->dto(['region' => CodeRegion::Asia, 'status' => CodeStatus::Active])]);
         $this->sync->sync([$this->dto(['region' => CodeRegion::Global, 'status' => CodeStatus::Active])]);
 
-        $this->assertSame(2, RedeemCode::count());
+        $this->assertSame(1, RedeemCode::count());
     }
 
     // ---------------------------------------------------------------- 권위 규칙

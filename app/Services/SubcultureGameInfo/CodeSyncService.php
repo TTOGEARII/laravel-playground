@@ -11,7 +11,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * 수집한 CollectedCodeDto[] 를 DB에 동기화한다.
- * - 동일성 키: (게임, 리전, 코드)
+ * - 동일성 키: (게임, 코드)  ※ 리전은 식별에 쓰지 않는다. 같은 코드를 출처마다 다른 리전
+ *   (예: API=global / 정리사이트=asia)으로 넣어 같은 코드가 두 번 적재되던 문제를 막는다.
  * - 교차검증: 여러 출처에서 본 코드는 seen_sources/corroboration_count 로 신뢰도 누적
  * - 권위 규칙: 메인(aggregator) > 커뮤니티, 확정상태(active/expired)는 미검증으로 안 덮음
  * - 사용가능만: 만료(만료일 경과/expired)된 코드는 신규 저장하지 않음(기존은 만료로 갱신)
@@ -56,8 +57,8 @@ class CodeSyncService
 
             $effectiveStatus = $this->effectiveStatus($dto);
 
+            // 동일성은 (게임, 코드)로 본다. 리전은 식별 키에서 제외(같은 코드의 리전 중복 방지).
             $existing = RedeemCode::where('subculture_game_id', $gameId)
-                ->where('region', $dto->region->value)
                 ->where('code', $dto->code)
                 ->first();
 
