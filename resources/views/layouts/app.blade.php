@@ -27,9 +27,7 @@
             @yield('content')
         </main>
 
-        <footer class="footer">
-            <p>Made with <span class="footer-heart">❤️</span> by TTOGEARII</p>
-        </footer>
+        <x-site-footer />
     </div>
 
     @stack('scripts')

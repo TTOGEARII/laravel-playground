@@ -1,0 +1,146 @@
+/* 문의하기 폼. 다크 글래스 테마(main.css :root 토큰 사용). */
+.inquiry {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 8px 0 24px;
+}
+
+.inquiry-head {
+    margin-bottom: 24px;
+}
+
+.inquiry-back {
+    display: inline-block;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #e5e7eb);
+    text-decoration: none;
+    opacity: 0.75;
+    transition: opacity 0.2s ease;
+}
+
+.inquiry-back:hover {
+    opacity: 1;
+}
+
+.inquiry-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary, #f9fafb);
+}
+
+.inquiry-desc {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary, #cbd5e1);
+    opacity: 0.75;
+}
+
+.inquiry-alert {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.inquiry-alert-success {
+    color: #d1fae5;
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.inquiry-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px;
+    background: var(--bg-card, rgba(15, 23, 42, 0.82));
+    border: 1px solid var(--border-color, rgba(248, 250, 252, 0.16));
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+}
+
+.inquiry-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inquiry-field label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary, #f9fafb);
+}
+
+.inquiry-optional {
+    font-weight: 400;
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.7;
+}
+
+.inquiry-field input,
+.inquiry-field select,
+.inquiry-field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--text-primary, #f9fafb);
+    background: rgba(2, 6, 23, 0.55);
+    border: 1px solid var(--border-color, rgba(248, 250, 252, 0.16));
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inquiry-field textarea {
+    resize: vertical;
+    min-height: 140px;
+    line-height: 1.6;
+}
+
+.inquiry-field input::placeholder,
+.inquiry-field textarea::placeholder {
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.45;
+}
+
+.inquiry-field input:focus,
+.inquiry-field select:focus,
+.inquiry-field textarea:focus {
+    border-color: var(--accent-1, #a855f7);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+}
+
+.inquiry-field .has-error {
+    border-color: #f87171;
+}
+
+.inquiry-error {
+    font-size: 0.8rem;
+    color: #fca5a5;
+}
+
+.inquiry-submit {
+    margin-top: 4px;
+    padding: 13px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent-1, #a855f7), var(--accent-2, #ec4899));
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inquiry-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(168, 85, 247, 0.3);
+}
+
+.inquiry-submit:active {
+    transform: translateY(0);
+}
