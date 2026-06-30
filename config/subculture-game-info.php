@@ -93,9 +93,10 @@ return [
             'redeem_note' => '게임 내 [설정 > 계정 > 리딤 코드]에서 입력 (공명자 Lv2+)',
             'region_default' => 'global',
             'sort' => 5,
-            // 네이버 게임 라운지(GM 연구소 공지)를 메인 후보로, 전용 코드 정리 사이트를 함께 사용.
+            // 네이버 게임 라운지(GM 연구소 공지)를 메인 후보로, 공식 트위터·전용 코드 정리 사이트를 함께 사용.
             'sources' => [
                 ['driver' => 'naver'],
+                ['driver' => 'twitter'],
                 ['driver' => 'html', 'url' => 'https://wuthering.gg/codes'],
                 ['driver' => 'html', 'url' => 'https://wuwastatus.com/codes'],
                 ['driver' => 'html', 'url' => 'https://game8.co/games/Wuthering-Waves/archives/453149'],
@@ -190,6 +191,14 @@ return [
                 'trickcal' => 'trickcal',
                 'nikke' => 'nikke',
                 'browndust2' => 'browndust',
+            ],
+        ],
+
+        // 게임 공식 트위터(X). nitter RSS 로 접근(X 본 사이트는 로그인 벽). accounts = 게임슬러그 → 계정.
+        'twitter' => [
+            'nitter_base' => env('SGI_NITTER_BASE', 'https://nitter.net'),
+            'accounts' => [
+                'wuthering' => 'WW_KR_Official',
             ],
         ],
 
