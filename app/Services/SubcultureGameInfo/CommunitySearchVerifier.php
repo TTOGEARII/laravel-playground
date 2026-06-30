@@ -8,6 +8,7 @@ use App\Models\SubcultureGameInfo\RedeemCode;
 use App\Services\SubcultureGameInfo\Sources\Contracts\CodeSearchDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\ArcaCommunityDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\DcCommunityDriver;
+use App\Services\SubcultureGameInfo\Sources\Drivers\NaverGameLoungeDriver;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,9 +26,10 @@ class CommunitySearchVerifier
     /** @var CodeSearchDriver[] */
     private array $searchers;
 
-    public function __construct(DcCommunityDriver $dc, ArcaCommunityDriver $arca)
+    public function __construct(DcCommunityDriver $dc, ArcaCommunityDriver $arca, NaverGameLoungeDriver $naver)
     {
-        $this->searchers = [$dc, $arca];
+        // 네이버 라운지(공식)를 먼저 — 라운지 있는 한국게임은 공식 글로 강하게 교차검증/만료 판정.
+        $this->searchers = [$naver, $dc, $arca];
     }
 
     /**

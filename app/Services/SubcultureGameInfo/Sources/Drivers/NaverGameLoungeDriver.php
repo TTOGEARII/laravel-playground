@@ -5,7 +5,9 @@ namespace App\Services\SubcultureGameInfo\Sources\Drivers;
 use App\Enums\SubcultureGameInfo\CodeStatus;
 use App\Enums\SubcultureGameInfo\SourceType;
 use App\Services\SubcultureGameInfo\Sources\AbstractSourceDriver;
+use App\Services\SubcultureGameInfo\Sources\Contracts\CodeSearchDriver;
 use App\Services\SubcultureGameInfo\Sources\DTO\CollectedCodeDto;
+use App\Services\SubcultureGameInfo\Sources\DTO\CommunitySearchHit;
 use Carbon\Carbon;
 
 /**
@@ -18,9 +20,12 @@ use Carbon\Carbon;
  *  3) 본문(네이버 에디터 JSON)을 텍스트로 펴서 '쿠폰 코드 …' 마커 뒤의 코드(대소문자 보존)·보상·
  *     사용기한을 뽑는다. 공지/뉴스 게시판에선 제목에 쿠폰/코드 키워드가 있는 글만 본다.
  */
-class NaverGameLoungeDriver extends AbstractSourceDriver
+class NaverGameLoungeDriver extends AbstractSourceDriver implements CodeSearchDriver
 {
     private const COUPON_TITLE_KEYWORDS = ['쿠폰', '코드', '리딤', 'coupon', 'redeem'];
+
+    /** 게임당 쿠폰/공지 게시판 글 텍스트 캐시(검증 시 코드마다 재요청 방지). */
+    private array $feedTextCache = [];
 
     /** 코드 마커: 이 문구 바로 뒤의 토큰을 코드로 본다(대소문자 구분 안내문/◈/: 는 건너뜀). */
     private const CODE_MARKER = '쿠폰\s*코드|교환\s*코드|리딤\s*코드|쿠폰코드|coupon\s*code|redeem\s*code';
@@ -94,6 +99,96 @@ class NaverGameLoungeDriver extends AbstractSourceDriver
         }
 
         return array_values($byCode);
+    }
+
+    /**
+     * 검증용: 코드가 이 게임 공식 라운지의 쿠폰/공지 글에 보이는지 확인한다.
+     * 라운지 매핑이 없는 게임(호요버스 등)은 null(검증 skip).
+     * 코드가 든 글의 사용기한이 이미 지났으면 expiredHint=true 로 만료를 알린다.
+     */
+    public function searchCode(string $gameSlug, string $code): ?CommunitySearchHit
+    {
+        $cfg = config('subculture-game-info.drivers.naver');
+        $loungeId = $cfg['lounges'][$gameSlug] ?? null;
+        if ($loungeId === null) {
+            return null;
+        }
+
+        $url = "https://game.naver.com/lounge/{$loungeId}/home";
+        $found = false;
+        $recentAt = null;
+        $expiredHint = false;
+
+        foreach ($this->loungeFeedTexts($loungeId) as $post) {
+            if (mb_stripos($post['title'].' '.$post['body'], $code) === false) {
+                continue;
+            }
+            $found = true;
+            $created = $this->parseCreatedDate($post['date']);
+            if ($created !== null && ($recentAt === null || $created->gt($recentAt))) {
+                $recentAt = $created;
+            }
+            // 공식 글의 사용기한이 지났으면 그 코드는 만료로 본다.
+            $expiry = $this->parseKoreanExpiry($post['title'], $post['body'], $post['date']);
+            if ($expiry !== null && $expiry->isPast()) {
+                $expiredHint = true;
+            }
+        }
+
+        return new CommunitySearchHit($found, 'naver-search', $url, $recentAt, $expiredHint);
+    }
+
+    /**
+     * 라운지 쿠폰/공지 게시판 글의 (제목, 본문, 작성일)을 게임당 1회만 받아 캐시한다.
+     *
+     * @return array<int, array{title:string, body:string, date:string}>
+     */
+    private function loungeFeedTexts(string $loungeId): array
+    {
+        if (isset($this->feedTextCache[$loungeId])) {
+            return $this->feedTextCache[$loungeId];
+        }
+
+        $base = rtrim(config('subculture-game-info.drivers.naver.base'), '/');
+        $limit = (int) config('subculture-game-info.drivers.naver.feed_limit', 20);
+        $posts = [];
+
+        foreach ($this->pickBoards($base, $loungeId) as [$boardId, $isCouponBoard]) {
+            $feeds = $this->getJson("{$base}/community/lounge/{$loungeId}/feed", [
+                'boardId' => $boardId,
+                'buffFilteringYN' => 'N',
+                'limit' => $limit,
+                'offset' => 0,
+                'order' => 'NEW',
+            ]);
+            foreach ($feeds['content']['feeds'] ?? [] as $item) {
+                $feed = $item['feed'] ?? [];
+                $title = (string) ($feed['title'] ?? '');
+                if (! $isCouponBoard && ! $this->titleLooksCoupon($title)) {
+                    continue;
+                }
+                $posts[] = [
+                    'title' => $title,
+                    'body' => $this->extractDocumentText((string) ($feed['contents'] ?? '')),
+                    'date' => (string) ($feed['createdDate'] ?? ''),
+                ];
+            }
+        }
+
+        return $this->feedTextCache[$loungeId] = $posts;
+    }
+
+    /** 라운지 작성일(yyyyMMddHHmmss) → Carbon. 실패 시 null. */
+    private function parseCreatedDate(string $createdDate): ?Carbon
+    {
+        if (! preg_match('/^\d{8}/', $createdDate)) {
+            return null;
+        }
+        try {
+            return Carbon::createFromFormat('YmdHis', str_pad(substr($createdDate, 0, 14), 14, '0'), config('app.timezone', 'Asia/Seoul'));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

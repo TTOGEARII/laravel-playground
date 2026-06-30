@@ -118,4 +118,42 @@ class NaverGameLoungeDriverTest extends TestCase
         $this->assertSame([], (new NaverGameLoungeDriver)->collect('genshin', []));
         Http::assertNothingSent();
     }
+
+    // ---------------------------------------------------------------- searchCode(검증)
+    public function test_search_code_found_with_expired_hint_for_past_coupon(): void
+    {
+        Carbon::setTestNow('2026-06-25 10:00:00');
+        $this->fakeLounge([
+            $this->couponFeed('[쿠폰] 현충일 쿠폰(~6월 13일)', [
+                '쿠폰 코드(대소문자를 구분합니다) MEMORIAL',
+                '사용 기한 - 6월 6일 ~ 6월 13일 23:59',
+            ]),
+        ]);
+
+        $hit = (new NaverGameLoungeDriver)->searchCode('trickcal', 'MEMORIAL');
+        $this->assertNotNull($hit);
+        $this->assertTrue($hit->found);
+        $this->assertTrue($hit->expiredHint);   // 라운지 글 사용기한 지남 → 만료 단서
+        $this->assertSame('naver-search', $hit->source);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_search_code_miss_for_code_not_in_lounge(): void
+    {
+        $this->fakeLounge([
+            $this->couponFeed('[쿠폰] 쿠폰 안내(~12월 31일)', ['쿠폰 코드 REALCODE2026']),
+        ]);
+
+        $hit = (new NaverGameLoungeDriver)->searchCode('trickcal', 'NOTHERE99');
+        $this->assertNotNull($hit);
+        $this->assertFalse($hit->found);
+    }
+
+    public function test_search_code_null_for_game_without_lounge(): void
+    {
+        Http::fake();
+        $this->assertNull((new NaverGameLoungeDriver)->searchCode('genshin', 'GENSHINGIFT'));
+        Http::assertNothingSent();
+    }
 }
