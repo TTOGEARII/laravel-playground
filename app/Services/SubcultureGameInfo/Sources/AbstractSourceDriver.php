@@ -110,26 +110,35 @@ abstract class AbstractSourceDriver implements SourceDriver
         return trim((string) preg_replace('/\s+/u', ' ', $text));
     }
 
-    /** 단일 토큰이 코드처럼 보이는가. */
+    /** 코드 영문 중 대문자 비중이 이보다 낮으면(소문자 영단어 등) 코드로 보지 않는다. */
+    protected const CODE_UPPERCASE_RATIO_MIN = 0.6;
+
+    /**
+     * 단일 토큰이 리딤코드처럼 보이는가. (자유 텍스트에서 코드를 골라낼 때의 노이즈 필터)
+     * 아래 규칙을 모두 통과해야 코드로 인정한다.
+     */
     protected function looksLikeCode(string $token): bool
     {
+        // 1) 형식: 영숫자 4~30자만.
         if (! preg_match('/^[A-Za-z0-9]{4,30}$/', $token)) {
             return false;
         }
-        // 순수 숫자(연도 2025·글번호 173188 등)는 코드가 아니다 — 실제 리딤코드는 거의 항상 영문을 포함.
+        // 2) 순수 숫자(연도 2025·글번호 173188 등)는 제외 — 실제 리딤코드는 거의 항상 영문을 포함한다.
         if (! preg_match('/[A-Za-z]/', $token)) {
             return false;
         }
-        $upper = preg_match_all('/[A-Z]/', $token);
-        $alpha = preg_match_all('/[A-Za-z]/', $token);
-        if ($alpha > 0 && $upper / max($alpha, 1) < 0.6) {
+        // 3) 리딤코드는 대개 대문자다. 영문 중 대문자 비중이 낮으면(평범한 소문자 영단어) 제외.
+        $letters = preg_match_all('/[A-Za-z]/', $token);
+        $uppercase = preg_match_all('/[A-Z]/', $token);
+        if ($letters > 0 && $uppercase / $letters < self::CODE_UPPERCASE_RATIO_MIN) {
             return false;
         }
-        $hasDigit = (bool) preg_match('/[0-9]/', $token);
-        if (strlen($token) < 6 && ! $hasDigit) {
+        // 4) 6자 미만이면서 숫자가 없는 짧은 영단어(GIFT/CODE 등)는 코드로 보지 않는다.
+        if (strlen($token) < 6 && ! preg_match('/[0-9]/', $token)) {
             return false;
         }
 
+        // 5) 보상명·페이지 단어 블랙리스트 제외.
         return ! in_array(strtoupper($token), static::CODE_DENYLIST, true);
     }
 

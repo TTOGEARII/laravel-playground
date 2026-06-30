@@ -73,6 +73,9 @@ class CommunitySearchVerifier
         $recentAt = null;
         $changed = false;
 
+        // 1단계: 모든 검색처(네이버/디씨/아카)에서 코드를 찾아 신호를 모은다.
+        //  - 보이면 교차검증 출처를 누적(corroboration↑)
+        //  - 가장 최근 관측일·만료 단서를 기록
         foreach ($this->searchers as $searcher) {
             $hit = $searcher->searchCode($game->slug, $code->code);
             $stats['searched']++;
@@ -100,6 +103,7 @@ class CommunitySearchVerifier
             }
         }
 
+        // 2단계: 모은 신호로 상태를 갱신한다(둘 중 하나만 적용).
         // 만료 단서가 명시적으로 보이면 만료 처리.
         if ($expiredHint && $code->status !== CodeStatus::Expired) {
             $code->status = CodeStatus::Expired;
