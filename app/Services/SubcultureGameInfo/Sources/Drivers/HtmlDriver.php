@@ -72,80 +72,153 @@ class HtmlDriver extends AbstractSourceDriver
         return array_values($byCode);
     }
 
-    /** 표 행에서 code/rewards/expiresAt/status 추출. @return array<int,array> */
+    // 만료가 '아닌' 날짜 컬럼 헤더(추가일/출시일 등). 이런 컬럼의 날짜는 만료로 쓰지 않는다.
+    // (예: wuthering.gg 의 'Date Added' 를 만료일로 오독해 활성 코드를 만료 처리하던 버그 방지.)
+    private const NON_EXPIRY_HEADER_HINTS = [
+        'added', 'date added', 'release', 'released', 'posted', 'publish', 'added on', 'discovered',
+        '등록', '추가', '출시', '발매', '게시', '작성',
+    ];
+
+    // 만료 컬럼 헤더(이 컬럼의 날짜는 만료일로 채택).
+    private const EXPIRY_HEADER_HINTS = ['expir', 'valid', 'until', 'end date', 'ends', '만료', '유효', '기한', '종료', '마감'];
+
+    /** 표 행에서 code/rewards/expiresAt/status 추출(표 헤더로 만료/추가일 컬럼 구분). @return array<int,array> */
     public function parseRows(string $html): array
     {
         $xp = $this->xpath($html);
         $out = [];
 
-        foreach ($xp->query('//table//tr') ?: [] as $row) {
-            $cells = [];
-            foreach ($xp->query('.//th|.//td', $row) ?: [] as $cell) {
-                $cells[] = trim(preg_replace('/\s+/u', ' ', $cell->textContent) ?? '');
-            }
-            if ($cells === []) {
-                continue;
-            }
+        foreach ($xp->query('//table') ?: [] as $table) {
+            $headers = $this->tableHeaderRoles($xp, $table);
 
-            $code = null;
-            $codeIdx = -1;
-            foreach ($cells as $i => $text) {
-                foreach ($this->extractCodeTokensFromText($text) as $tok) {
-                    if (mb_strlen($text) <= 40) {
-                        $code = $tok;
-                        $codeIdx = $i;
-                        break 2;
+            foreach ($xp->query('.//tr', $table) ?: [] as $row) {
+                $cells = [];
+                foreach ($xp->query('.//th|.//td', $row) ?: [] as $cell) {
+                    $cells[] = trim(preg_replace('/\s+/u', ' ', $cell->textContent) ?? '');
+                }
+                if ($cells === []) {
+                    continue;
+                }
+
+                $code = null;
+                $codeIdx = -1;
+                foreach ($cells as $i => $text) {
+                    foreach ($this->extractCodeTokensFromText($text) as $tok) {
+                        if (mb_strlen($text) <= 40) {
+                            $code = $tok;
+                            $codeIdx = $i;
+                            break 2;
+                        }
                     }
                 }
-            }
-            if ($code === null) {
-                continue;
-            }
-
-            $expiresAt = null;
-            $expiryIdx = -1;
-            foreach ($cells as $i => $text) {
-                if ($i === $codeIdx) {
+                if ($code === null) {
                     continue;
                 }
-                if (($d = $this->parseExpiry($text)) !== null) {
-                    $expiresAt = $d;
-                    $expiryIdx = $i;
-                    break;
-                }
-            }
 
-            $rewards = null;
-            $best = 0;
-            foreach ($cells as $i => $text) {
-                if ($i === $codeIdx || $i === $expiryIdx) {
-                    continue;
+                // 만료일: 헤더가 '추가일/출시일'인 컬럼의 날짜는 만료로 보지 않는다.
+                // 헤더가 '만료'인 컬럼을 우선 채택하고, 없으면 헤더 미상 컬럼의 날짜를 만료로 본다.
+                $expiresAt = null;
+                $expiryIdx = -1;
+                $fallback = null;
+                $fallbackIdx = -1;
+                foreach ($cells as $i => $text) {
+                    if ($i === $codeIdx) {
+                        continue;
+                    }
+                    $d = $this->parseExpiry($text);
+                    if ($d === null) {
+                        continue;
+                    }
+                    $role = $headers[$i] ?? 'unknown';
+                    if ($role === 'added') {
+                        continue;  // 추가일/출시일 → 만료 아님
+                    }
+                    if ($role === 'expiry') {
+                        $expiresAt = $d;
+                        $expiryIdx = $i;
+                        break;
+                    }
+                    if ($fallback === null) {  // 헤더 미상 → 만료 후보로 보류
+                        $fallback = $d;
+                        $fallbackIdx = $i;
+                    }
                 }
-                if (mb_strlen($text) > $best && mb_strlen($text) > 3) {
-                    $best = mb_strlen($text);
-                    $rewards = $text;
+                if ($expiresAt === null && $fallback !== null) {
+                    $expiresAt = $fallback;
+                    $expiryIdx = $fallbackIdx;
                 }
-            }
 
-            $rowText = mb_strtolower(implode(' ', $cells));
-            $expired = $expiresAt !== null && $expiresAt->isPast();
-            foreach (self::EXPIRED_HINTS as $h) {
-                if (mb_strpos($rowText, $h) !== false) {
-                    $expired = true;
-                    break;
+                $rewards = null;
+                $best = 0;
+                foreach ($cells as $i => $text) {
+                    if ($i === $codeIdx || $i === $expiryIdx) {
+                        continue;
+                    }
+                    if (mb_strlen($text) > $best && mb_strlen($text) > 3) {
+                        $best = mb_strlen($text);
+                        $rewards = $text;
+                    }
                 }
-            }
-            $status = $expired
-                ? CodeStatus::Expired
-                : ($expiresAt !== null ? CodeStatus::Active : CodeStatus::Unverified);
 
-            $key = strtoupper($code);
-            if (! isset($out[$key]) || ($rewards && empty($out[$key]['rewards']))) {
-                $out[$key] = compact('code', 'rewards', 'expiresAt', 'status');
+                $rowText = mb_strtolower(implode(' ', $cells));
+                $expired = $expiresAt !== null && $expiresAt->isPast();
+                foreach (self::EXPIRED_HINTS as $h) {
+                    if (mb_strpos($rowText, $h) !== false) {
+                        $expired = true;
+                        break;
+                    }
+                }
+                $status = $expired
+                    ? CodeStatus::Expired
+                    : ($expiresAt !== null ? CodeStatus::Active : CodeStatus::Unverified);
+
+                $key = strtoupper($code);
+                if (! isset($out[$key]) || ($rewards && empty($out[$key]['rewards']))) {
+                    $out[$key] = compact('code', 'rewards', 'expiresAt', 'status');
+                }
             }
         }
 
         return array_values($out);
+    }
+
+    /**
+     * 표의 헤더(th)를 읽어 컬럼 인덱스 → 역할('expiry'|'added'|'other')을 만든다.
+     *
+     * @return array<int, string>
+     */
+    private function tableHeaderRoles(\DOMXPath $xp, \DOMNode $table): array
+    {
+        $headerCells = $xp->query('.//thead//th | .//thead//td', $table);
+        if ($headerCells === false || $headerCells->length === 0) {
+            $headerCells = $xp->query('.//tr[1]/th', $table);  // thead 없으면 첫 행의 th
+        }
+        if ($headerCells === false) {
+            return [];
+        }
+
+        $roles = [];
+        foreach ($headerCells as $i => $cell) {
+            $name = mb_strtolower(trim($cell->textContent));
+            $role = 'other';
+            foreach (self::NON_EXPIRY_HEADER_HINTS as $hint) {
+                if (mb_strpos($name, $hint) !== false) {
+                    $role = 'added';
+                    break;
+                }
+            }
+            if ($role === 'other') {
+                foreach (self::EXPIRY_HEADER_HINTS as $hint) {
+                    if (mb_strpos($name, $hint) !== false) {
+                        $role = 'expiry';
+                        break;
+                    }
+                }
+            }
+            $roles[$i] = $role;
+        }
+
+        return $roles;
     }
 
     // 토큰 스캔 상한: '모든 코드' 아카이브 페이지가 만료 코드 수백 개를 쏟아내는 노이즈 방지.

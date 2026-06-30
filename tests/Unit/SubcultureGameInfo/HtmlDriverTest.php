@@ -62,6 +62,41 @@ class HtmlDriverTest extends TestCase
         $this->assertSame(CodeStatus::Expired, $rows['OLDCODE123']['status']);
     }
 
+    public function test_date_added_column_is_not_treated_as_expiry(): void
+    {
+        // 'Date Added'(추가일) 헤더 컬럼의 과거 날짜는 만료일이 아니다(wuthering.gg 류).
+        // → 만료 처리하지 않고, 만료일 없음(unverified)으로 둔다.
+        $past = now()->subDays(120)->format('Y-m-d');
+        $html = <<<HTML
+        <table>
+          <thead><tr><th>Code</th><th>Rewards</th><th>Date Added</th></tr></thead>
+          <tbody><tr><td>WUTHERINGGIFT</td><td>스타 5개</td><td>{$past}</td></tr></tbody>
+        </table>
+        HTML;
+
+        $rows = $this->rowsByCode($html);
+        $this->assertArrayHasKey('WUTHERINGGIFT', $rows);
+        $this->assertNull($rows['WUTHERINGGIFT']['expiresAt']);
+        $this->assertSame(CodeStatus::Unverified, $rows['WUTHERINGGIFT']['status']);
+    }
+
+    public function test_expiry_header_column_is_used_over_added(): void
+    {
+        // 'Expires' 컬럼이 있으면 그 날짜를 만료로, 'Added' 컬럼은 무시.
+        $added = now()->subDays(10)->format('Y-m-d');
+        $expiry = now()->addDays(20)->format('Y-m-d');
+        $html = <<<HTML
+        <table>
+          <thead><tr><th>Code</th><th>Added</th><th>Expires</th><th>Reward</th></tr></thead>
+          <tbody><tr><td>LIVECODE777</td><td>{$added}</td><td>{$expiry}</td><td>보상</td></tr></tbody>
+        </table>
+        HTML;
+
+        $rows = $this->rowsByCode($html);
+        $this->assertSame(CodeStatus::Active, $rows['LIVECODE777']['status']);
+        $this->assertSame($expiry, $rows['LIVECODE777']['expiresAt']->format('Y-m-d'));
+    }
+
     public function test_parse_rows_expired_hint_text_marks_expired(): void
     {
         // 만료일 없이 '만료' 힌트만 있어도 expired
