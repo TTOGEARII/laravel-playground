@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', '개인정보처리방침 | Laravel Playland')
+@section('title', '개인정보처리방침 | Kanenashi Togeari')
 
 @section('body-class', 'legal-page')
 
 @section('content')
     <x-legal-document title="개인정보처리방침" :updated="$updated">
         <p class="legal-lead">
-            <strong>Laravel Playland</strong>(이하 "사이트")는 개인이 학습·포트폴리오 목적으로 운영하는 비영리 서비스로서,
+            <strong>Kanenashi Togeari</strong>(이하 "사이트")는 개인이 학습·포트폴리오 목적으로 운영하는 비영리 서비스로서,
             아래와 같이 개인정보를 처리합니다. 최소한의 정보만 수집하며, 영리 목적으로 이용하지 않습니다.
         </p>
 

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '문의하기 | Laravel Playland')
+@section('title', '문의하기 | Kanenashi Togeari')
 
 @section('body-class', 'inquiry-page')
 

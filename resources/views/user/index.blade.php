@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '마이페이지 | Laravel Playland')
+@section('title', '마이페이지 | Kanenashi Togeari')
 
 @section('body-class', 'user-page')
 

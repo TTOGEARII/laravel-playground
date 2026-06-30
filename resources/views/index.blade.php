@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Tomochan is cute')
+@section('title', '돈없음 가시있음 · Kanenashi Togeari')
 
 @section('header')
     <div class="header-row">
         <div class="header-brand">
             <span class="header-badge">🚀 Toy Projects</span>
-            <h1>토모짱 귀여워</h1>
+            <h1>돈없음 가시있음</h1>
             <p>덕후 개발자의 은밀한 취미공간</p>
         </div>
         <div class="header-actions">
@@ -28,11 +28,6 @@
             <p class="card-description">
                 오타쿠 굿즈 통합검색
             </p>
-            <div class="card-tags">
-                <span class="tag">Laravel</span>
-                <span class="tag">Vue.js</span>
-                <span class="tag">MariaDB</span>
-            </div>
             <a href="{{ route('otaku-shop.index') }}" class="card-button">
                 프로젝트 보기
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,11 +43,6 @@
             <p class="card-description">
                 일론머스크형 AI와이프좀 만들어줘
             </p>
-            <div class="card-tags">
-                <span class="tag">Laravel</span>
-                <span class="tag">Gemini API</span>
-                <span class="tag">Vue.js</span>
-            </div>
             <a href="{{ route('my-wife-bot.characters') }}" class="card-button">
                 프로젝트 보기
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,11 +58,6 @@
             <p class="card-description">
                 어머니는 웹개발자가 싫다고 하셨어
             </p>
-            <div class="card-tags">
-                <span class="tag">Laravel</span>
-                <span class="tag">Vue.js</span>
-                <span class="tag">Phaser 3</span>
-            </div>
             <a href="{{ route('mini-game.index') }}" class="card-button">
                 프로젝트 보기
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -88,11 +73,6 @@
             <p class="card-description">
                 호요버스·블아·명조·트릭컬 코드 모아보기
             </p>
-            <div class="card-tags">
-                <span class="tag">Laravel</span>
-                <span class="tag">크롤링</span>
-                <span class="tag">집계</span>
-            </div>
             <a href="{{ route('subculture-game-info.index') }}" class="card-button">
                 프로젝트 보기
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -109,19 +89,15 @@
             </div>
             <h2 class="card-title">TTOGEARII</h2>
             <p class="card-description">
-                PHP/Laravel를 중심으로 웹 백엔드와 프론트엔드를 모두 다루는 6년 차 웹 개발자입니다. </br>
-                NestJS와 Nuxt.js로 모던한 TypeScript 기반 애플리케이션을 구축한 경험이있고,</br>
-                Docker와 AWS 환경에서 서비스의 Jenkins를 활용하여 배포·운영까지 직접 경험했습니다.
+                낮에는 코드를 짜고 밤에는 최애에게 영업당하는 <strong>오타쿠 개발자</strong>입니다.<br>
+                사이트 이름 그대로 <strong>돈은 없고(金無し) 고집(가시)만 있는</strong> 인간이라, 인생 목표는 단 하나 <strong>"돈 많은 백수"</strong>.
+                근데 자꾸 "돈 없는 직장인"에서 세이브 포인트가 안 넘어가는 게 함정입니다.<br>
+                가챠 천장은 잘만 뚫는데 통장 천장은 평생 못 뚫고, 한정 굿즈 앞에선 "이게 진짜 마지막"을 벌써 12번째 외치는 중.
+                좌우명은 <strong>"내 최애는 2D, 내 잔고도 2D(이미 평면)"</strong> 입니다.<br>
+                좋아하는 게임과 캐릭터를 핑계 삼아 굿즈 가격비교·AI 와이프 챗봇·미니게임·리딤코드 수집기처럼
+                <strong>아무도 안 시켰는데 혼자 진심</strong>인 토이 프로젝트를 만들며 덕질과 야근 사이를 표류합니다.<br>
+                오늘도 적당히 일하고 열심히 과금하며, 언젠가의 유유자적 백수 라이프를 기도메타로 빕니다. 🙏
             </p>
-            <div class="card-tags">
-                <span class="tag">PHP</span>
-                <span class="tag">Laravel</span>
-                <span class="tag">NestJS</span>
-                <span class="tag">Nuxt.js</span>
-                <span class="tag">Docker</span>
-                <span class="tag">AWS</span>
-                <span class="tag">Jenkins</span>
-            </div>
         </article>
     </section>
 @endsection
