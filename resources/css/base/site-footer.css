@@ -1,0 +1,79 @@
+/*
+ * 사이트 공통 푸터(x-site-footer). 다크 글래스 테마에 맞춘 중앙 정렬 레이아웃.
+ * 색상은 main.css 의 전역 :root 토큰을 쓰되, 토큰이 없는 페이지를 대비해 폴백값을 둔다.
+ * (.footer 의 padding-top/border-top 은 기존 페이지 스타일이 제공한다.)
+ */
+.site-footer-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.site-footer-brand {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #f9fafb);
+    letter-spacing: 0.01em;
+}
+
+.site-footer-copy {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #e5e7eb);
+    opacity: 0.85;
+}
+
+.site-footer-disclaimer {
+    max-width: 640px;
+    font-size: 0.75rem;
+    line-height: 1.75;
+    color: var(--text-secondary, #cbd5e1);
+    opacity: 0.6;
+}
+
+.site-footer-disclaimer strong {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.site-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px 12px;
+    margin-top: 4px;
+    font-size: 0.8rem;
+}
+
+.site-footer-links a {
+    color: var(--text-secondary, #e5e7eb);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.site-footer-links a:hover {
+    color: var(--accent-3, #fb7185);
+}
+
+.site-footer-sep {
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.4;
+}
+
+.site-footer-made {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #e5e7eb);
+    opacity: 0.55;
+}
+
+@media (max-width: 600px) {
+    .site-footer-disclaimer {
+        font-size: 0.7rem;
+        line-height: 1.7;
+    }
+}

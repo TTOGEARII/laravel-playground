@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
 @import './base/reset.css';
+@import './base/site-footer.css';
 @import './pages/main.css';
 @import './pages/mini-game/index.css';
 @import './pages/mini-game/vampire-survival/index.css';
@@ -8,6 +9,8 @@
 @import './pages/mini-game/doom/index.css';
 @import './pages/otaku-shop/index.css';
 @import './pages/subculture-game-info/index.css';
+@import './pages/inquiry.css';
+@import './pages/legal.css';
 @import './pages/auth.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';

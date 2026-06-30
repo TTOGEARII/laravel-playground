@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\InquiryController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\MyWifeBot\Api\ChatController as MyWifeBotChatController;
 use App\Http\Controllers\User\AuthController;
@@ -8,6 +10,15 @@ use Illuminate\Support\Facades\Route;
 
 // 메인
 Route::get('/', [MainController::class, 'index']);
+
+// 문의 (1:1 문의/버그 제보/기능 요청) — 누구나, POST는 쓰로틀 적용
+Route::get('/inquiry', [InquiryController::class, 'create'])->name('inquiry.create');
+Route::post('/inquiry', [InquiryController::class, 'store'])->middleware('throttle:5,1')->name('inquiry.store');
+
+// 약관·정책·라이센스 (정적 안내 페이지)
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/license', [LegalController::class, 'license'])->name('legal.license');
 
 // 인증 (로그인/회원가입/로그아웃) — POST는 쓰로틀 적용
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
