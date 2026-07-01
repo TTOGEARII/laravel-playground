@@ -23,7 +23,7 @@ const CONFIG = {
     ENEMY_DAMAGE: 8,
     HP_GROWTH_PER_MIN: 1.16,  // 적 체력: 분당 지수 성장(1.1~1.3). 밸런스의 심장.
     XP_TO_LEVEL: 60,          // 레벨1→2 기준량(이후 선형 증가 → 초반 빠르고 후반 느리게)
-    SPAWN_INTERVAL: 1000,     // 고정 스폰 주기. 밀도는 시간에 따라 batch/최대수로 "완만히" 상승
+    SPAWN_INTERVAL: 850,      // 고정 스폰 주기(살짝 빠르게). 밀도는 시간에 따라 batch/최대수로 완만히 상승
     LOG_INTERVAL: 5000,       // 밸런스 로그 주기(ms)
 };
 
@@ -37,10 +37,12 @@ const CHARACTERS = {
 
 // 무기 정의 (main=항상 발동 메인 / sub=레벨10에 장착·강화)
 const WEAPONS = {
-    umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 520, damage: 20, range: 108 },
-    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 22, range: 105, rangeStep: 38 },
-    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1000, damage: 12, bullets: 5, spread: 0.6, speed: 540 },
-    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 150, damage: 7, bullets: 1, spread: 0.22, speed: 720 },
+    // 근접(우산·칼)은 한 방이 세고, 원거리(샷건·기관총)는 근접보다 딜이 약한 대신 안전하게 사거리.
+    // 우산(항상 켜진 메인)은 방치 클리어 방지를 위해 사거리/데미지를 낮춤.
+    umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 560, damage: 15, range: 92 },
+    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 34, range: 105, rangeStep: 38 },
+    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1000, damage: 11, bullets: 5, spread: 0.6, speed: 540 },
+    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 260, damage: 6, bullets: 1, spread: 0.22, speed: 720 },
 };
 const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife'];
 const BULLET_COLOR = { shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
@@ -231,7 +233,7 @@ class GameScene extends Phaser.Scene {
     // --- 적 ---
     // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
     // 밀도(스폰)는 시간에 따라 "완만히" 상승 — 체력(지수)과 밀도를 동시에 급격히 올리지 않는다.
-    maxEnemies() { return Math.min(28 + Math.floor((this.gameTime / 60) * 3), 90); }
+    maxEnemies() { return Math.min(34 + Math.floor((this.gameTime / 60) * 3), 96); }
     spawnBatchSize() { return Math.min(1 + Math.floor((this.gameTime / 60) / 4), 6); } // 4분마다 +1
 
     spawnEnemy() {
@@ -529,7 +531,7 @@ class GameScene extends Phaser.Scene {
     }
 
     weaponDesc(key) {
-        return { shotgun: '넓게 퍼지는 산탄', machinegun: '빠른 연사', knife: '주변 근접 범위 공격' }[key] || '';
+        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '강력한 근접 범위 공격' }[key] || '';
     }
 
     showChoice(title, cards) {
