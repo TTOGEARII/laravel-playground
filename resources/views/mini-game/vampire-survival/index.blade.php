@@ -19,6 +19,7 @@
         {{-- 시작 화면 = 캐릭터 선택 --}}
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
+                <img class="vs-hero" src="/images/mini-game/vampire-survivors/rayna.webp" alt="레이니" width="760" height="1089">
                 <h2>🧛 뱀파이어 서바이벌</h2>
                 <p>캐릭터를 선택하세요</p>
                 <div class="vs-char-grid">
@@ -652,6 +653,14 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
 
     @push('styles')
     <style>
+        /* 대기화면 헤딩 일러스트 */
+        .vs-hero {
+            display: block; margin: 0 auto 10px; height: auto; width: auto;
+            max-height: 260px; max-width: 90%;
+            border-radius: 16px; box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+        }
+        @media (max-width: 768px) { .vs-hero { max-height: 180px; } }
+
         /* 캐릭터 선택 */
         .vs-char-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
         .vs-char-card {
