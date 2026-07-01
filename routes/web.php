@@ -5,6 +5,7 @@ use App\Http\Controllers\LegalController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\MyWifeBot\Api\ChatController as MyWifeBotChatController;
 use App\Http\Controllers\User\AuthController;
+use App\Http\Controllers\User\SocialAuthController;
 use App\Http\Controllers\User\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,16 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// 소셜 로그인 (카카오/구글) — 리다이렉트 → 제공자 동의 → 콜백
+Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+    ->whereIn('provider', ['kakao', 'google'])
+    ->middleware('throttle:10,1')
+    ->name('auth.social.redirect');
+Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+    ->whereIn('provider', ['kakao', 'google'])
+    ->middleware('throttle:10,1')
+    ->name('auth.social.callback');
 
 // 로그인 사용자 전용 페이지
 Route::middleware('auth')->group(function () {

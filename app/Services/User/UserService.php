@@ -26,6 +26,7 @@ class UserService
         if (! $user instanceof User) {
             return null;
         }
+
         return $user->toProfileArray();
     }
 }

@@ -43,4 +43,21 @@ return [
         'thinking_level' => env('GEMINI_THINKING_LEVEL', 'low'),
     ],
 
+    // 소셜 로그인(OAuth). client_id 가 비어 있으면 해당 제공자 로그인은 비활성으로 처리된다.
+    // redirect 는 상대경로여도 되며, 인증자에서 url() 로 절대 URL 로 변환해 제공자 콘솔 등록값과 맞춘다.
+    'kakao' => [
+        'client_id' => env('KAKAO_REST_API_KEY'),
+        'client_secret' => env('KAKAO_CLIENT_SECRET'),
+        'redirect' => env('KAKAO_REDIRECT_URI', '/auth/kakao/callback'),
+        // 이메일은 수집 권한이 없어(그리고 식별 코드로 대체하므로) 요청하지 않는다.
+        'scope' => env('KAKAO_SCOPE', 'profile_nickname,profile_image'),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+        'scope' => env('GOOGLE_SCOPE', 'openid email profile'),
+    ],
+
 ];
