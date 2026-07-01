@@ -15,23 +15,50 @@
             </a>
             <span class="game-title">🧛 뱀파이어 서바이벌</span>
         </div>
+
+        {{-- 시작 화면 = 캐릭터 선택 --}}
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
                 <h2>🧛 뱀파이어 서바이벌</h2>
-                <p>마지막까지 살아남아보거라!</p>
-                <button id="startGameBtn" class="start-game-button">게임 시작</button>
+                <p>캐릭터를 선택하세요</p>
+                <div class="vs-char-grid">
+                    <button class="vs-char-card" data-char="rainy">
+                        <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/char_t.png');background-size:590px 846px;background-position:0 -59px;"></div>
+                        <div class="vs-char-name">레이니</div>
+                        <div class="vs-char-weapon">메인: 🌂 우산</div>
+                    </button>
+                    <div class="vs-char-card locked">
+                        <div class="vs-char-portrait vs-locked">?</div>
+                        <div class="vs-char-name">준비중</div>
+                        <div class="vs-char-weapon">Coming soon</div>
+                    </div>
+                    <div class="vs-char-card locked">
+                        <div class="vs-char-portrait vs-locked">?</div>
+                        <div class="vs-char-name">준비중</div>
+                        <div class="vs-char-weapon">Coming soon</div>
+                    </div>
+                </div>
             </div>
         </div>
+
         <div id="game-container" style="display: none;" tabindex="0" title="터치하여 이동"></div>
     </div>
 
     <x-mini-game.ranking-overlay game="vampire-survival" />
 
+    {{-- 레벨업 선택 오버레이 (능력치 / 서브무기) --}}
+    <div id="vs-choice" class="vs-choice" hidden>
+        <div class="vs-choice-box">
+            <h3 id="vs-choice-title">레벨 업!</h3>
+            <div id="vs-choice-cards" class="vs-choice-cards"></div>
+        </div>
+    </div>
+
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
     <script>
 // ============================================================================
-// 게임 설정 (모바일 시 동적 해상도)
+// 뱀파이어 서바이벌 — 캐릭터 선택 + 스프라이트 애니메이션 + 다중 무기 누적
 // ============================================================================
 const isMobile = () => 'ontouchstart' in window || window.innerWidth < 768;
 const getGameSize = () => {
@@ -44,210 +71,186 @@ const getGameSize = () => {
 };
 
 const CONFIG = {
-    get WIDTH() { return getGameSize().width; },
-    get HEIGHT() { return getGameSize().height; },
     PLAYER_SPEED: 200,
     PLAYER_HP: 100,
     ENEMY_BASE_SPEED: 80,
     ENEMY_BASE_HP: 30,
     ENEMY_DAMAGE: 10,
-    ATTACK_COOLDOWN: 500,
-    ATTACK_RANGE: 150,
-    ATTACK_DAMAGE: 25,
     XP_TO_LEVEL: 100,
     SPAWN_INTERVAL: 1500,
-    MAX_ENEMIES: 50
+    MAX_ENEMIES: 50,
 };
 
-// ============================================================================
-// 메인 게임 씬
-// ============================================================================
+// 스프라이트 시트 그리드 (char_t.png: 7열×8행, 열폭 864/7, 행높이 144, 헤더 y=87)
+const SHEET = { colW: 864 / 7, originY: 87, rowH: 144, cols: 7, rows: 8 };
+
+// 캐릭터별 고유 메인 무기
+const CHARACTERS = {
+    rainy: { name: '레이니', main: 'umbrella' },
+};
+
+// 무기 정의 (main=항상 발동 메인 / sub=레벨10에 장착·강화)
+const WEAPONS = {
+    umbrella:   { name: '우산', kind: 'main', type: 'melee', anim: 'atk_umbrella',   cooldown: 650, damage: 16, range: 95 },
+    knife:      { name: '칼',   kind: 'sub',  type: 'melee', anim: 'atk_knife',      cooldown: 430, damage: 22, range: 105, rangeStep: 38 },
+    pistol:     { name: '총',   kind: 'sub',  type: 'gun',   anim: 'atk_pistol',     cooldown: 520, damage: 20, bullets: 1, spread: 0.12, speed: 620 },
+    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   anim: 'atk_shotgun',    cooldown: 1000, damage: 12, bullets: 5, spread: 0.6, speed: 540 },
+    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  anim: 'atk_machinegun', cooldown: 150, damage: 7, bullets: 1, spread: 0.22, speed: 720 },
+};
+const SUB_WEAPONS = ['pistol', 'shotgun', 'machinegun', 'knife'];
+const BULLET_COLOR = { pistol: 0xfff176, shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
+
 class GameScene extends Phaser.Scene {
-    constructor() {
-        super({ key: 'GameScene' });
-    }
+    constructor() { super({ key: 'GameScene' }); }
 
     init() {
-        // 게임 상태 초기화
+        this.charKey = window.__vsChar || 'rainy';
         this.playerHP = CONFIG.PLAYER_HP;
         this.maxHP = CONFIG.PLAYER_HP;
+        this.playerSpeed = CONFIG.PLAYER_SPEED;
+        this.bonusAttack = 0;
         this.level = 1;
         this.xp = 0;
         this.xpToNext = CONFIG.XP_TO_LEVEL;
         this.kills = 0;
         this.gameTime = 0;
         this.isGameOver = false;
-        this.attackCooldown = 0;
-        this.attackDamage = CONFIG.ATTACK_DAMAGE;
-        this.attackRange = CONFIG.ATTACK_RANGE;
-        this.playerSpeed = CONFIG.PLAYER_SPEED;
+        this.paused = false;
+        this.pendingChoices = [];
+        this.animLockUntil = 0;
+        this.facing = 1;
+
+        // 장착 무기: 캐릭터 메인 무기부터 시작
+        const main = CHARACTERS[this.charKey].main;
+        this.equipped = {};
+        this.equipped[main] = { level: 1, cd: 0 };
+    }
+
+    preload() {
+        this.load.image('char', '/images/mini-game/vampire-survivors/char_t.png');
     }
 
     create() {
-        // 월드 바운드 설정 (맵 크기)
         this.physics.world.setBounds(-1000, -1000, 3000, 3000);
+        this.registerFrames();
+        this.makeAnims();
+        this.makeBulletTextures();
 
-        // 배경 생성
         this.createBackground();
-
-        // 플레이어 생성
         this.createPlayer();
 
-        // 적 그룹 생성
         this.enemies = this.physics.add.group();
-
-        // 경험치 오브 그룹
         this.xpOrbs = this.physics.add.group();
+        this.bullets = this.physics.add.group();
 
-        // 공격 이펙트 그룹
-        this.attackEffects = this.add.group();
-
-        // 충돌 설정
         this.physics.add.overlap(this.player, this.enemies, this.onPlayerHit, null, this);
         this.physics.add.overlap(this.player, this.xpOrbs, this.collectXP, null, this);
+        this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHit, null, this);
 
-        // 입력 설정 (키보드 + 모바일 터치)
         this.cursors = this.input.keyboard.createCursorKeys();
-        this.wasd = this.input.keyboard.addKeys({
-            up: Phaser.Input.Keyboard.KeyCodes.W,
-            down: Phaser.Input.Keyboard.KeyCodes.S,
-            left: Phaser.Input.Keyboard.KeyCodes.A,
-            right: Phaser.Input.Keyboard.KeyCodes.D
-        });
+        this.wasd = this.input.keyboard.addKeys({ up: 'W', down: 'S', left: 'A', right: 'D' });
         this.touchMoveActive = false;
-        this.input.on('pointerdown', this.onPointerDown, this);
-        this.input.on('pointerup', this.onPointerUp, this);
-        this.input.on('pointerout', this.onPointerUp, this);
+        this.input.on('pointerdown', () => { this.touchMoveActive = true; });
+        this.input.on('pointerup', () => { this.touchMoveActive = false; });
+        this.input.on('pointerout', () => { this.touchMoveActive = false; });
 
-        // UI 생성
         this.createUI();
 
-        // 적 스폰 타이머
-        this.spawnTimer = this.time.addEvent({
-            delay: CONFIG.SPAWN_INTERVAL,
-            callback: this.spawnEnemy,
-            callbackScope: this,
-            loop: true
-        });
+        this.spawnTimer = this.time.addEvent({ delay: CONFIG.SPAWN_INTERVAL, callback: this.spawnEnemy, callbackScope: this, loop: true });
+        this.time.addEvent({ delay: 1000, callback: () => { if (!this.isGameOver && !this.paused) this.gameTime++; }, loop: true });
 
-        // 게임 시간 타이머
-        this.time.addEvent({
-            delay: 1000,
-            callback: () => { if (!this.isGameOver) this.gameTime++; },
-            loop: true
-        });
-
-        // 카메라 설정
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-        this.cameras.main.setZoom(1);
+    }
+
+    // --- 스프라이트 프레임/애니메이션 ---
+    registerFrames() {
+        const tex = this.textures.get('char');
+        for (let r = 0; r < SHEET.rows; r++) {
+            for (let c = 0; c < SHEET.cols; c++) {
+                const x = Math.round(c * SHEET.colW);
+                const x2 = Math.round((c + 1) * SHEET.colW);
+                tex.add(`ch_${r}_${c}`, 0, x, SHEET.originY + r * SHEET.rowH, x2 - x, SHEET.rowH);
+            }
+        }
+    }
+
+    makeAnims() {
+        const F = (r, c) => ({ key: 'char', frame: `ch_${r}_${c}` });
+        const def = (key, frames, fps, repeat = -1) => {
+            if (!this.anims.exists(key)) this.anims.create({ key, frames, frameRate: fps, repeat });
+        };
+        def('idle', [F(0, 0), F(0, 1)], 3);
+        def('walk', [F(0, 0), F(0, 1), F(0, 2)], 7);
+        def('atk_umbrella', [F(6, 0), F(6, 1), F(6, 2)], 10, 0);
+        def('atk_knife', [F(1, 0), F(1, 1), F(1, 2)], 14, 0);
+        def('atk_pistol', [F(3, 0), F(3, 1)], 12, 0);
+        def('atk_shotgun', [F(4, 0), F(4, 1)], 12, 0);
+        def('atk_machinegun', [F(5, 0), F(5, 1), F(5, 2)], 18, 0);
+        def('death', [F(7, 0), F(7, 1)], 4, 0);
+    }
+
+    makeBulletTextures() {
+        for (const [key, color] of Object.entries(BULLET_COLOR)) {
+            const tk = 'bullet_' + key;
+            if (this.textures.exists(tk)) continue;
+            const g = this.add.graphics();
+            g.fillStyle(color); g.fillCircle(5, 5, 5);
+            g.fillStyle(0xffffff, 0.7); g.fillCircle(4, 4, 2);
+            g.generateTexture(tk, 10, 10); g.destroy();
+        }
     }
 
     createBackground() {
-        // 타일 패턴 배경
         const graphics = this.add.graphics();
         const tileSize = 64;
-        
         for (let x = -1000; x < 2000; x += tileSize) {
             for (let y = -1000; y < 2000; y += tileSize) {
-                const shade = ((x + y) / tileSize) % 2 === 0 ? 0x16213e : 0x1a1a2e;
-                graphics.fillStyle(shade);
+                graphics.fillStyle(((x + y) / tileSize) % 2 === 0 ? 0x16213e : 0x1a1a2e);
                 graphics.fillRect(x, y, tileSize, tileSize);
             }
         }
     }
 
     createPlayer() {
-        // 플레이어 그래픽 생성
-        const playerGraphics = this.add.graphics();
-        playerGraphics.fillStyle(0x4ecca3);
-        playerGraphics.fillCircle(25, 25, 20);
-        playerGraphics.fillStyle(0xeeeeee);
-        playerGraphics.fillCircle(30, 20, 5);
-        playerGraphics.fillCircle(20, 20, 5);
-        playerGraphics.generateTexture('player', 50, 50);
-        playerGraphics.destroy();
-
         const w = this.scale.width, h = this.scale.height;
-        this.player = this.physics.add.sprite(w / 2, h / 2, 'player');
+        this.player = this.physics.add.sprite(w / 2, h / 2, 'char', 'ch_0_0');
+        this.player.setScale(0.62);
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
-        this.player.body.setCircle(20, 5, 5);
-
-        // 공격 범위 표시 (반투명 원)
-        this.attackRangeCircle = this.add.graphics();
-        this.attackRangeCircle.setDepth(5);
+        this.player.body.setCircle(26, SHEET.colW / 2 - 26, SHEET.rowH / 2 - 26);
+        this.player.play('idle');
     }
 
     createUI() {
-        // UI는 카메라를 따라가도록 설정
-        this.uiContainer = this.add.container(0, 0);
-        this.uiContainer.setScrollFactor(0);
-        this.uiContainer.setDepth(100);
+        this.uiContainer = this.add.container(0, 0).setScrollFactor(0).setDepth(100);
 
-        // HP 바 배경
-        const hpBarBg = this.add.graphics();
-        hpBarBg.fillStyle(0x333333);
-        hpBarBg.fillRoundedRect(20, 20, 200, 25, 5);
+        const hpBarBg = this.add.graphics(); hpBarBg.fillStyle(0x333333); hpBarBg.fillRoundedRect(20, 20, 200, 25, 5);
         this.uiContainer.add(hpBarBg);
+        this.hpBar = this.add.graphics(); this.uiContainer.add(this.hpBar); this.updateHPBar();
 
-        // HP 바
-        this.hpBar = this.add.graphics();
-        this.uiContainer.add(this.hpBar);
-        this.updateHPBar();
-
-        // XP 바 배경
-        const xpBarBg = this.add.graphics();
-        xpBarBg.fillStyle(0x333333);
-        xpBarBg.fillRoundedRect(20, 50, 200, 15, 3);
+        const xpBarBg = this.add.graphics(); xpBarBg.fillStyle(0x333333); xpBarBg.fillRoundedRect(20, 50, 200, 15, 3);
         this.uiContainer.add(xpBarBg);
+        this.xpBar = this.add.graphics(); this.uiContainer.add(this.xpBar); this.updateXPBar();
 
-        // XP 바
-        this.xpBar = this.add.graphics();
-        this.uiContainer.add(this.xpBar);
-        this.updateXPBar();
-
-        // 텍스트 스타일
-        const textStyle = {
-            fontSize: '18px',
-            fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
-        };
-
-        // 레벨 텍스트
-        this.levelText = this.add.text(20, 70, 'Lv. 1', textStyle);
-        this.uiContainer.add(this.levelText);
+        const ts = { fontSize: '18px', fill: '#ffffff', stroke: '#000000', strokeThickness: 3 };
+        this.levelText = this.add.text(20, 70, 'Lv. 1', ts); this.uiContainer.add(this.levelText);
 
         const gw = this.scale.width, gh = this.scale.height;
-        // 시간 텍스트
-        this.timeText = this.add.text(gw - 100, 20, '00:00', textStyle);
-        this.uiContainer.add(this.timeText);
+        this.timeText = this.add.text(gw - 100, 20, '00:00', ts); this.uiContainer.add(this.timeText);
+        this.killText = this.add.text(gw - 100, 45, 'Kills: 0', ts); this.uiContainer.add(this.killText);
+        this.weaponHudText = this.add.text(gw - 240, 72, '', { fontSize: '13px', fill: '#8ff0e0', stroke: '#000', strokeThickness: 2 });
+        this.uiContainer.add(this.weaponHudText); this.updateWeaponHUD();
 
-        // 킬 카운트
-        this.killText = this.add.text(gw - 100, 45, 'Kills: 0', textStyle);
-        this.uiContainer.add(this.killText);
-
-        // 조작 안내 (모바일은 터치 안내)
-        const helpMsg = isMobile() ? '화면 터치로 이동 | 자동 공격' : 'WASD / 방향키로 이동 | 자동 공격';
-        const helpText = this.add.text(gw / 2, gh - 30, helpMsg, { fontSize: '14px', fill: '#aaaaaa' });
-        helpText.setOrigin(0.5);
+        const helpMsg = isMobile() ? '화면 터치로 이동 | 무기 자동 발동' : 'WASD / 방향키로 이동 | 무기 자동 발동';
+        const helpText = this.add.text(gw / 2, gh - 30, helpMsg, { fontSize: '14px', fill: '#aaaaaa' }).setOrigin(0.5);
         this.uiContainer.add(helpText);
-    }
-
-    onPointerDown() {
-        this.touchMoveActive = true;
-    }
-
-    onPointerUp() {
-        this.touchMoveActive = false;
     }
 
     updateHPBar() {
         this.hpBar.clear();
-        const hpPercent = this.playerHP / this.maxHP;
-        const color = hpPercent > 0.5 ? 0x4ecca3 : (hpPercent > 0.25 ? 0xf9ed69 : 0xe94560);
-        this.hpBar.fillStyle(color);
-        this.hpBar.fillRoundedRect(20, 20, 200 * hpPercent, 25, 5);
+        const p = Math.max(0, this.playerHP) / this.maxHP;
+        const color = p > 0.5 ? 0x4ecca3 : (p > 0.25 ? 0xf9ed69 : 0xe94560);
+        this.hpBar.fillStyle(color); this.hpBar.fillRoundedRect(20, 20, 200 * p, 25, 5);
     }
 
     updateXPBar() {
@@ -256,411 +259,335 @@ class GameScene extends Phaser.Scene {
         this.xpBar.fillRoundedRect(20, 50, 200 * (this.xp / this.xpToNext), 15, 3);
     }
 
-    spawnEnemy() {
-        if (this.isGameOver || this.enemies.countActive() >= CONFIG.MAX_ENEMIES) return;
+    updateWeaponHUD() {
+        if (!this.weaponHudText) return;
+        this.weaponHudText.setText(Object.keys(this.equipped).map(k => `${WEAPONS[k].name}${this.equipped[k].level}`).join('  '));
+    }
 
-        // 플레이어 주변 원형으로 스폰
+    // --- 적 ---
+    spawnEnemy() {
+        if (this.isGameOver || this.paused || this.enemies.countActive() >= CONFIG.MAX_ENEMIES) return;
         const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
         const distance = Phaser.Math.Between(400, 600);
         const x = this.player.x + Math.cos(angle) * distance;
         const y = this.player.y + Math.sin(angle) * distance;
+        const t = this.getEnemyType();
 
-        // 적 종류 결정 (레벨에 따라 다양화)
-        const enemyType = this.getEnemyType();
-        
-        // 적 그래픽 생성
-        const enemyKey = `enemy_${enemyType.color.toString(16)}`;
-        if (!this.textures.exists(enemyKey)) {
-            const g = this.add.graphics();
-            g.fillStyle(enemyType.color);
-            g.fillCircle(15, 15, enemyType.size);
-            g.generateTexture(enemyKey, 30, 30);
-            g.destroy();
+        const key = `enemy_${t.color.toString(16)}`;
+        if (!this.textures.exists(key)) {
+            const g = this.add.graphics(); g.fillStyle(t.color); g.fillCircle(15, 15, t.size);
+            g.generateTexture(key, 30, 30); g.destroy();
         }
-
-        const enemy = this.enemies.create(x, y, enemyKey);
-        enemy.setData('hp', enemyType.hp);
-        enemy.setData('damage', enemyType.damage);
-        enemy.setData('speed', enemyType.speed);
-        enemy.setData('xp', enemyType.xp);
-        enemy.body.setCircle(enemyType.size, 15 - enemyType.size, 15 - enemyType.size);
+        const enemy = this.enemies.create(x, y, key);
+        enemy.setData('hp', t.hp); enemy.setData('damage', t.damage);
+        enemy.setData('speed', t.speed); enemy.setData('xp', t.xp);
+        enemy.body.setCircle(t.size, 15 - t.size, 15 - t.size);
     }
 
     getEnemyType() {
-        const baseMultiplier = 1 + (this.level - 1) * 0.1 + (this.gameTime / 60) * 0.1;
-        
+        const m = 1 + (this.level - 1) * 0.1 + (this.gameTime / 60) * 0.1;
         const types = [
-            { // 일반
-                color: 0xe94560,
-                size: 12,
-                hp: Math.floor(CONFIG.ENEMY_BASE_HP * baseMultiplier),
-                damage: CONFIG.ENEMY_DAMAGE,
-                speed: CONFIG.ENEMY_BASE_SPEED * baseMultiplier,
-                xp: 10
-            },
-            { // 빠른 적
-                color: 0xf9ed69,
-                size: 8,
-                hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * baseMultiplier),
-                damage: CONFIG.ENEMY_DAMAGE * 0.5,
-                speed: CONFIG.ENEMY_BASE_SPEED * 1.5 * baseMultiplier,
-                xp: 15
-            },
-            { // 탱커
-                color: 0x6a0572,
-                size: 18,
-                hp: Math.floor(CONFIG.ENEMY_BASE_HP * 2 * baseMultiplier),
-                damage: CONFIG.ENEMY_DAMAGE * 1.5,
-                speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * baseMultiplier,
-                xp: 25
-            }
+            { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * m), damage: CONFIG.ENEMY_DAMAGE, speed: CONFIG.ENEMY_BASE_SPEED * m, xp: 10 },
+            { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * m), damage: CONFIG.ENEMY_DAMAGE * 0.5, speed: CONFIG.ENEMY_BASE_SPEED * 1.5 * m, xp: 15 },
+            { color: 0x6a0572, size: 18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 2 * m), damage: CONFIG.ENEMY_DAMAGE * 1.5, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * m, xp: 25 },
         ];
-
-        // 레벨이 높을수록 강한 적 등장 확률 증가
-        const weights = [60, 25, 15];
-        if (this.level >= 3) { weights[1] += 10; weights[2] += 5; weights[0] -= 15; }
-        if (this.level >= 5) { weights[1] += 10; weights[2] += 10; weights[0] -= 20; }
-
+        const w = [60, 25, 15];
+        if (this.level >= 3) { w[1] += 10; w[2] += 5; w[0] -= 15; }
+        if (this.level >= 5) { w[1] += 10; w[2] += 10; w[0] -= 20; }
         const roll = Phaser.Math.Between(1, 100);
-        if (roll <= weights[0]) return types[0];
-        if (roll <= weights[0] + weights[1]) return types[1];
+        if (roll <= w[0]) return types[0];
+        if (roll <= w[0] + w[1]) return types[1];
         return types[2];
     }
 
+    updateEnemies() {
+        this.enemies.children.iterate((e) => {
+            if (!e || !e.active) return;
+            const a = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
+            const s = e.getData('speed');
+            e.setVelocity(Math.cos(a) * s, Math.sin(a) * s);
+        });
+    }
+
+    // --- 메인 루프 ---
     update(time, delta) {
-        if (this.isGameOver) return;
+        if (this.isGameOver || this.paused) return;
 
-        // 플레이어 이동
-        this.handlePlayerMovement();
-
-        // 적 AI
+        const mv = this.handlePlayerMovement();
         this.updateEnemies();
-
-        // 자동 공격
-        this.attackCooldown -= delta;
-        if (this.attackCooldown <= 0) {
-            this.performAttack();
-            this.attackCooldown = CONFIG.ATTACK_COOLDOWN;
-        }
-
-        // 공격 범위 표시 업데이트
-        this.updateAttackRangeVisual();
-
-        // UI 업데이트
+        this.fireWeapons(delta, time);
+        this.cleanupBullets(time);
+        this.updatePlayerAnim(mv.vx, mv.vy, time);
         this.updateTimeDisplay();
     }
 
     handlePlayerMovement() {
-        let vx = 0;
-        let vy = 0;
-
-        // 터치/마우스: 누른 위치 방향으로 이동
+        let vx = 0, vy = 0;
         if (this.touchMoveActive && this.input.activePointer.isDown) {
             const world = this.cameras.main.getWorldPoint(this.input.activePointer.x, this.input.activePointer.y);
-            const dx = world.x - this.player.x;
-            const dy = world.y - this.player.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > 20) {
-                vx = dx / dist;
-                vy = dy / dist;
-            }
+            const dx = world.x - this.player.x, dy = world.y - this.player.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d > 20) { vx = dx / d; vy = dy / d; }
         } else {
             if (this.cursors.left.isDown || this.wasd.left.isDown) vx = -1;
             else if (this.cursors.right.isDown || this.wasd.right.isDown) vx = 1;
             if (this.cursors.up.isDown || this.wasd.up.isDown) vy = -1;
             else if (this.cursors.down.isDown || this.wasd.down.isDown) vy = 1;
-            // 대각선 이동 시 속도 정규화
-            if (vx !== 0 && vy !== 0) {
-                vx *= 0.707;
-                vy *= 0.707;
-            }
+            if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707; }
         }
-
         this.player.setVelocity(vx * this.playerSpeed, vy * this.playerSpeed);
+        return { vx, vy };
     }
 
-    updateEnemies() {
-        this.enemies.children.iterate((enemy) => {
-            if (!enemy || !enemy.active) return;
-
-            // 플레이어를 향해 이동
-            const angle = Phaser.Math.Angle.Between(
-                enemy.x, enemy.y,
-                this.player.x, this.player.y
-            );
-            const speed = enemy.getData('speed');
-            enemy.setVelocity(
-                Math.cos(angle) * speed,
-                Math.sin(angle) * speed
-            );
-        });
+    updatePlayerAnim(vx, vy, time) {
+        if (vx < -0.01) this.facing = -1; else if (vx > 0.01) this.facing = 1;
+        this.player.setFlipX(this.facing === -1);
+        if (time < this.animLockUntil) return; // 무기 모션 재생 중
+        const moving = vx !== 0 || vy !== 0;
+        this.player.play(moving ? 'walk' : 'idle', true);
     }
 
-    performAttack() {
-        let closestEnemy = null;
-        let closestDist = this.attackRange;
+    // --- 무기 발동 ---
+    fireWeapons(delta, time) {
+        for (const key of Object.keys(this.equipped)) {
+            const st = this.equipped[key];
+            st.cd -= delta;
+            if (st.cd <= 0) { this.fireWeapon(key, time); st.cd = WEAPONS[key].cooldown; }
+        }
+    }
 
-        // 범위 내 가장 가까운 적 찾기
-        this.enemies.children.iterate((enemy) => {
-            if (!enemy || !enemy.active) return;
-
-            const dist = Phaser.Math.Distance.Between(
-                this.player.x, this.player.y,
-                enemy.x, enemy.y
-            );
-
-            if (dist < closestDist) {
-                closestDist = dist;
-                closestEnemy = enemy;
+    fireWeapon(key, time) {
+        const def = WEAPONS[key], st = this.equipped[key];
+        const dmg = def.damage + this.bonusAttack;
+        if (def.type === 'melee') {
+            const range = def.range + (def.rangeStep ? (st.level - 1) * def.rangeStep : 0);
+            let hit = false;
+            this.enemies.children.iterate((e) => {
+                if (!e || !e.active) return;
+                if (Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y) <= range) { this.damageEnemy(e, dmg); hit = true; }
+            });
+            if (hit || key === 'umbrella') { this.meleeEffect(key, range); this.playWeaponAnim(def.anim, time); }
+        } else {
+            const target = this.nearestEnemy(700);
+            if (!target) return;
+            const base = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+            const n = def.bullets + (st.level - 1) * 3;
+            if (n <= 1) {
+                this.spawnBullet(base + Phaser.Math.FloatBetween(-def.spread / 2, def.spread / 2), def, dmg, key, time);
+            } else {
+                const step = def.spread / (n - 1);
+                for (let i = 0; i < n; i++) this.spawnBullet(base - def.spread / 2 + i * step, def, dmg, key, time);
             }
-        });
-
-        if (closestEnemy) {
-            this.attackEnemy(closestEnemy);
+            this.playWeaponAnim(def.anim, time);
         }
     }
 
-    attackEnemy(enemy) {
-        // 공격 이펙트 (선)
-        const line = this.add.graphics();
-        line.lineStyle(3, 0x4ecca3, 1);
-        line.beginPath();
-        line.moveTo(this.player.x, this.player.y);
-        line.lineTo(enemy.x, enemy.y);
-        line.strokePath();
-
-        // 이펙트 페이드 아웃
-        this.tweens.add({
-            targets: line,
-            alpha: 0,
-            duration: 150,
-            onComplete: () => line.destroy()
+    nearestEnemy(maxDist) {
+        let best = null, bd = maxDist;
+        this.enemies.children.iterate((e) => {
+            if (!e || !e.active) return;
+            const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y);
+            if (d < bd) { bd = d; best = e; }
         });
+        return best;
+    }
 
-        // 데미지 적용
-        const hp = enemy.getData('hp') - this.attackDamage;
+    spawnBullet(angle, def, dmg, key, time) {
+        const b = this.bullets.create(this.player.x, this.player.y, 'bullet_' + key);
+        b.setDepth(9);
+        b.setData('damage', dmg);
+        b.setData('die', time + 1100);
+        this.physics.velocityFromRotation(angle, def.speed, b.body.velocity);
+    }
+
+    meleeEffect(key, range) {
+        const color = key === 'umbrella' ? 0x66aaff : 0xffffff;
+        const g = this.add.graphics().setDepth(8);
+        g.lineStyle(3, color, 0.7); g.strokeCircle(this.player.x, this.player.y, range);
+        g.fillStyle(color, 0.12); g.fillCircle(this.player.x, this.player.y, range);
+        this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+    }
+
+    playWeaponAnim(anim, time) {
+        this.player.play(anim, true);
+        this.animLockUntil = time + 260;
+    }
+
+    damageEnemy(enemy, dmg) {
+        if (!enemy.active) return;
+        const hp = enemy.getData('hp') - dmg;
         enemy.setData('hp', hp);
+        this.tweens.add({ targets: enemy, tint: 0xffffff, duration: 40, yoyo: true });
+        if (hp <= 0) this.killEnemy(enemy);
+    }
 
-        // 피격 이펙트
-        this.tweens.add({
-            targets: enemy,
-            tint: 0xffffff,
-            duration: 50,
-            yoyo: true
-        });
+    onBulletHit(bullet, enemy) {
+        if (!bullet.active || !enemy.active) return;
+        const dmg = bullet.getData('damage');
+        bullet.destroy();
+        this.damageEnemy(enemy, dmg);
+    }
 
-        if (hp <= 0) {
-            this.killEnemy(enemy);
-        }
+    cleanupBullets(time) {
+        this.bullets.children.iterate((b) => { if (b && b.active && time > b.getData('die')) b.destroy(); });
     }
 
     killEnemy(enemy) {
-        const xpValue = enemy.getData('xp');
-        
-        // 경험치 오브 생성
-        this.createXPOrb(enemy.x, enemy.y, xpValue);
-
-        // 사망 이펙트
-        const particles = this.add.graphics();
-        particles.fillStyle(0xe94560);
-        for (let i = 0; i < 5; i++) {
-            const px = enemy.x + Phaser.Math.Between(-10, 10);
-            const py = enemy.y + Phaser.Math.Between(-10, 10);
-            particles.fillCircle(px, py, 3);
-        }
-        this.tweens.add({
-            targets: particles,
-            alpha: 0,
-            duration: 300,
-            onComplete: () => particles.destroy()
-        });
-
+        this.createXPOrb(enemy.x, enemy.y, enemy.getData('xp'));
+        const p = this.add.graphics(); p.fillStyle(0xe94560);
+        for (let i = 0; i < 5; i++) p.fillCircle(enemy.x + Phaser.Math.Between(-10, 10), enemy.y + Phaser.Math.Between(-10, 10), 3);
+        this.tweens.add({ targets: p, alpha: 0, duration: 300, onComplete: () => p.destroy() });
         enemy.destroy();
         this.kills++;
         this.killText.setText(`Kills: ${this.kills}`);
     }
 
     createXPOrb(x, y, value) {
-        // XP 오브 그래픽
         if (!this.textures.exists('xp_orb')) {
             const g = this.add.graphics();
-            g.fillStyle(0x7b68ee);
-            g.fillCircle(8, 8, 6);
-            g.fillStyle(0xaaaaff);
-            g.fillCircle(6, 6, 2);
-            g.generateTexture('xp_orb', 16, 16);
-            g.destroy();
+            g.fillStyle(0x7b68ee); g.fillCircle(8, 8, 6);
+            g.fillStyle(0xaaaaff); g.fillCircle(6, 6, 2);
+            g.generateTexture('xp_orb', 16, 16); g.destroy();
         }
-
         const orb = this.xpOrbs.create(x, y, 'xp_orb');
         orb.setData('value', value);
-        
-        // 약간 튀어오르는 효과
-        this.tweens.add({
-            targets: orb,
-            y: y - 20,
-            duration: 200,
-            yoyo: true,
-            ease: 'Quad.easeOut'
-        });
+        this.tweens.add({ targets: orb, y: y - 20, duration: 200, yoyo: true, ease: 'Quad.easeOut' });
     }
 
     collectXP(player, orb) {
-        const value = orb.getData('value');
-        this.xp += value;
+        this.xp += orb.getData('value');
         orb.destroy();
-
-        // 레벨업 체크
-        while (this.xp >= this.xpToNext) {
-            this.xp -= this.xpToNext;
-            this.levelUp();
-        }
-
+        while (this.xp >= this.xpToNext) { this.xp -= this.xpToNext; this.levelUp(); }
         this.updateXPBar();
+        this.processChoiceQueue();
     }
 
+    // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
         this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.5));
         this.levelText.setText(`Lv. ${this.level}`);
 
-        // 스탯 강화
-        this.attackDamage += 5;
-        this.attackRange += 10;
-        this.maxHP += 10;
-        this.playerHP = Math.min(this.playerHP + 20, this.maxHP);
-        this.playerSpeed += 5;
-
-        this.updateHPBar();
-
-        // 레벨업 이펙트
-        const levelUpText = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', {
-            fontSize: '24px',
-            fill: '#f9ed69',
-            stroke: '#000000',
-            strokeThickness: 4
-        });
-        levelUpText.setOrigin(0.5);
-        levelUpText.setDepth(100);
-
-        this.tweens.add({
-            targets: levelUpText,
-            y: this.player.y - 100,
-            alpha: 0,
-            duration: 1000,
-            onComplete: () => levelUpText.destroy()
-        });
-
-        // 전체 화면 플래시
+        const t = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', { fontSize: '24px', fill: '#f9ed69', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(100);
+        this.tweens.add({ targets: t, y: this.player.y - 100, alpha: 0, duration: 1000, onComplete: () => t.destroy() });
         this.cameras.main.flash(200, 249, 237, 105);
+
+        if (this.level % 10 === 0) this.pendingChoices.push('weapon');
+        else if (this.level % 5 === 0) this.pendingChoices.push('stat');
+        else this.applyMinorBonus();
     }
 
-    updateAttackRangeVisual() {
-        this.attackRangeCircle.clear();
-        this.attackRangeCircle.lineStyle(2, 0x4ecca3, 0.3);
-        this.attackRangeCircle.strokeCircle(this.player.x, this.player.y, this.attackRange);
-    }
-
-    onPlayerHit(player, enemy) {
-        const damage = enemy.getData('damage');
-        this.playerHP -= damage * 0.016; // 프레임당 데미지
-
+    applyMinorBonus() {
+        this.maxHP += 6;
+        this.playerHP = Math.min(this.maxHP, this.playerHP + 16);
         this.updateHPBar();
+    }
 
-        // 화면 흔들림
-        if (Math.random() < 0.1) {
-            this.cameras.main.shake(100, 0.005);
-        }
+    processChoiceQueue() {
+        if (this.paused || this.pendingChoices.length === 0) return;
+        const kind = this.pendingChoices.shift();
+        if (kind === 'stat') this.showStatChoice();
+        else this.showWeaponChoice();
+    }
 
-        if (this.playerHP <= 0) {
-            this.gameOver();
-        }
+    showStatChoice() {
+        this.showChoice('레벨 업! 능력치 강화', [
+            { emoji: '❤️', title: '체력 +30', desc: '최대 체력 증가 & 회복', onPick: () => { this.maxHP += 30; this.playerHP += 30; this.updateHPBar(); } },
+            { emoji: '👟', title: '이동속도 +25', desc: '더 빠르게 이동', onPick: () => { this.playerSpeed += 25; } },
+            { emoji: '⚔️', title: '공격력 +8', desc: '모든 무기 데미지 증가', onPick: () => { this.bonusAttack += 8; } },
+        ]);
+    }
+
+    showWeaponChoice() {
+        const pool = Phaser.Utils.Array.Shuffle(SUB_WEAPONS.slice()).slice(0, 3);
+        const cards = pool.map((key) => {
+            const def = WEAPONS[key], owned = this.equipped[key];
+            if (owned) {
+                const lv = owned.level;
+                const desc = def.type === 'gun'
+                    ? `탄환 ${def.bullets + (lv - 1) * 3} → ${def.bullets + lv * 3}발`
+                    : `공격 범위 ${def.range + (lv - 1) * def.rangeStep} → ${def.range + lv * def.rangeStep}`;
+                return { icon: key, title: `${def.name} 강화 Lv.${lv}→${lv + 1}`, desc, onPick: () => { owned.level++; } };
+            }
+            return { icon: key, title: `${def.name} 새 장착`, desc: this.weaponDesc(key), onPick: () => { this.equipped[key] = { level: 1, cd: 0 }; } };
+        });
+        this.showChoice('레벨 10! 서브무기 장착 / 강화', cards);
+    }
+
+    weaponDesc(key) {
+        return { pistol: '가장 가까운 적에게 탄환 발사', shotgun: '넓게 퍼지는 산탄', machinegun: '빠른 연사', knife: '주변 근접 범위 공격' }[key] || '';
+    }
+
+    showChoice(title, cards) {
+        this.paused = true;
+        this.physics.pause();
+        if (this.spawnTimer) this.spawnTimer.paused = true;
+
+        const overlay = document.getElementById('vs-choice');
+        document.getElementById('vs-choice-title').textContent = title;
+        const wrap = document.getElementById('vs-choice-cards');
+        wrap.innerHTML = '';
+        cards.forEach((cd) => {
+            const btn = document.createElement('button');
+            btn.className = 'vs-choice-card';
+            const icon = cd.icon
+                ? `<img class="vs-cc-icon" src="/images/mini-game/vampire-survivors/icons/${cd.icon}.png" alt="">`
+                : `<div class="vs-cc-emoji">${cd.emoji || ''}</div>`;
+            btn.innerHTML = `${icon}<div class="vs-cc-title">${cd.title}</div><div class="vs-cc-desc">${cd.desc}</div>`;
+            btn.addEventListener('click', () => {
+                overlay.hidden = true;
+                cd.onPick();
+                this.updateWeaponHUD();
+                if (this.pendingChoices.length) this.processChoiceQueue();
+                else this.resumePlay();
+            });
+            wrap.appendChild(btn);
+        });
+        overlay.hidden = false;
+    }
+
+    resumePlay() {
+        this.paused = false;
+        this.physics.resume();
+        if (this.spawnTimer) this.spawnTimer.paused = false;
+    }
+
+    // --- 피격 / 시간 / 게임오버 ---
+    onPlayerHit(player, enemy) {
+        this.playerHP -= enemy.getData('damage') * 0.016;
+        this.updateHPBar();
+        if (Math.random() < 0.1) this.cameras.main.shake(100, 0.005);
+        if (this.playerHP <= 0) this.gameOver();
     }
 
     updateTimeDisplay() {
-        const minutes = Math.floor(this.gameTime / 60).toString().padStart(2, '0');
-        const seconds = (this.gameTime % 60).toString().padStart(2, '0');
-        this.timeText.setText(`${minutes}:${seconds}`);
+        const m = Math.floor(this.gameTime / 60).toString().padStart(2, '0');
+        const s = (this.gameTime % 60).toString().padStart(2, '0');
+        this.timeText.setText(`${m}:${s}`);
     }
 
     gameOver() {
+        if (this.isGameOver) return;
         this.isGameOver = true;
         this.physics.pause();
+        this.player.play('death', true);
 
         const gw = this.scale.width, gh = this.scale.height;
-        // 게임 오버 화면
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.7);
-        overlay.fillRect(this.cameras.main.scrollX, this.cameras.main.scrollY, gw, gh);
-        overlay.setDepth(200);
+        const cx = this.cameras.main.scrollX + gw / 2, cy = this.cameras.main.scrollY + gh / 2;
+        const overlay = this.add.graphics().setDepth(200);
+        overlay.fillStyle(0x000000, 0.6); overlay.fillRect(this.cameras.main.scrollX, this.cameras.main.scrollY, gw, gh);
+        this.add.text(cx, cy - 70, 'GAME OVER', { fontSize: '48px', fill: '#e94560', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5).setDepth(201);
+        this.add.text(cx, cy + 6,
+            `생존 ${Math.floor(this.gameTime / 60)}분 ${this.gameTime % 60}초  ·  Lv.${this.level}  ·  처치 ${this.kills}`,
+            { fontSize: '20px', fill: '#fff', stroke: '#000', strokeThickness: 3, align: 'center' }).setOrigin(0.5).setDepth(201);
 
-        const centerX = this.cameras.main.scrollX + gw / 2;
-        const centerY = this.cameras.main.scrollY + gh / 2;
-
-        const gameOverText = this.add.text(centerX, centerY - 80, 'GAME OVER', {
-            fontSize: '48px',
-            fill: '#e94560',
-            stroke: '#000000',
-            strokeThickness: 6
-        });
-        gameOverText.setOrigin(0.5);
-        gameOverText.setDepth(201);
-
-        const statsText = this.add.text(centerX, centerY, 
-            `생존 시간: ${Math.floor(this.gameTime / 60)}분 ${this.gameTime % 60}초\n` +
-            `레벨: ${this.level}\n` +
-            `처치 수: ${this.kills}`, {
-            fontSize: '24px',
-            fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3,
-            align: 'center'
-        });
-        statsText.setOrigin(0.5);
-        statsText.setDepth(201);
-
-        const restartText = this.add.text(centerX, centerY + 100, '클릭하여 재시작', {
-            fontSize: '20px',
-            fill: '#4ecca3'
-        });
-        restartText.setOrigin(0.5);
-        restartText.setDepth(201);
-
-        // 깜빡임 효과
-        this.tweens.add({
-            targets: restartText,
-            alpha: 0.3,
-            duration: 500,
-            yoyo: true,
-            repeat: -1
-        });
-
-        // 랭킹 오버레이 표시. 점수 = 생존초×10 + 처치×2 (오래 살수록·많이 잡을수록 높음)
+        // 랭킹 오버레이(닉네임 입력 → 등록 → 랭킹 → 다시하기). 점수 = 생존초×10 + 처치×2
         window.MiniGameRanking?.show(this.gameTime * 10 + this.kills * 2);
-
-        // 재시작
-        this.input.once('pointerdown', () => {
-            // 게임 인스턴스 파괴
-            if (game) {
-                game.destroy(true);
-                game = null;
-            }
-            
-            // 시작 화면으로 돌아가기
-            const startScreen = document.getElementById('startScreen');
-            const gameContainer = document.getElementById('game-container');
-            const startBtn = document.getElementById('startGameBtn');
-            
-            startScreen.style.display = 'flex';
-            gameContainer.style.display = 'none';
-            startBtn.disabled = false;
-            startBtn.textContent = '게임 시작';
-        });
     }
 }
 
 // ============================================================================
-// 게임 설정 및 시작
+// 캐릭터 선택 → 게임 시작
 // ============================================================================
 let game = null;
 
@@ -672,67 +599,84 @@ function getPhaserConfig() {
         height: size.height,
         parent: 'game-container',
         backgroundColor: '#1a1a2e',
-        scale: {
-            mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH
-        },
-        physics: {
-            default: 'arcade',
-            arcade: { debug: false }
-        },
-        scene: [GameScene]
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        physics: { default: 'arcade', arcade: { debug: false } },
+        scene: [GameScene],
     };
 }
 
-// 게임 시작 버튼 이벤트
-const startBtn = document.getElementById('startGameBtn');
-if (startBtn) {
-    startBtn.addEventListener('click', function(e) {
-        // 기본 동작 방지 (스크롤 이동 방지)
+document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
+    card.addEventListener('click', function (e) {
         e.preventDefault();
-        e.stopPropagation();
-        
-        // 현재 스크롤 위치 저장
         const scrollY = window.scrollY || window.pageYOffset;
-        
-        // 시작 화면 숨기기
-        const startScreen = document.getElementById('startScreen');
-        const gameContainer = document.getElementById('game-container');
-        
-        startScreen.style.display = 'none';
-        gameContainer.style.display = 'flex';
-        gameContainer.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
-        
-        // 스크롤 위치 유지
+        window.__vsChar = this.getAttribute('data-char');
+
+        document.getElementById('startScreen').style.display = 'none';
+        const gc = document.getElementById('game-container');
+        gc.style.display = 'flex';
+        gc.addEventListener('contextmenu', (ev) => ev.preventDefault(), false);
         window.scrollTo(0, scrollY);
-        
-        // 게임 시작 (매번 현재 화면 크기로 생성)
-        if (!game) {
-            game = new Phaser.Game(getPhaserConfig());
-        }
-        
-        // 버튼 비활성화
-        this.disabled = true;
-        this.textContent = '게임 진행 중...';
-        
-        // 추가로 스크롤 위치 고정 (약간의 지연 후)
-        setTimeout(() => {
-            window.scrollTo(0, scrollY);
-        }, 10);
+
+        if (!game) game = new Phaser.Game(getPhaserConfig());
+        setTimeout(() => window.scrollTo(0, scrollY), 10);
     });
-}
+});
     </script>
+    @endpush
+
+    @push('styles')
+    <style>
+        /* 캐릭터 선택 */
+        .vs-char-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+        .vs-char-card {
+            width: 130px; background: #141426; border: 2px solid #2a2a44; border-radius: 14px;
+            padding: 14px 10px; cursor: pointer; color: #e2e8f0; transition: transform .12s, border-color .12s;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .vs-char-card[data-char]:hover { transform: translateY(-4px); border-color: #6366f1; }
+        .vs-char-card.locked { opacity: .5; cursor: default; }
+        .vs-char-portrait {
+            width: 84px; height: 98px; border-radius: 10px; background-color: #0d0d1a;
+            background-repeat: no-repeat; image-rendering: pixelated;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .vs-char-portrait.vs-locked { font-size: 40px; color: #444; }
+        .vs-char-name { font-weight: 800; font-size: 15px; }
+        .vs-char-weapon { font-size: 12px; color: #94a3b8; }
+
+        /* 레벨업 선택 오버레이 */
+        .vs-choice {
+            position: fixed; inset: 0; z-index: 9998;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(4px); padding: 20px;
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+        }
+        .vs-choice[hidden] { display: none; }
+        .vs-choice-box { width: 100%; max-width: 560px; text-align: center; }
+        .vs-choice-box h3 { color: #f9ed69; font-size: 22px; font-weight: 800; margin: 0 0 18px; }
+        .vs-choice-cards { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        .vs-choice-card {
+            flex: 1 1 150px; max-width: 170px; background: #0f172a; border: 2px solid #1e293b;
+            border-radius: 14px; padding: 18px 12px; cursor: pointer; color: #e2e8f0;
+            display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform .12s, border-color .12s;
+        }
+        .vs-choice-card:hover { transform: translateY(-4px); border-color: #6366f1; }
+        .vs-cc-icon { width: 56px; height: 66px; object-fit: contain; image-rendering: pixelated; }
+        .vs-cc-emoji { font-size: 44px; line-height: 66px; }
+        .vs-cc-title { font-weight: 800; font-size: 15px; }
+        .vs-cc-desc { font-size: 12px; color: #94a3b8; }
+    </style>
     @endpush
 
     <div class="game-instructions">
         <h3>게임 방법</h3>
         <ul>
-            <li class="desktop-only">WASD 또는 방향키로 캐릭터를 이동하세요</li>
-            <li class="mobile-only">화면을 터치한 방향으로 캐릭터가 이동합니다</li>
-            <li>적들이 자동으로 스폰되며 플레이어를 향해 이동합니다</li>
-            <li>자동 공격으로 적을 처치하고 경험치를 획득하세요</li>
-            <li>경험치를 모아 레벨업하면 공격력, 체력, 속도가 증가합니다</li>
-            <li>가능한 오래 생존하여 높은 점수를 달성하세요!</li>
+            <li>시작 화면에서 <strong>캐릭터를 선택</strong>하세요. 캐릭터마다 고유 메인 무기가 있습니다. (레이니 = 우산)</li>
+            <li class="desktop-only">WASD 또는 방향키로 이동</li>
+            <li class="mobile-only">화면을 터치한 방향으로 이동</li>
+            <li>장착한 무기는 <strong>자동으로 발동</strong>합니다. 오래 살아남아 경험치를 모으세요.</li>
+            <li><strong>레벨 5</strong>마다 체력 · 이동속도 · 공격력 중 하나를 선택합니다.</li>
+            <li><strong>레벨 10</strong>마다 서브무기(총 · 샷건 · 기관총 · 칼)를 새로 장착하거나 강화합니다.</li>
         </ul>
     </div>
 @endsection
