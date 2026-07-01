@@ -79,12 +79,13 @@ const getGameSize = () => {
 const CONFIG = {
     PLAYER_SPEED: 215,
     PLAYER_HP: 120,
-    ENEMY_BASE_SPEED: 72,
-    ENEMY_BASE_HP: 24,
-    ENEMY_DAMAGE: 9,
-    XP_TO_LEVEL: 60,      // 레벨1→2 기준량(이후 지수 증가)
-    SPAWN_INTERVAL: 1600,
-    MAX_ENEMIES: 42,
+    ENEMY_BASE_SPEED: 68,
+    ENEMY_BASE_HP: 20,
+    ENEMY_DAMAGE: 8,
+    HP_GROWTH_PER_MIN: 1.16,  // 적 체력: 분당 지수 성장(1.1~1.3). 밸런스의 심장.
+    XP_TO_LEVEL: 60,          // 레벨1→2 기준량(이후 선형 증가 → 초반 빠르고 후반 느리게)
+    SPAWN_INTERVAL: 1000,     // 고정 스폰 주기. 밀도는 시간에 따라 batch/최대수로 "완만히" 상승
+    LOG_INTERVAL: 5000,       // 밸런스 로그 주기(ms)
 };
 
 // 캐릭터 스프라이트 그리드 (Charactor_sprite2.png: 4열×4행, 셀 256×256, 투명 배경)
@@ -127,6 +128,11 @@ class GameScene extends Phaser.Scene {
         this.specialMax = 25;   // 25마리 처치 시 발동 가능
         this._ultActive = false;
 
+        // 밸런스 로그: 유효 딜/유입 체력 누적(주기적으로 DPS·적HP유입으로 환산)
+        this._dmgAccum = 0;
+        this._hpInfluxAccum = 0;
+        window.__vsBalanceLog = [];
+
         // 장착 무기: 캐릭터 메인 무기부터 시작
         const main = CHARACTERS[this.charKey].main;
         this.equipped = {};
@@ -166,8 +172,9 @@ class GameScene extends Phaser.Scene {
         this.createUI();
         this.setupSpecial();
 
-        this.refreshSpawnTimer();
+        this.spawnTimer = this.time.addEvent({ delay: CONFIG.SPAWN_INTERVAL, callback: this.spawnEnemy, callbackScope: this, loop: true });
         this.time.addEvent({ delay: 1000, callback: () => { if (!this.isGameOver && !this.paused) this.gameTime++; }, loop: true });
+        this.time.addEvent({ delay: CONFIG.LOG_INTERVAL, loop: true, callback: () => this.logBalance() });
 
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     }
@@ -279,15 +286,9 @@ class GameScene extends Phaser.Scene {
 
     // --- 적 ---
     // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
-    maxEnemies() { return Math.min(CONFIG.MAX_ENEMIES + this.level * 4, 110); }
-    spawnBatchSize() { return 1 + Math.floor(this.level / 5); }              // 1마리 → 5레벨마다 +1
-    spawnDelay() { return Math.max(600, CONFIG.SPAWN_INTERVAL - this.level * 70); } // 간격 단축
-
-    // 스폰 주기 재설정 (레벨업 시 간격을 줄여 스폰이 빨라진다)
-    refreshSpawnTimer() {
-        if (this.spawnTimer) this.spawnTimer.remove(false);
-        this.spawnTimer = this.time.addEvent({ delay: this.spawnDelay(), callback: this.spawnEnemy, callbackScope: this, loop: true });
-    }
+    // 밀도(스폰)는 시간에 따라 "완만히" 상승 — 체력(지수)과 밀도를 동시에 급격히 올리지 않는다.
+    maxEnemies() { return Math.min(28 + Math.floor((this.gameTime / 60) * 3), 90); }
+    spawnBatchSize() { return Math.min(1 + Math.floor((this.gameTime / 60) / 4), 6); } // 4분마다 +1
 
     spawnEnemy() {
         if (this.isGameOver || this.paused) return;
@@ -312,20 +313,24 @@ class GameScene extends Phaser.Scene {
         enemy.setData('hp', t.hp); enemy.setData('damage', t.damage);
         enemy.setData('speed', t.speed); enemy.setData('xp', t.xp);
         enemy.body.setCircle(t.size, 15 - t.size, 15 - t.size);
+        this._hpInfluxAccum += t.hp; // 밸런스 로그: 유입 적 체력 누적
     }
 
     getEnemyType() {
-        // 성장 배수: 레벨/시간에 따라 완만하게 상승 (기존 0.1 → 0.05), 속도 상승은 별도로 더 완만하게.
-        const m = 1 + (this.level - 1) * 0.065 + (this.gameTime / 60) * 0.06;
-        const sm = 1 + (this.level - 1) * 0.025 + (this.gameTime / 60) * 0.035; // 이동속도 성장(둔화)
+        // 체력: 시간(분)에 대한 지수 성장(밸런스 심장). 속도/데미지는 별도로 완만한 선형(상한).
+        const minutes = this.gameTime / 60;
+        const hpMul = Math.pow(CONFIG.HP_GROWTH_PER_MIN, minutes);
+        const spdMul = Math.min(1 + minutes * 0.05, 2.0);
+        const dmgMul = Math.min(1 + minutes * 0.04, 1.7);
         const types = [
-            { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * m), damage: CONFIG.ENEMY_DAMAGE, speed: CONFIG.ENEMY_BASE_SPEED * sm, xp: 16 },
-            { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * m), damage: CONFIG.ENEMY_DAMAGE * 0.5, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * sm, xp: 22 },
-            { color: 0x6a0572, size: 18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * m), damage: CONFIG.ENEMY_DAMAGE * 1.4, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * sm, xp: 34 },
+            { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * hpMul), damage: CONFIG.ENEMY_DAMAGE * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * spdMul, xp: 16 },
+            { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 0.5 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * spdMul, xp: 20 },
+            { color: 0x6a0572, size: 18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 1.4 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * spdMul, xp: 30 },
         ];
+        // 강한 적 등장 확률: 시간에 따라 증가
         const w = [60, 25, 15];
-        if (this.level >= 3) { w[1] += 10; w[2] += 5; w[0] -= 15; }
-        if (this.level >= 5) { w[1] += 10; w[2] += 10; w[0] -= 20; }
+        if (minutes >= 2) { w[1] += 10; w[2] += 5; w[0] -= 15; }
+        if (minutes >= 5) { w[1] += 10; w[2] += 10; w[0] -= 20; }
         const roll = Phaser.Math.Between(1, 100);
         if (roll <= w[0]) return types[0];
         if (roll <= w[0] + w[1]) return types[1];
@@ -454,7 +459,9 @@ class GameScene extends Phaser.Scene {
 
     damageEnemy(enemy, dmg) {
         if (!enemy.active) return;
-        const hp = enemy.getData('hp') - dmg;
+        const cur = enemy.getData('hp');
+        this._dmgAccum += Math.max(0, Math.min(dmg, cur)); // 밸런스 로그: 오버킬 제외한 유효 딜
+        const hp = cur - dmg;
         enemy.setData('hp', hp);
         this.tweens.add({ targets: enemy, tint: 0xffffff, duration: 40, yoyo: true });
         if (hp <= 0) this.killEnemy(enemy);
@@ -512,14 +519,14 @@ class GameScene extends Phaser.Scene {
         // 선형 곡선: 레벨이 오를수록 필요 경험치가 일정하게 증가(지수보다 완만)
         this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.40));
         this.levelText.setText(`Lv. ${this.level}`);
-        this.refreshSpawnTimer(); // 레벨업 시 스폰 간격 단축(적 증가)
 
         const t = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', { fontSize: '24px', fill: '#f9ed69', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(100);
         this.tweens.add({ targets: t, y: this.player.y - 100, alpha: 0, duration: 1000, onComplete: () => t.destroy() });
         this.cameras.main.flash(200, 249, 237, 105);
 
-        if (this.level % 10 === 0) this.pendingChoices.push('weapon');
-        else if (this.level % 5 === 0) this.pendingChoices.push('stat');
+        // 보상 주기: 무기는 5레벨마다(빌드 완성 촉진), 능력치는 3레벨마다, 그 외 소폭 자동
+        if (this.level % 5 === 0) this.pendingChoices.push('weapon');
+        else if (this.level % 3 === 0) this.pendingChoices.push('stat');
         else this.applyMinorBonus();
     }
 
@@ -612,6 +619,37 @@ class GameScene extends Phaser.Scene {
         this.timeText.setText(`${m}:${s}`);
     }
 
+    // --- 밸런스 로그(추후 튜닝용) ---
+    // 주기마다 "플레이어 DPS(유효 딜/초)"와 "적 체력 유입/초"를 같은 타임라인에 기록.
+    // window.__vsBalanceLog 에 스냅샷이 쌓이고 콘솔에도 출력된다. (JSON.stringify(window.__vsBalanceLog) 로 추출)
+    logBalance() {
+        if (this.isGameOver || this.paused) return; // 정지(레벨업 선택) 중엔 부분 윈도우 기록 방지
+        const sec = CONFIG.LOG_INTERVAL / 1000;
+        const dps = Math.round(this._dmgAccum / sec);
+        const hpInflux = Math.round(this._hpInfluxAccum / sec);
+        const snap = {
+            t: this.gameTime,
+            dps,                       // 플레이어 초당 유효 딜(파괴한 적 체력/초)
+            enemyHpInflux: hpInflux,   // 초당 유입 적 체력(스폰된 적 체력/초)
+            ratio: hpInflux ? Math.round(dps / hpInflux * 100) / 100 : null, // DPS/유입 (>1이면 우세)
+            alive: true,
+            level: this.level,
+            hp: Math.round(this.playerHP),
+            maxHp: this.maxHP,
+            kills: this.kills,
+            enemies: this.enemies.countActive(),
+            weapons: Object.keys(this.equipped).map((k) => `${WEAPONS[k].name}${this.equipped[k].level}`).join(','),
+        };
+        window.__vsBalanceLog.push(snap);
+        console.log(`[VS ${this._fmtTime(snap.t)}] DPS=${dps} 적HP유입/s=${hpInflux} (딜/유입=${snap.ratio}) Lv${snap.level} HP=${snap.hp}/${snap.maxHp} kills=${snap.kills} 적=${snap.enemies} [${snap.weapons}]`);
+        this._dmgAccum = 0;
+        this._hpInfluxAccum = 0;
+    }
+
+    _fmtTime(s) {
+        return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }
+
     // --- 특수기(전역공격) ---
     setupSpecial() {
         this.specialBtn = document.getElementById('vs-special-btn');
@@ -672,6 +710,10 @@ class GameScene extends Phaser.Scene {
         this.isGameOver = true;
         this.physics.pause();
         this.player.play('death', true);
+
+        // 밸런스 로그: 사망(생존 종료) 스냅샷
+        window.__vsBalanceLog?.push({ t: this.gameTime, alive: false, gameOver: true, level: this.level, kills: this.kills });
+        console.log(`[VS GAMEOVER] 생존 ${this._fmtTime(this.gameTime)} · Lv${this.level} · kills=${this.kills}`);
 
         const gw = this.scale.width, gh = this.scale.height;
         const cx = this.cameras.main.scrollX + gw / 2, cy = this.cameras.main.scrollY + gh / 2;
