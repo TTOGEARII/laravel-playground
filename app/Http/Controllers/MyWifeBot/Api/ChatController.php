@@ -77,6 +77,10 @@ class ChatController extends Controller
             return response()->json(['message' => '세션을 찾을 수 없습니다.'], 404);
         }
 
+        if (! $this->ownsSession($session)) {
+            return response()->json(['message' => '이 대화에 접근할 권한이 없습니다.'], 403);
+        }
+
         if (! $session->chatCharacter) {
             return response()->json(['message' => '캐릭터를 찾을 수 없습니다.'], 404);
         }
@@ -145,10 +149,24 @@ class ChatController extends Controller
             return response()->json(['message' => '세션을 찾을 수 없습니다.'], 404);
         }
 
+        if (! $this->ownsSession($session)) {
+            return response()->json(['message' => '이 대화에 접근할 권한이 없습니다.'], 403);
+        }
+
         if (! $session->chatCharacter) {
             return response()->json(['message' => '캐릭터를 찾을 수 없습니다.'], 404);
         }
 
         return $session;
+    }
+
+    /**
+     * 요청자가 이 세션의 소유자인지 확인한다(IDOR 방지).
+     * 로그인 세션은 user_id 가 일치해야 하고, 게스트 세션(user_id=null)은 게스트 요청자만 접근한다.
+     * ((int) null === (int) null → 0 === 0 이므로 게스트끼리는 통과, 로그인/게스트 교차는 차단)
+     */
+    private function ownsSession(ChatSession $session): bool
+    {
+        return (int) $session->user_id === (int) auth()->id();
     }
 }

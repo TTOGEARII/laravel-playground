@@ -197,6 +197,34 @@ class ChatApiTest extends TestCase
             ->assertStatus(404);
     }
 
+    public function test_send_forbidden_for_another_users_session(): void
+    {
+        // IDOR 방지: 다른 사용자의 세션 id 로 send 하면 403.
+        $owner = User::factory()->create();
+        $attacker = User::factory()->create();
+        $character = $this->makeCharacter();
+        $session = ChatSession::create(['chat_character_id' => $character->id, 'user_id' => $owner->id]);
+
+        $this->actingAs($attacker)->postJson('/api/my-wife-bot/chat/send', [
+            'session_id' => (string) $session->id,
+            'content' => '남의 대화 훔쳐보기',
+        ])->assertStatus(403);
+
+        // 유저 메시지가 저장되지 않아야 한다(권한 검사가 처리 이전에 막음).
+        $this->assertDatabaseMissing('chat_messages', ['chat_session_id' => $session->id, 'role' => 'user']);
+    }
+
+    public function test_guest_cannot_access_logged_in_users_session(): void
+    {
+        // 로그인 사용자의 세션은 게스트가 접근할 수 없다(403).
+        $owner = User::factory()->create();
+        $character = $this->makeCharacter();
+        $session = ChatSession::create(['chat_character_id' => $character->id, 'user_id' => $owner->id]);
+
+        $this->postJson('/api/my-wife-bot/chat/suggest', ['session_id' => (string) $session->id])
+            ->assertStatus(403);
+    }
+
     public function test_send_degrades_gracefully_on_connection_failure(): void
     {
         config(['services.gemini.api_key' => 'test-key']);

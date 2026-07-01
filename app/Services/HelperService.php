@@ -23,8 +23,12 @@ class HelperService
         $dir = public_path($directory);
         File::ensureDirectoryExists($dir);
 
-        // 클라이언트 확장자가 비어 있거나 신뢰할 수 없을 때를 대비해 추정 확장자로 폴백.
-        $extension = $file->getClientOriginalExtension() ?: ($file->guessExtension() ?: 'jpg');
+        // 저장 확장자는 반드시 파일 "내용"으로 추정한 값(guessExtension)만 쓴다.
+        // 클라이언트 원본 확장자(getClientOriginalExtension)는 공격자가 지정할 수 있어(예: 이미지 폴리글롯을 .php 로 위장)
+        // 웹 실행 가능 디렉터리(public)에 위험 확장자로 저장되는 것을 막기 위해 화이트리스트로만 허용한다.
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $guessed = strtolower((string) $file->guessExtension());
+        $extension = in_array($guessed, $allowed, true) ? $guessed : 'jpg';
         $filename = uniqid($prefix, true).'.'.$extension;
         $file->move($dir, $filename);
 
