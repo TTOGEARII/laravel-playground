@@ -176,9 +176,11 @@ class GameScene extends Phaser.Scene {
         const def = (key, frames, fps, repeat = -1) => {
             if (!this.anims.exists(key)) this.anims.create({ key, frames, frameRate: fps, repeat });
         };
-        // 이동 모션만 사용(공격 모션 없음). 새 스프라이트의 앞모습 걷기 프레임(0행) 사용.
+        // 걷기: 시트의 16프레임 전부(행 우선)로 최대한 부드럽게. idle/death 는 정지 프레임.
+        const walk = [];
+        for (let r = 0; r < SHEET.rows; r++) for (let c = 0; c < SHEET.cols; c++) walk.push(F(r, c));
         def('idle', [F(0, 0)], 1);
-        def('walk', [F(0, 0), F(0, 1), F(0, 2), F(0, 3)], 8);
+        def('walk', walk, 14);
         def('death', [F(0, 0)], 1, 0);
     }
 
