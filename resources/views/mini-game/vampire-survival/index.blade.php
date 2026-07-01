@@ -23,7 +23,7 @@
                 <p>캐릭터를 선택하세요</p>
                 <div class="vs-char-grid">
                     <button class="vs-char-card" data-char="rainy">
-                        <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/char_t.png');background-size:590px 846px;background-position:0 -59px;"></div>
+                        <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/Charactor_sprite2.png');background-size:384px 384px;background-position:0 0;"></div>
                         <div class="vs-char-name">레이니</div>
                         <div class="vs-char-weapon">메인: 🌂 우산</div>
                     </button>
@@ -81,8 +81,8 @@ const CONFIG = {
     MAX_ENEMIES: 38,
 };
 
-// 스프라이트 시트 그리드 (char_t.png: 7열×8행, 열폭 864/7, 행높이 144, 헤더 y=87)
-const SHEET = { colW: 864 / 7, originY: 87, rowH: 144, cols: 7, rows: 8 };
+// 캐릭터 스프라이트 그리드 (Charactor_sprite2.png: 4열×4행, 셀 256×256, 투명 배경)
+const SHEET = { cell: 256, cols: 4, rows: 4 };
 
 // 캐릭터별 고유 메인 무기
 const CHARACTERS = {
@@ -126,7 +126,7 @@ class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('char', '/images/mini-game/vampire-survivors/char_t.png');
+        this.load.image('char2', '/images/mini-game/vampire-survivors/Charactor_sprite2.png');
     }
 
     create() {
@@ -163,25 +163,23 @@ class GameScene extends Phaser.Scene {
 
     // --- 스프라이트 프레임/애니메이션 ---
     registerFrames() {
-        const tex = this.textures.get('char');
+        const tex = this.textures.get('char2');
         for (let r = 0; r < SHEET.rows; r++) {
             for (let c = 0; c < SHEET.cols; c++) {
-                const x = Math.round(c * SHEET.colW);
-                const x2 = Math.round((c + 1) * SHEET.colW);
-                tex.add(`ch_${r}_${c}`, 0, x, SHEET.originY + r * SHEET.rowH, x2 - x, SHEET.rowH);
+                tex.add(`c2_${r}_${c}`, 0, c * SHEET.cell, r * SHEET.cell, SHEET.cell, SHEET.cell);
             }
         }
     }
 
     makeAnims() {
-        const F = (r, c) => ({ key: 'char', frame: `ch_${r}_${c}` });
+        const F = (r, c) => ({ key: 'char2', frame: `c2_${r}_${c}` });
         const def = (key, frames, fps, repeat = -1) => {
             if (!this.anims.exists(key)) this.anims.create({ key, frames, frameRate: fps, repeat });
         };
-        // 공격 모션은 부자연스러워 제외 — 캐릭터는 걷기/정지 모션만 사용한다.
-        def('idle', [F(0, 0), F(0, 1)], 3);
-        def('walk', [F(0, 0), F(0, 1), F(0, 2)], 7);
-        def('death', [F(7, 0), F(7, 1)], 4, 0);
+        // 이동 모션만 사용(공격 모션 없음). 새 스프라이트의 앞모습 걷기 프레임(0행) 사용.
+        def('idle', [F(0, 0)], 1);
+        def('walk', [F(0, 0), F(0, 1), F(0, 2), F(0, 3)], 8);
+        def('death', [F(0, 0)], 1, 0);
     }
 
     makeBulletTextures() {
@@ -208,11 +206,11 @@ class GameScene extends Phaser.Scene {
 
     createPlayer() {
         const w = this.scale.width, h = this.scale.height;
-        this.player = this.physics.add.sprite(w / 2, h / 2, 'char', 'ch_0_0');
-        this.player.setScale(0.62);
+        this.player = this.physics.add.sprite(w / 2, h / 2, 'char2', 'c2_0_0');
+        this.player.setScale(0.34);
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
-        this.player.body.setCircle(26, SHEET.colW / 2 - 26, SHEET.rowH / 2 - 26);
+        this.player.body.setCircle(38, SHEET.cell / 2 - 38, SHEET.cell / 2 - 30);
         this.player.play('idle');
     }
 
@@ -658,7 +656,7 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
         .vs-char-card[data-char]:hover { transform: translateY(-4px); border-color: #6366f1; }
         .vs-char-card.locked { opacity: .5; cursor: default; }
         .vs-char-portrait {
-            width: 84px; height: 98px; border-radius: 10px; background-color: #0d0d1a;
+            width: 96px; height: 96px; border-radius: 10px; background-color: #0d0d1a;
             background-repeat: no-repeat; image-rendering: pixelated;
             display: flex; align-items: center; justify-content: center;
         }
