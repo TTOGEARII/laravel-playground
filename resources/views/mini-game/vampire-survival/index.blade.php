@@ -126,7 +126,10 @@ class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('char2', '/images/mini-game/vampire-survivors/Charactor_sprite2.png');
+        const base = '/images/mini-game/vampire-survivors';
+        this.load.image('char2', `${base}/Charactor_sprite2.png`);       // 걷기
+        this.load.image('charIdle', `${base}/Charactor_idle_sprite.png`); // 대기(우산)
+        this.load.image('bg', `${base}/background.png`);                  // 배경
     }
 
     create() {
@@ -163,25 +166,32 @@ class GameScene extends Phaser.Scene {
 
     // --- 스프라이트 프레임/애니메이션 ---
     registerFrames() {
-        const tex = this.textures.get('char2');
-        for (let r = 0; r < SHEET.rows; r++) {
-            for (let c = 0; c < SHEET.cols; c++) {
-                tex.add(`c2_${r}_${c}`, 0, c * SHEET.cell, r * SHEET.cell, SHEET.cell, SHEET.cell);
+        // 두 시트(char2=걷기 c2_, charIdle=대기 ci_)를 같은 4x4/256 그리드로 등록
+        const sheets = { char2: 'c2', charIdle: 'ci' };
+        for (const [texKey, pfx] of Object.entries(sheets)) {
+            const tex = this.textures.get(texKey);
+            for (let r = 0; r < SHEET.rows; r++) {
+                for (let c = 0; c < SHEET.cols; c++) {
+                    tex.add(`${pfx}_${r}_${c}`, 0, c * SHEET.cell, r * SHEET.cell, SHEET.cell, SHEET.cell);
+                }
             }
         }
     }
 
     makeAnims() {
-        const F = (r, c) => ({ key: 'char2', frame: `c2_${r}_${c}` });
+        const FW = (r, c) => ({ key: 'char2', frame: `c2_${r}_${c}` });    // 걷기
+        const FI = (r, c) => ({ key: 'charIdle', frame: `ci_${r}_${c}` }); // 대기
         const def = (key, frames, fps, repeat = -1) => {
             if (!this.anims.exists(key)) this.anims.create({ key, frames, frameRate: fps, repeat });
         };
-        // 걷기: 시트의 16프레임 전부(행 우선)로 최대한 부드럽게. idle/death 는 정지 프레임.
-        const walk = [];
-        for (let r = 0; r < SHEET.rows; r++) for (let c = 0; c < SHEET.cols; c++) walk.push(F(r, c));
-        def('idle', [F(0, 0)], 1);
+        // 걷기·대기 모두 시트의 16프레임 전부(행 우선)로 부드럽게. death 는 정지 프레임.
+        const walk = [], idle = [];
+        for (let r = 0; r < SHEET.rows; r++) {
+            for (let c = 0; c < SHEET.cols; c++) { walk.push(FW(r, c)); idle.push(FI(r, c)); }
+        }
+        def('idle', idle, 8);
         def('walk', walk, 14);
-        def('death', [F(0, 0)], 1, 0);
+        def('death', [FW(0, 0)], 1, 0);
     }
 
     makeBulletTextures() {
@@ -196,19 +206,13 @@ class GameScene extends Phaser.Scene {
     }
 
     createBackground() {
-        const graphics = this.add.graphics();
-        const tileSize = 64;
-        for (let x = -1000; x < 2000; x += tileSize) {
-            for (let y = -1000; y < 2000; y += tileSize) {
-                graphics.fillStyle(((x + y) / tileSize) % 2 === 0 ? 0x16213e : 0x1a1a2e);
-                graphics.fillRect(x, y, tileSize, tileSize);
-            }
-        }
+        // 배경 이미지를 월드 전체(-1000~2000, 3000x3000)에 타일로 깔고 맨 뒤에 배치
+        this.add.tileSprite(500, 500, 3000, 3000, 'bg').setDepth(-10);
     }
 
     createPlayer() {
         const w = this.scale.width, h = this.scale.height;
-        this.player = this.physics.add.sprite(w / 2, h / 2, 'char2', 'c2_0_0');
+        this.player = this.physics.add.sprite(w / 2, h / 2, 'charIdle', 'ci_0_0');
         this.player.setScale(0.34);
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
