@@ -134,7 +134,6 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        this.physics.world.setBounds(-1000, -1000, 3000, 3000);
         this.registerFrames();
         this.makeAnims();
         this.makeBulletTextures();
@@ -207,13 +206,19 @@ class GameScene extends Phaser.Scene {
     }
 
     createBackground() {
-        // 배경 이미지를 월드 전체(-1000~2000, 3000x3000)에 타일로 깔고 맨 뒤에 배치
-        this.add.tileSprite(500, 500, 3000, 3000, 'bg').setDepth(-10);
+        // 배경을 이음새 없이 한 장으로 깔고, 그 크기를 맵(월드) 경계로 삼는다.
+        const src = this.textures.get('bg').getSourceImage();
+        this.worldW = src.width;
+        this.worldH = src.height;
+        this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
+        this.add.image(0, 0, 'bg').setOrigin(0, 0).setDepth(-10);
+        // 카메라가 배경(맵) 밖으로 넘어가지 않게 경계 고정
+        this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
     }
 
     createPlayer() {
-        const w = this.scale.width, h = this.scale.height;
-        this.player = this.physics.add.sprite(w / 2, h / 2, 'charIdle', 'ci_0_0');
+        // 맵 중앙에서 시작
+        this.player = this.physics.add.sprite(this.worldW / 2, this.worldH / 2, 'charIdle', 'ci_0_0');
         this.player.setScale(0.34);
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
