@@ -19,12 +19,11 @@
         {{-- 시작 화면 = 캐릭터 선택 --}}
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
-                <img class="vs-hero" src="/images/mini-game/vampire-survivors/rayna.webp" alt="레이니" width="760" height="1089">
                 <h2>🧛 뱀파이어 서바이벌</h2>
                 <p>캐릭터를 선택하세요</p>
                 <div class="vs-char-grid">
                     <button class="vs-char-card" data-char="rainy">
-                        <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/Charactor_sprite2.png');background-size:384px 384px;background-position:0 0;"></div>
+                        <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/rayna.webp');background-size:cover;background-position:center 12%;"></div>
                         <div class="vs-char-name">레이니</div>
                         <div class="vs-char-weapon">메인: 🌂 우산</div>
                     </button>
@@ -54,6 +53,12 @@
             <div id="vs-choice-cards" class="vs-choice-cards"></div>
         </div>
     </div>
+
+    {{-- 특수기(전역공격) 버튼 — 처치할수록 게이지가 차고, 가득 차면 발동(Space/클릭) --}}
+    <button id="vs-special-btn" class="vs-special-btn" type="button" hidden>
+        <span class="vs-special-icon">🌂</span>
+        <span id="vs-special-label" class="vs-special-label">0%</span>
+    </button>
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
@@ -118,6 +123,9 @@ class GameScene extends Phaser.Scene {
         this.paused = false;
         this.pendingChoices = [];
         this.facing = 1;
+        this.special = 0;       // 특수기 게이지(처치 시 충전)
+        this.specialMax = 25;   // 25마리 처치 시 발동 가능
+        this._ultActive = false;
 
         // 장착 무기: 캐릭터 메인 무기부터 시작
         const main = CHARACTERS[this.charKey].main;
@@ -156,6 +164,7 @@ class GameScene extends Phaser.Scene {
         this.input.on('pointerout', () => { this.touchMoveActive = false; });
 
         this.createUI();
+        this.setupSpecial();
 
         this.refreshSpawnTimer();
         this.time.addEvent({ delay: 1000, callback: () => { if (!this.isGameOver && !this.paused) this.gameTime++; }, loop: true });
@@ -307,8 +316,8 @@ class GameScene extends Phaser.Scene {
 
     getEnemyType() {
         // 성장 배수: 레벨/시간에 따라 완만하게 상승 (기존 0.1 → 0.05), 속도 상승은 별도로 더 완만하게.
-        const m = 1 + (this.level - 1) * 0.08 + (this.gameTime / 60) * 0.07;
-        const sm = 1 + (this.level - 1) * 0.03 + (this.gameTime / 60) * 0.04; // 이동속도 성장(둔화)
+        const m = 1 + (this.level - 1) * 0.065 + (this.gameTime / 60) * 0.06;
+        const sm = 1 + (this.level - 1) * 0.025 + (this.gameTime / 60) * 0.035; // 이동속도 성장(둔화)
         const types = [
             { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * m), damage: CONFIG.ENEMY_DAMAGE, speed: CONFIG.ENEMY_BASE_SPEED * sm, xp: 16 },
             { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * m), damage: CONFIG.ENEMY_DAMAGE * 0.5, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * sm, xp: 22 },
@@ -470,6 +479,11 @@ class GameScene extends Phaser.Scene {
         enemy.destroy();
         this.kills++;
         this.killText.setText(`Kills: ${this.kills}`);
+        // 특수기 게이지 충전 (특수기 발동으로 죽인 적은 충전에서 제외)
+        if (!this._ultActive) {
+            this.special = Math.min(this.specialMax, this.special + 1);
+            this.updateSpecialBar();
+        }
     }
 
     createXPOrb(x, y, value) {
@@ -495,8 +509,8 @@ class GameScene extends Phaser.Scene {
     // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
-        // 지수 곡선: 레벨이 오를수록 필요 경험치가 급격히 증가(고레벨일수록 레벨업이 힘들어짐)
-        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * Math.pow(1.32, this.level - 1));
+        // 선형 곡선: 레벨이 오를수록 필요 경험치가 일정하게 증가(지수보다 완만)
+        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.40));
         this.levelText.setText(`Lv. ${this.level}`);
         this.refreshSpawnTimer(); // 레벨업 시 스폰 간격 단축(적 증가)
 
@@ -586,7 +600,7 @@ class GameScene extends Phaser.Scene {
 
     // --- 피격 / 시간 / 게임오버 ---
     onPlayerHit(player, enemy) {
-        this.playerHP -= enemy.getData('damage') * 0.014;
+        this.playerHP -= enemy.getData('damage') * 0.012;
         this.updateHPBar();
         if (Math.random() < 0.1) this.cameras.main.shake(100, 0.005);
         if (this.playerHP <= 0) this.gameOver();
@@ -596,6 +610,61 @@ class GameScene extends Phaser.Scene {
         const m = Math.floor(this.gameTime / 60).toString().padStart(2, '0');
         const s = (this.gameTime % 60).toString().padStart(2, '0');
         this.timeText.setText(`${m}:${s}`);
+    }
+
+    // --- 특수기(전역공격) ---
+    setupSpecial() {
+        this.specialBtn = document.getElementById('vs-special-btn');
+        this.specialLabel = document.getElementById('vs-special-label');
+        if (this.specialBtn) {
+            this.specialBtn.hidden = false;
+            this.specialBtn.onclick = (e) => { e.preventDefault(); this.tryActivateSpecial(); };
+        }
+        // Space 로도 발동. 닉네임 입력 중(게임오버 랭킹)에는 무시하고, 그 외엔 페이지 스크롤 방지.
+        this.input.keyboard.on('keydown-SPACE', (event) => {
+            if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+            event.preventDefault();
+            this.tryActivateSpecial();
+        });
+        this.updateSpecialBar();
+    }
+
+    updateSpecialBar() {
+        if (!this.specialBtn) return;
+        const pct = Math.floor(this.special / this.specialMax * 100);
+        const ready = this.special >= this.specialMax;
+        this.specialLabel.textContent = ready ? '발동!' : `${pct}%`;
+        this.specialBtn.style.setProperty('--fill', pct + '%');
+        this.specialBtn.classList.toggle('ready', ready);
+    }
+
+    tryActivateSpecial() {
+        if (this.isGameOver || this.paused) return;
+        if (this.special < this.specialMax) return;
+        this.special = 0;
+        this.updateSpecialBar();
+        this.castUltimate();
+    }
+
+    castUltimate() {
+        // 우산 특수기: 전역 공격 — 맵 전체 적에게 큰 피해 + 화면 이펙트
+        this.cameras.main.flash(320, 130, 170, 255);
+        const px = this.player.x, py = this.player.y;
+        const ring = this.add.graphics().setDepth(60);
+        this.tweens.addCounter({
+            from: 30, to: 1800, duration: 450, ease: 'Cubic.easeOut',
+            onUpdate: (tw) => {
+                const r = tw.getValue();
+                ring.clear();
+                ring.lineStyle(9, 0x66aaff, 0.85); ring.strokeCircle(px, py, r);
+                ring.lineStyle(4, 0xffffff, 0.6); ring.strokeCircle(px, py, r * 0.72);
+            },
+            onComplete: () => this.tweens.add({ targets: ring, alpha: 0, duration: 160, onComplete: () => ring.destroy() }),
+        });
+        // 전체 적 처치(발동 킬은 게이지 충전 제외)
+        this._ultActive = true;
+        this.enemies.children.iterate((e) => { if (e && e.active) this.damageEnemy(e, 99999); });
+        this._ultActive = false;
     }
 
     gameOver() {
@@ -658,14 +727,6 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
 
     @push('styles')
     <style>
-        /* 대기화면 헤딩 일러스트 */
-        .vs-hero {
-            display: block; margin: 0 auto 10px; height: auto; width: auto;
-            max-height: 260px; max-width: 90%;
-            border-radius: 16px; box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
-        }
-        @media (max-width: 768px) { .vs-hero { max-height: 180px; } }
-
         /* 캐릭터 선택 */
         .vs-char-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
         .vs-char-card {
@@ -676,11 +737,11 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
         .vs-char-card[data-char]:hover { transform: translateY(-4px); border-color: #6366f1; }
         .vs-char-card.locked { opacity: .5; cursor: default; }
         .vs-char-portrait {
-            width: 96px; height: 96px; border-radius: 10px; background-color: #0d0d1a;
-            background-repeat: no-repeat; image-rendering: pixelated;
+            width: 108px; height: 150px; border-radius: 12px; background-color: #0d0d1a;
+            background-repeat: no-repeat; background-size: cover; background-position: center;
             display: flex; align-items: center; justify-content: center;
         }
-        .vs-char-portrait.vs-locked { font-size: 40px; color: #444; }
+        .vs-char-portrait.vs-locked { font-size: 44px; color: #444; }
         .vs-char-name { font-weight: 800; font-size: 15px; }
         .vs-char-weapon { font-size: 12px; color: #94a3b8; }
 
@@ -705,6 +766,30 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
         .vs-cc-emoji { font-size: 44px; line-height: 66px; }
         .vs-cc-title { font-weight: 800; font-size: 15px; }
         .vs-cc-desc { font-size: 12px; color: #94a3b8; }
+
+        /* 특수기 버튼 (원형 게이지) */
+        .vs-special-btn {
+            position: fixed; right: 20px; bottom: 20px; z-index: 40;
+            width: 92px; height: 92px; border-radius: 50%; padding: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+            border: 2px solid #475569; color: #e2e8f0; cursor: default;
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif; font-weight: 800;
+            background:
+                radial-gradient(circle at center, rgba(15, 23, 42, 0.92) 56%, transparent 57%),
+                conic-gradient(#6366f1 var(--fill, 0%), rgba(51, 65, 85, 0.6) 0);
+            transition: filter .15s ease;
+        }
+        .vs-special-btn[hidden] { display: none; }
+        .vs-special-icon { font-size: 26px; line-height: 1; }
+        .vs-special-label { font-size: 11px; color: #cbd5e1; }
+        .vs-special-btn.ready {
+            cursor: pointer; border-color: #fbbf24;
+            box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.22), 0 0 22px rgba(251, 191, 36, 0.55);
+            animation: vsSpecialPulse 0.9s ease-in-out infinite;
+        }
+        .vs-special-btn.ready .vs-special-label { color: #fde68a; }
+        @keyframes vsSpecialPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+        @media (max-width: 768px) { .vs-special-btn { width: 78px; height: 78px; right: 14px; bottom: 14px; } }
     </style>
     @endpush
 
