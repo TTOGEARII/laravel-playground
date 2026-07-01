@@ -155,7 +155,7 @@ class GameScene extends Phaser.Scene {
 
         this.createUI();
 
-        this.spawnTimer = this.time.addEvent({ delay: CONFIG.SPAWN_INTERVAL, callback: this.spawnEnemy, callbackScope: this, loop: true });
+        this.refreshSpawnTimer();
         this.time.addEvent({ delay: 1000, callback: () => { if (!this.isGameOver && !this.paused) this.gameTime++; }, loop: true });
 
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -260,8 +260,25 @@ class GameScene extends Phaser.Scene {
     }
 
     // --- 적 ---
+    // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
+    maxEnemies() { return Math.min(CONFIG.MAX_ENEMIES + this.level * 4, 110); }
+    spawnBatchSize() { return 1 + Math.floor(this.level / 5); }              // 1마리 → 5레벨마다 +1
+    spawnDelay() { return Math.max(600, CONFIG.SPAWN_INTERVAL - this.level * 70); } // 간격 단축
+
+    // 스폰 주기 재설정 (레벨업 시 간격을 줄여 스폰이 빨라진다)
+    refreshSpawnTimer() {
+        if (this.spawnTimer) this.spawnTimer.remove(false);
+        this.spawnTimer = this.time.addEvent({ delay: this.spawnDelay(), callback: this.spawnEnemy, callbackScope: this, loop: true });
+    }
+
     spawnEnemy() {
-        if (this.isGameOver || this.paused || this.enemies.countActive() >= CONFIG.MAX_ENEMIES) return;
+        if (this.isGameOver || this.paused) return;
+        const room = this.maxEnemies() - this.enemies.countActive();
+        const batch = Math.min(this.spawnBatchSize(), room);
+        for (let i = 0; i < batch; i++) this.spawnOneEnemy();
+    }
+
+    spawnOneEnemy() {
         const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
         const distance = Phaser.Math.Between(400, 600);
         const x = this.player.x + Math.cos(angle) * distance;
@@ -471,6 +488,7 @@ class GameScene extends Phaser.Scene {
         this.level++;
         this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.28));
         this.levelText.setText(`Lv. ${this.level}`);
+        this.refreshSpawnTimer(); // 레벨업 시 스폰 간격 단축(적 증가)
 
         const t = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', { fontSize: '24px', fill: '#f9ed69', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(100);
         this.tweens.add({ targets: t, y: this.player.y - 100, alpha: 0, duration: 1000, onComplete: () => t.destroy() });
