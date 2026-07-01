@@ -74,12 +74,12 @@ const getGameSize = () => {
 const CONFIG = {
     PLAYER_SPEED: 215,
     PLAYER_HP: 120,
-    ENEMY_BASE_SPEED: 66,
-    ENEMY_BASE_HP: 18,
-    ENEMY_DAMAGE: 7,
-    XP_TO_LEVEL: 60,
-    SPAWN_INTERVAL: 1700,
-    MAX_ENEMIES: 38,
+    ENEMY_BASE_SPEED: 72,
+    ENEMY_BASE_HP: 24,
+    ENEMY_DAMAGE: 9,
+    XP_TO_LEVEL: 60,      // 레벨1→2 기준량(이후 지수 증가)
+    SPAWN_INTERVAL: 1600,
+    MAX_ENEMIES: 42,
 };
 
 // 캐릭터 스프라이트 그리드 (Charactor_sprite2.png: 4열×4행, 셀 256×256, 투명 배경)
@@ -92,14 +92,13 @@ const CHARACTERS = {
 
 // 무기 정의 (main=항상 발동 메인 / sub=레벨10에 장착·강화)
 const WEAPONS = {
-    umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 520, damage: 22, range: 125 },
+    umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 520, damage: 20, range: 108 },
     knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 22, range: 105, rangeStep: 38 },
-    pistol:     { name: '총',   kind: 'sub',  type: 'gun',   cooldown: 520, damage: 20, bullets: 1, spread: 0.12, speed: 620 },
     shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1000, damage: 12, bullets: 5, spread: 0.6, speed: 540 },
     machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 150, damage: 7, bullets: 1, spread: 0.22, speed: 720 },
 };
-const SUB_WEAPONS = ['pistol', 'shotgun', 'machinegun', 'knife'];
-const BULLET_COLOR = { pistol: 0xfff176, shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
+const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife'];
+const BULLET_COLOR = { shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
 
 class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
@@ -219,7 +218,7 @@ class GameScene extends Phaser.Scene {
     createPlayer() {
         // 맵 중앙에서 시작
         this.player = this.physics.add.sprite(this.worldW / 2, this.worldH / 2, 'charIdle', 'ci_0_0');
-        this.player.setScale(0.34);
+        this.player.setScale(0.29);
         this.player.setCollideWorldBounds(true);
         this.player.setDepth(10);
         this.player.body.setCircle(38, SHEET.cell / 2 - 38, SHEET.cell / 2 - 30);
@@ -308,8 +307,8 @@ class GameScene extends Phaser.Scene {
 
     getEnemyType() {
         // 성장 배수: 레벨/시간에 따라 완만하게 상승 (기존 0.1 → 0.05), 속도 상승은 별도로 더 완만하게.
-        const m = 1 + (this.level - 1) * 0.05 + (this.gameTime / 60) * 0.05;
-        const sm = 1 + (this.level - 1) * 0.02 + (this.gameTime / 60) * 0.03; // 이동속도 성장(둔화)
+        const m = 1 + (this.level - 1) * 0.08 + (this.gameTime / 60) * 0.07;
+        const sm = 1 + (this.level - 1) * 0.03 + (this.gameTime / 60) * 0.04; // 이동속도 성장(둔화)
         const types = [
             { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * m), damage: CONFIG.ENEMY_DAMAGE, speed: CONFIG.ENEMY_BASE_SPEED * sm, xp: 16 },
             { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * m), damage: CONFIG.ENEMY_DAMAGE * 0.5, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * sm, xp: 22 },
@@ -496,7 +495,8 @@ class GameScene extends Phaser.Scene {
     // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
-        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.28));
+        // 지수 곡선: 레벨이 오를수록 필요 경험치가 급격히 증가(고레벨일수록 레벨업이 힘들어짐)
+        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * Math.pow(1.32, this.level - 1));
         this.levelText.setText(`Lv. ${this.level}`);
         this.refreshSpawnTimer(); // 레벨업 시 스폰 간격 단축(적 증가)
 
@@ -547,7 +547,7 @@ class GameScene extends Phaser.Scene {
     }
 
     weaponDesc(key) {
-        return { pistol: '가장 가까운 적에게 탄환 발사', shotgun: '넓게 퍼지는 산탄', machinegun: '빠른 연사', knife: '주변 근접 범위 공격' }[key] || '';
+        return { shotgun: '넓게 퍼지는 산탄', machinegun: '빠른 연사', knife: '주변 근접 범위 공격' }[key] || '';
     }
 
     showChoice(title, cards) {
@@ -586,7 +586,7 @@ class GameScene extends Phaser.Scene {
 
     // --- 피격 / 시간 / 게임오버 ---
     onPlayerHit(player, enemy) {
-        this.playerHP -= enemy.getData('damage') * 0.010;
+        this.playerHP -= enemy.getData('damage') * 0.014;
         this.updateHPBar();
         if (Math.random() < 0.1) this.cameras.main.shake(100, 0.005);
         if (this.playerHP <= 0) this.gameOver();
