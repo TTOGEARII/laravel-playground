@@ -25,6 +25,7 @@
         <div id="game-container" style="display: none;" tabindex="0" title="터치하여 이동"></div>
     </div>
 
+    <x-mini-game.ranking-overlay game="vampire-survival" />
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
@@ -633,6 +634,9 @@ class GameScene extends Phaser.Scene {
             yoyo: true,
             repeat: -1
         });
+
+        // 랭킹 오버레이 표시. 점수 = 생존초×10 + 처치×2 (오래 살수록·많이 잡을수록 높음)
+        window.MiniGameRanking?.show(this.gameTime * 10 + this.kills * 2);
 
         // 재시작
         this.input.once('pointerdown', () => {
