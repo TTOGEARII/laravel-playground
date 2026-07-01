@@ -71,14 +71,14 @@ const getGameSize = () => {
 };
 
 const CONFIG = {
-    PLAYER_SPEED: 200,
-    PLAYER_HP: 100,
-    ENEMY_BASE_SPEED: 80,
-    ENEMY_BASE_HP: 30,
-    ENEMY_DAMAGE: 10,
-    XP_TO_LEVEL: 100,
-    SPAWN_INTERVAL: 1500,
-    MAX_ENEMIES: 50,
+    PLAYER_SPEED: 215,
+    PLAYER_HP: 120,
+    ENEMY_BASE_SPEED: 66,
+    ENEMY_BASE_HP: 18,
+    ENEMY_DAMAGE: 7,
+    XP_TO_LEVEL: 60,
+    SPAWN_INTERVAL: 1700,
+    MAX_ENEMIES: 38,
 };
 
 // 스프라이트 시트 그리드 (char_t.png: 7열×8행, 열폭 864/7, 행높이 144, 헤더 y=87)
@@ -91,11 +91,11 @@ const CHARACTERS = {
 
 // 무기 정의 (main=항상 발동 메인 / sub=레벨10에 장착·강화)
 const WEAPONS = {
-    umbrella:   { name: '우산', kind: 'main', type: 'melee', anim: 'atk_umbrella',   cooldown: 650, damage: 16, range: 95 },
-    knife:      { name: '칼',   kind: 'sub',  type: 'melee', anim: 'atk_knife',      cooldown: 430, damage: 22, range: 105, rangeStep: 38 },
-    pistol:     { name: '총',   kind: 'sub',  type: 'gun',   anim: 'atk_pistol',     cooldown: 520, damage: 20, bullets: 1, spread: 0.12, speed: 620 },
-    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   anim: 'atk_shotgun',    cooldown: 1000, damage: 12, bullets: 5, spread: 0.6, speed: 540 },
-    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  anim: 'atk_machinegun', cooldown: 150, damage: 7, bullets: 1, spread: 0.22, speed: 720 },
+    umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 520, damage: 22, range: 125 },
+    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 22, range: 105, rangeStep: 38 },
+    pistol:     { name: '총',   kind: 'sub',  type: 'gun',   cooldown: 520, damage: 20, bullets: 1, spread: 0.12, speed: 620 },
+    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1000, damage: 12, bullets: 5, spread: 0.6, speed: 540 },
+    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 150, damage: 7, bullets: 1, spread: 0.22, speed: 720 },
 };
 const SUB_WEAPONS = ['pistol', 'shotgun', 'machinegun', 'knife'];
 const BULLET_COLOR = { pistol: 0xfff176, shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
@@ -117,7 +117,6 @@ class GameScene extends Phaser.Scene {
         this.isGameOver = false;
         this.paused = false;
         this.pendingChoices = [];
-        this.animLockUntil = 0;
         this.facing = 1;
 
         // 장착 무기: 캐릭터 메인 무기부터 시작
@@ -179,13 +178,9 @@ class GameScene extends Phaser.Scene {
         const def = (key, frames, fps, repeat = -1) => {
             if (!this.anims.exists(key)) this.anims.create({ key, frames, frameRate: fps, repeat });
         };
+        // 공격 모션은 부자연스러워 제외 — 캐릭터는 걷기/정지 모션만 사용한다.
         def('idle', [F(0, 0), F(0, 1)], 3);
         def('walk', [F(0, 0), F(0, 1), F(0, 2)], 7);
-        def('atk_umbrella', [F(6, 0), F(6, 1), F(6, 2)], 10, 0);
-        def('atk_knife', [F(1, 0), F(1, 1), F(1, 2)], 14, 0);
-        def('atk_pistol', [F(3, 0), F(3, 1)], 12, 0);
-        def('atk_shotgun', [F(4, 0), F(4, 1)], 12, 0);
-        def('atk_machinegun', [F(5, 0), F(5, 1), F(5, 2)], 18, 0);
         def('death', [F(7, 0), F(7, 1)], 4, 0);
     }
 
@@ -285,11 +280,13 @@ class GameScene extends Phaser.Scene {
     }
 
     getEnemyType() {
-        const m = 1 + (this.level - 1) * 0.1 + (this.gameTime / 60) * 0.1;
+        // 성장 배수: 레벨/시간에 따라 완만하게 상승 (기존 0.1 → 0.05), 속도 상승은 별도로 더 완만하게.
+        const m = 1 + (this.level - 1) * 0.05 + (this.gameTime / 60) * 0.05;
+        const sm = 1 + (this.level - 1) * 0.02 + (this.gameTime / 60) * 0.03; // 이동속도 성장(둔화)
         const types = [
-            { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * m), damage: CONFIG.ENEMY_DAMAGE, speed: CONFIG.ENEMY_BASE_SPEED * m, xp: 10 },
-            { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * m), damage: CONFIG.ENEMY_DAMAGE * 0.5, speed: CONFIG.ENEMY_BASE_SPEED * 1.5 * m, xp: 15 },
-            { color: 0x6a0572, size: 18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 2 * m), damage: CONFIG.ENEMY_DAMAGE * 1.5, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * m, xp: 25 },
+            { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * m), damage: CONFIG.ENEMY_DAMAGE, speed: CONFIG.ENEMY_BASE_SPEED * sm, xp: 16 },
+            { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * m), damage: CONFIG.ENEMY_DAMAGE * 0.5, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * sm, xp: 22 },
+            { color: 0x6a0572, size: 18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * m), damage: CONFIG.ENEMY_DAMAGE * 1.4, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * sm, xp: 34 },
         ];
         const w = [60, 25, 15];
         if (this.level >= 3) { w[1] += 10; w[2] += 5; w[0] -= 15; }
@@ -309,15 +306,29 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    // 일정 반경 내 경험치 오브를 플레이어로 끌어당긴다(레벨업 수집 편의).
+    updateXPMagnet() {
+        const R = 160;
+        this.xpOrbs.children.iterate((orb) => {
+            if (!orb || !orb.active) return;
+            const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, orb.x, orb.y);
+            if (d < R) {
+                const a = Phaser.Math.Angle.Between(orb.x, orb.y, this.player.x, this.player.y);
+                orb.setVelocity(Math.cos(a) * 300, Math.sin(a) * 300);
+            }
+        });
+    }
+
     // --- 메인 루프 ---
     update(time, delta) {
         if (this.isGameOver || this.paused) return;
 
         const mv = this.handlePlayerMovement();
         this.updateEnemies();
+        this.updateXPMagnet();
         this.fireWeapons(delta, time);
         this.cleanupBullets(time);
-        this.updatePlayerAnim(mv.vx, mv.vy, time);
+        this.updatePlayerAnim(mv.vx, mv.vy);
         this.updateTimeDisplay();
     }
 
@@ -339,10 +350,9 @@ class GameScene extends Phaser.Scene {
         return { vx, vy };
     }
 
-    updatePlayerAnim(vx, vy, time) {
+    updatePlayerAnim(vx, vy) {
         if (vx < -0.01) this.facing = -1; else if (vx > 0.01) this.facing = 1;
         this.player.setFlipX(this.facing === -1);
-        if (time < this.animLockUntil) return; // 무기 모션 재생 중
         const moving = vx !== 0 || vy !== 0;
         this.player.play(moving ? 'walk' : 'idle', true);
     }
@@ -366,7 +376,7 @@ class GameScene extends Phaser.Scene {
                 if (!e || !e.active) return;
                 if (Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y) <= range) { this.damageEnemy(e, dmg); hit = true; }
             });
-            if (hit || key === 'umbrella') { this.meleeEffect(key, range); this.playWeaponAnim(def.anim, time); }
+            if (hit || key === 'umbrella') { this.meleeEffect(key, range); }
         } else {
             const target = this.nearestEnemy(700);
             if (!target) return;
@@ -378,7 +388,6 @@ class GameScene extends Phaser.Scene {
                 const step = def.spread / (n - 1);
                 for (let i = 0; i < n; i++) this.spawnBullet(base - def.spread / 2 + i * step, def, dmg, key, time);
             }
-            this.playWeaponAnim(def.anim, time);
         }
     }
 
@@ -406,11 +415,6 @@ class GameScene extends Phaser.Scene {
         g.lineStyle(3, color, 0.7); g.strokeCircle(this.player.x, this.player.y, range);
         g.fillStyle(color, 0.12); g.fillCircle(this.player.x, this.player.y, range);
         this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
-    }
-
-    playWeaponAnim(anim, time) {
-        this.player.play(anim, true);
-        this.animLockUntil = time + 260;
     }
 
     damageEnemy(enemy, dmg) {
@@ -465,7 +469,7 @@ class GameScene extends Phaser.Scene {
     // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
-        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.5));
+        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.28));
         this.levelText.setText(`Lv. ${this.level}`);
 
         const t = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', { fontSize: '24px', fill: '#f9ed69', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(100);
@@ -554,7 +558,7 @@ class GameScene extends Phaser.Scene {
 
     // --- 피격 / 시간 / 게임오버 ---
     onPlayerHit(player, enemy) {
-        this.playerHP -= enemy.getData('damage') * 0.016;
+        this.playerHP -= enemy.getData('damage') * 0.010;
         this.updateHPBar();
         if (Math.random() < 0.1) this.cameras.main.shake(100, 0.005);
         if (this.playerHP <= 0) this.gameOver();
