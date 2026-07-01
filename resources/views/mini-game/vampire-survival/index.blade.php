@@ -16,27 +16,66 @@
             <span class="game-title">🧛 뱀파이어 서바이벌</span>
         </div>
 
-        {{-- 시작 화면 = 캐릭터 선택 --}}
+        {{-- 시작 화면 = 메뉴(시작/옵션/조작법) → 시작 시 캐릭터 선택 --}}
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
                 <h2>🧛 뱀파이어 서바이벌</h2>
-                <p>캐릭터를 선택하세요</p>
-                <div class="vs-char-grid">
-                    <button class="vs-char-card" data-char="rainy">
-                        <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/rayna.webp');background-size:cover;background-position:center 12%;"></div>
-                        <div class="vs-char-name">레이니</div>
-                        <div class="vs-char-weapon">메인: 🌂 우산</div>
-                    </button>
-                    <div class="vs-char-card locked">
-                        <div class="vs-char-portrait vs-locked">?</div>
-                        <div class="vs-char-name">준비중</div>
-                        <div class="vs-char-weapon">Coming soon</div>
+
+                {{-- 메인 메뉴 --}}
+                <div id="vs-menu-main" class="vs-menu">
+                    <button type="button" class="vs-menu-btn vs-menu-btn--primary" data-menu="select">시작</button>
+                    <button type="button" class="vs-menu-btn" data-menu="options">옵션</button>
+                    <button type="button" class="vs-menu-btn" data-menu="controls">조작법</button>
+                </div>
+
+                {{-- 시작 → 캐릭터 선택 --}}
+                <div id="vs-menu-select" class="vs-menu-panel" hidden>
+                    <p>캐릭터를 선택하세요</p>
+                    <div class="vs-char-grid">
+                        <button class="vs-char-card" data-char="rainy">
+                            <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/rayna.webp');background-size:cover;background-position:center 12%;"></div>
+                            <div class="vs-char-name">레이니</div>
+                            <div class="vs-char-weapon">메인: 🌂 우산</div>
+                        </button>
+                        <div class="vs-char-card locked">
+                            <div class="vs-char-portrait vs-locked">?</div>
+                            <div class="vs-char-name">준비중</div>
+                            <div class="vs-char-weapon">Coming soon</div>
+                        </div>
+                        <div class="vs-char-card locked">
+                            <div class="vs-char-portrait vs-locked">?</div>
+                            <div class="vs-char-name">준비중</div>
+                            <div class="vs-char-weapon">Coming soon</div>
+                        </div>
                     </div>
-                    <div class="vs-char-card locked">
-                        <div class="vs-char-portrait vs-locked">?</div>
-                        <div class="vs-char-name">준비중</div>
-                        <div class="vs-char-weapon">Coming soon</div>
-                    </div>
+                    <button type="button" class="vs-back-btn" data-back>← 뒤로</button>
+                </div>
+
+                {{-- 옵션 (사운드는 추후 연동) --}}
+                <div id="vs-menu-options" class="vs-menu-panel" hidden>
+                    <h3 class="vs-panel-title">옵션</h3>
+                    <label class="vs-opt-row">
+                        <span>사운드</span>
+                        <input type="checkbox" id="vs-opt-sound" checked>
+                    </label>
+                    <label class="vs-opt-row">
+                        <span>소리 크기</span>
+                        <input type="range" id="vs-opt-volume" min="0" max="100" value="70">
+                    </label>
+                    <p class="vs-opt-note">※ 사운드는 추후 추가 예정입니다.</p>
+                    <button type="button" class="vs-back-btn" data-back>← 뒤로</button>
+                </div>
+
+                {{-- 조작법 --}}
+                <div id="vs-menu-controls" class="vs-menu-panel" hidden>
+                    <h3 class="vs-panel-title">조작법</h3>
+                    <ul class="vs-controls-list">
+                        <li><strong>이동</strong>: WASD / 방향키 · 모바일은 화면을 터치한 방향</li>
+                        <li>장착한 무기는 <strong>자동으로 발동</strong>합니다.</li>
+                        <li><strong>레벨 3</strong>마다 능력치, <strong>레벨 5</strong>마다 무기를 선택.</li>
+                        <li><strong>특수기</strong>: 적을 처치해 게이지가 차면 <strong>Space</strong> 또는 우하단 버튼으로 전역공격.</li>
+                    </ul>
+                    <button type="button" class="vs-back-btn" data-back>← 뒤로</button>
                 </div>
             </div>
         </div>
@@ -65,7 +104,11 @@
     <script>
 // ============================================================================
 // 뱀파이어 서바이벌 — 캐릭터 선택 + 스프라이트 애니메이션 + 다중 무기 누적
+// (전역 오염/콘솔 값 조작 방지를 위해 전체를 IIFE 로 캡슐화 — CONFIG/game/GameScene 등 비공개)
 // ============================================================================
+(function () {
+'use strict';
+let selectedChar = 'rainy'; // 선택한 캐릭터(전역 노출 안 함)
 const isMobile = () => 'ontouchstart' in window || window.innerWidth < 768;
 const getGameSize = () => {
     if (isMobile()) {
@@ -110,7 +153,7 @@ class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
 
     init() {
-        this.charKey = window.__vsChar || 'rainy';
+        this.charKey = selectedChar;
         this.playerHP = CONFIG.PLAYER_HP;
         this.maxHP = CONFIG.PLAYER_HP;
         this.playerSpeed = CONFIG.PLAYER_SPEED;
@@ -125,7 +168,7 @@ class GameScene extends Phaser.Scene {
         this.pendingChoices = [];
         this.facing = 1;
         this.special = 0;       // 특수기 게이지(처치 시 충전)
-        this.specialMax = 25;   // 25마리 처치 시 발동 가능
+        this.specialMax = 50;   // 50마리 처치 시 발동 가능
         this._ultActive = false;
 
         // 밸런스 로그: 유효 딜/유입 체력 누적(주기적으로 DPS·적HP유입으로 환산)
@@ -748,11 +791,40 @@ function getPhaserConfig() {
     };
 }
 
+// --- 시작 메뉴(시작/옵션/조작법) 전환 ---
+const vsMenuMain = document.getElementById('vs-menu-main');
+const vsPanels = { select: 'vs-menu-select', options: 'vs-menu-options', controls: 'vs-menu-controls' };
+document.querySelectorAll('.vs-menu-btn[data-menu]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        vsMenuMain.hidden = true;
+        document.getElementById(vsPanels[btn.dataset.menu]).hidden = false;
+    });
+});
+document.querySelectorAll('.vs-back-btn[data-back]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.vs-menu-panel').forEach((p) => (p.hidden = true));
+        vsMenuMain.hidden = false;
+    });
+});
+
+// --- 옵션(사운드 온오프·소리크기) — 값은 localStorage 저장만, 실제 오디오는 추후 연동 ---
+const vsSound = document.getElementById('vs-opt-sound');
+const vsVolume = document.getElementById('vs-opt-volume');
+if (vsSound) {
+    vsSound.checked = localStorage.getItem('vs_sound') !== '0';
+    vsSound.addEventListener('change', () => localStorage.setItem('vs_sound', vsSound.checked ? '1' : '0'));
+}
+if (vsVolume) {
+    vsVolume.value = localStorage.getItem('vs_volume') || '70';
+    vsVolume.addEventListener('input', () => localStorage.setItem('vs_volume', vsVolume.value));
+}
+
+// --- 캐릭터 선택 → 게임 시작 ---
 document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
     card.addEventListener('click', function (e) {
         e.preventDefault();
         const scrollY = window.scrollY || window.pageYOffset;
-        window.__vsChar = this.getAttribute('data-char');
+        selectedChar = this.getAttribute('data-char');
 
         document.getElementById('startScreen').style.display = 'none';
         const gc = document.getElementById('game-container');
@@ -764,11 +836,37 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
         setTimeout(() => window.scrollTo(0, scrollY), 10);
     });
 });
+})();
     </script>
     @endpush
 
     @push('styles')
     <style>
+        /* 시작 메뉴(시작/옵션/조작법) */
+        .vs-menu { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 22px; }
+        .vs-menu[hidden] { display: none; }
+        .vs-menu-btn {
+            width: 220px; padding: 13px 20px; border-radius: 12px;
+            border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer;
+            transition: transform .12s, border-color .12s, background .12s;
+        }
+        .vs-menu-btn:hover { transform: translateY(-2px); border-color: #6366f1; }
+        .vs-menu-btn--primary { background: #6366f1; border-color: #6366f1; color: #fff; }
+        .vs-menu-panel { margin-top: 16px; }
+        .vs-menu-panel[hidden] { display: none; }
+        .vs-panel-title { color: #f9ed69; font-size: 18px; font-weight: 800; margin: 0 0 14px; }
+        .vs-back-btn {
+            margin-top: 16px; padding: 9px 18px; border-radius: 10px;
+            border: 1px solid #334155; background: transparent; color: #94a3b8; font-weight: 700; cursor: pointer;
+        }
+        .vs-back-btn:hover { color: #e2e8f0; border-color: #475569; }
+        .vs-opt-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 260px; margin: 0 auto 14px; color: #cbd5e1; font-size: 15px; }
+        .vs-opt-row input[type="range"] { width: 150px; }
+        .vs-opt-note { color: #64748b; font-size: 12px; margin: 4px 0 0; }
+        .vs-controls-list { list-style: none; padding: 0; margin: 0 auto; max-width: 400px; text-align: left; color: #cbd5e1; font-size: 14px; }
+        .vs-controls-list li { padding: 7px 2px; border-bottom: 1px solid #1e293b; }
+
         /* 캐릭터 선택 */
         .vs-char-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
         .vs-char-card {
@@ -835,15 +933,4 @@ document.querySelectorAll('.vs-char-card[data-char]').forEach((card) => {
     </style>
     @endpush
 
-    <div class="game-instructions">
-        <h3>게임 방법</h3>
-        <ul>
-            <li>시작 화면에서 <strong>캐릭터를 선택</strong>하세요. 캐릭터마다 고유 메인 무기가 있습니다. (레이니 = 우산)</li>
-            <li class="desktop-only">WASD 또는 방향키로 이동</li>
-            <li class="mobile-only">화면을 터치한 방향으로 이동</li>
-            <li>장착한 무기는 <strong>자동으로 발동</strong>합니다. 오래 살아남아 경험치를 모으세요.</li>
-            <li><strong>레벨 5</strong>마다 체력 · 이동속도 · 공격력 중 하나를 선택합니다.</li>
-            <li><strong>레벨 10</strong>마다 서브무기(총 · 샷건 · 기관총 · 칼)를 새로 장착하거나 강화합니다.</li>
-        </ul>
-    </div>
 @endsection
