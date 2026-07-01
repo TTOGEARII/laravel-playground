@@ -21,6 +21,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('user.index');
         }
+
         return view('auth.login');
     }
 
@@ -40,6 +41,7 @@ class AuthController extends Controller
         if ($result['ok']) {
             return response()->json($result);
         }
+
         return response()->json($result, 422);
     }
 
@@ -51,6 +53,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('user.index');
         }
+
         return view('auth.register');
     }
 
@@ -72,6 +75,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $this->authService->logout($request);
+
         return response()->json(['ok' => true, 'redirect' => url('/')]);
     }
 }

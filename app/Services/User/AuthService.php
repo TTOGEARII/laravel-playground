@@ -3,43 +3,31 @@
 namespace App\Services\User;
 
 use App\Models\User;
+use App\Services\User\Auth\CredentialAuthenticator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * 회원 인증 파사드. 일반 로그인은 CredentialAuthenticator(일반 로그인 계층)에 위임하고,
+ * 회원가입/로그아웃/검증 규칙 등 나머지 계정 로직을 담당한다.
+ * (소셜 로그인은 SocialAuthController + Auth\Social\* 계층에서 처리)
+ */
 class AuthService
 {
+    public function __construct(
+        private CredentialAuthenticator $credentialAuthenticator,
+    ) {}
+
     /**
-     * 로그인 시도 (실패 시 로깅, 정보 누수 방지)
+     * 일반 로그인 시도 → 일반 로그인 인증자에 위임.
      *
      * @return array{ok: bool, redirect?: string, message?: string}
      */
     public function attemptLogin(array $credentials, bool $remember, Request $request): array
     {
-        if (Auth::attempt($credentials, $remember)) {
-            $request->session()->regenerate();
-            return ['ok' => true, 'redirect' => route('user.index')];
-        }
-
-        $this->logFailedLogin($request->input('email'), $request->ip());
-
-        return [
-            'ok' => false,
-            'message' => '이메일 또는 비밀번호가 올바르지 않습니다.',
-        ];
-    }
-
-    /**
-     * 로그인 실패 기록 (보안 감사용, 비밀번호는 절대 기록하지 않음)
-     */
-    protected function logFailedLogin(?string $email, ?string $ip): void
-    {
-        Log::channel('single')->warning('Login attempt failed', [
-            'email' => $email ? substr($email, 0, 3) . '***@***' : null,
-            'ip' => $ip,
-        ]);
+        return $this->credentialAuthenticator->attempt($credentials, $remember, $request);
     }
 
     /**

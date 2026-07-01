@@ -9,5 +9,5 @@
 @endsection
 
 @section('content')
-    <div id="auth-app" data-page="login"></div>
+    <div id="auth-app" data-page="login" data-social-error="{{ session('social_error') }}"></div>
 @endsection
