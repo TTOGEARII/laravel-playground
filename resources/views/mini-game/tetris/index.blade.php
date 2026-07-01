@@ -39,6 +39,8 @@
         </div>
     </div>
 
+    <x-mini-game.ranking-overlay game="tetris" />
+
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
     <script>
@@ -555,6 +557,9 @@ class TetrisScene extends Phaser.Scene {
         this.add.text(cx, cy - 50, 'GAME OVER', { fontFamily: 'Outfit, sans-serif', fontSize: '34px', color: '#f87171', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21);
         this.add.text(cx, cy, '점수 ' + this.score, { fontFamily: 'Outfit, sans-serif', fontSize: '24px', color: '#f8fafc', fontStyle: 'bold' }).setOrigin(0.5).setDepth(21);
         this.add.text(cx, cy + 50, 'R 키 / 화면 탭으로 다시 시작', { fontFamily: 'Outfit, sans-serif', fontSize: '15px', color: '#94a3b8' }).setOrigin(0.5).setDepth(21);
+
+        // 랭킹 오버레이 표시 (닉네임 입력 → 점수 등록 → 랭킹/재시작)
+        window.MiniGameRanking?.show(this.score);
     }
 }
 
