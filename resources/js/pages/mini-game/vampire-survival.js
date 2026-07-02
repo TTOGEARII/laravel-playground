@@ -27,7 +27,7 @@ const CONFIG = {
     LOG_INTERVAL: 5000,       // 밸런스 로그 주기(ms)
 };
 
-// 캐릭터 스프라이트 그리드 (Charactor_sprite2.png: 4열×4행, 셀 256×256, 투명 배경)
+// 캐릭터 스프라이트 그리드 (Charactor_move/idle_sprite.png: 4열×4행, 셀 256×256, 투명 배경)
 const SHEET = { cell: 256, cols: 4, rows: 4 };
 
 // 캐릭터별 고유 메인 무기
@@ -86,9 +86,14 @@ class GameScene extends Phaser.Scene {
 
     preload() {
         const base = '/images/mini-game/vampire-survivors';
-        this.load.image('char2', `${base}/Charactor_sprite2.png`);       // 걷기
-        this.load.image('charIdle', `${base}/Charactor_idle_sprite.png`); // 대기(우산)
-        this.load.image('bg', `${base}/background.png`);                  // 배경
+        // 캐릭터(레이니): 걷기/대기 시트 (4x4/256)
+        this.load.image('char2', `${base}/charactor/rainy/Charactor_move_sprite.png`);
+        this.load.image('charIdle', `${base}/charactor/rainy/Charactor_idle_sprite.png`);
+        // 스테이지1: 배경 + 적 스프라이트(각 2x2/512, 4프레임)
+        this.load.image('bg', `${base}/stage1/background.png`);
+        this.load.spritesheet('enemy_normal', `${base}/stage1/enemy_nomal.png`, { frameWidth: 512, frameHeight: 512 });
+        this.load.spritesheet('enemy_fast', `${base}/stage1/enemy_fast.png`, { frameWidth: 512, frameHeight: 512 });
+        this.load.spritesheet('enemy_tank', `${base}/stage1/enemy_tank.png`, { frameWidth: 512, frameHeight: 512 });
     }
 
     create() {
@@ -118,7 +123,7 @@ class GameScene extends Phaser.Scene {
         this.createUI();
         this.setupSpecial();
 
-        this.spawnTimer = this.time.addEvent({ delay: CONFIG.SPAWN_INTERVAL, callback: this.spawnEnemy, callbackScope: this, loop: true });
+        this.refreshSpawnTimer();
         this.time.addEvent({ delay: 1000, callback: () => { if (!this.isGameOver && !this.paused) this.gameTime++; }, loop: true });
         this.time.addEvent({ delay: CONFIG.LOG_INTERVAL, loop: true, callback: () => this.logBalance() });
 
@@ -153,6 +158,13 @@ class GameScene extends Phaser.Scene {
         def('idle', idle, 8);
         def('walk', walk, 14);
         def('death', [FW(0, 0)], 1, 0);
+
+        // 적 애니메이션 (2x2 시트의 4프레임 순환)
+        for (const key of ['enemy_normal', 'enemy_fast', 'enemy_tank']) {
+            if (!this.anims.exists(key)) {
+                this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 3 }), frameRate: 5, repeat: -1 });
+            }
+        }
     }
 
     makeBulletTextures() {
@@ -233,8 +245,22 @@ class GameScene extends Phaser.Scene {
     // --- 적 ---
     // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
     // 밀도(스폰)는 시간에 따라 "완만히" 상승 — 체력(지수)과 밀도를 동시에 급격히 올리지 않는다.
-    maxEnemies() { return Math.min(40 + Math.floor((this.gameTime / 60) * 5), 130); }
-    spawnBatchSize() { return Math.min(1 + Math.floor((this.gameTime / 60) / 3), 8); } // 3분마다 +1
+    // 밀도(스폰) = 시간 + 레벨. 레벨 10부터 리젠/밀집을 확 늘려 난이도 급상승.
+    maxEnemies() {
+        let cap = 40 + Math.floor((this.gameTime / 60) * 5);
+        if (this.level >= 10) cap += (this.level - 9) * 10; // 레벨10부터 레벨당 최대치 +10
+        return Math.min(cap, 220);
+    }
+    spawnBatchSize() {
+        let b = 1 + Math.floor((this.gameTime / 60) / 3);
+        if (this.level >= 10) b += 1 + Math.floor((this.level - 10) / 2); // 레벨10 +1, 이후 2레벨마다 +1
+        return Math.min(b, 12);
+    }
+    spawnDelay() { return this.level >= 10 ? 550 : CONFIG.SPAWN_INTERVAL; } // 레벨10부터 리젠 속도 ↑
+    refreshSpawnTimer() {
+        if (this.spawnTimer) this.spawnTimer.remove(false);
+        this.spawnTimer = this.time.addEvent({ delay: this.spawnDelay(), callback: this.spawnEnemy, callbackScope: this, loop: true });
+    }
 
     spawnEnemy() {
         if (this.isGameOver || this.paused) return;
@@ -250,15 +276,14 @@ class GameScene extends Phaser.Scene {
         const y = this.player.y + Math.sin(angle) * distance;
         const t = this.getEnemyType();
 
-        const key = `enemy_${t.color.toString(16)}`;
-        if (!this.textures.exists(key)) {
-            const g = this.add.graphics(); g.fillStyle(t.color); g.fillCircle(15, 15, t.size);
-            g.generateTexture(key, 30, 30); g.destroy();
-        }
-        const enemy = this.enemies.create(x, y, key);
+        const enemy = this.enemies.create(x, y, t.key);
+        enemy.play(t.anim);
+        enemy.setScale(t.scale);
+        enemy.setDepth(5);
         enemy.setData('hp', t.hp); enemy.setData('damage', t.damage);
         enemy.setData('speed', t.speed); enemy.setData('xp', t.xp);
-        enemy.body.setCircle(t.size, 15 - t.size, 15 - t.size);
+        // 512 프레임 기준 충돌 원(중앙). 표시 반경 ≈ 150 × scale.
+        enemy.body.setCircle(150, 256 - 150, 256 - 150);
         this._hpInfluxAccum += t.hp; // 밸런스 로그: 유입 적 체력 누적
         this._spawnedTotal++;        // sanity: 처치 수는 스폰 수를 넘을 수 없음
     }
@@ -268,11 +293,12 @@ class GameScene extends Phaser.Scene {
         const minutes = this.gameTime / 60;
         const hpMul = Math.pow(CONFIG.HP_GROWTH_PER_MIN, minutes);
         const spdMul = Math.min(1 + minutes * 0.05, 2.0);
-        const dmgMul = Math.min(1 + minutes * 0.04, 1.7);
+        // 접촉 데미지: 시간 완만 상승 + 레벨10부터 ×1.4 (밀집 스웜이 실제로 위협이 되도록)
+        const dmgMul = Math.min(1 + minutes * 0.04, 1.7) * (this.level >= 10 ? 1.4 : 1);
         const types = [
-            { color: 0xe94560, size: 12, hp: Math.floor(CONFIG.ENEMY_BASE_HP * hpMul), damage: CONFIG.ENEMY_DAMAGE * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * spdMul, xp: 16 },
-            { color: 0xf9ed69, size: 8, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 0.5 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * spdMul, xp: 20 },
-            { color: 0x6a0572, size: 18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 1.4 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * spdMul, xp: 30 },
+            { key: 'enemy_normal', anim: 'enemy_normal', scale: 0.13, hp: Math.floor(CONFIG.ENEMY_BASE_HP * hpMul), damage: CONFIG.ENEMY_DAMAGE * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * spdMul, xp: 16 },
+            { key: 'enemy_fast', anim: 'enemy_fast', scale: 0.10, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 0.5 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * spdMul, xp: 20 },
+            { key: 'enemy_tank', anim: 'enemy_tank', scale: 0.18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 1.4 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * spdMul, xp: 30 },
         ];
         // 강한 적 등장 확률: 시간에 따라 증가
         const w = [60, 25, 15];
@@ -479,6 +505,7 @@ class GameScene extends Phaser.Scene {
     // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
+        if (this.level === 10) this.refreshSpawnTimer(); // 레벨10 도달: 리젠 주기 단축(난이도 급상승)
         // 선형 곡선: 레벨이 오를수록 필요 경험치가 일정하게 증가(지수보다 완만)
         this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.50));
         this.levelText.setText(`Lv. ${this.level}`);

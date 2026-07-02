@@ -33,7 +33,7 @@
                     <p>캐릭터를 선택하세요</p>
                     <div class="vs-char-grid">
                         <button class="vs-char-card" data-char="rainy">
-                            <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/rayna.webp');background-size:cover;background-position:center 12%;"></div>
+                            <div class="vs-char-portrait" style="background-image:url('/images/mini-game/vampire-survivors/charactor/rainy/rayna.webp');background-size:cover;background-position:center 12%;"></div>
                             <div class="vs-char-name">레이니</div>
                             <div class="vs-char-weapon">메인: 🌂 우산</div>
                         </button>
