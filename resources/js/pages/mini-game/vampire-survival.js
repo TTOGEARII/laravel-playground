@@ -22,7 +22,7 @@ const CONFIG = {
     ENEMY_BASE_HP: 22,
     ENEMY_DAMAGE: 11,         // 접촉 피해 상향(스웜에 닿으면 위험하게)
     HP_GROWTH_PER_MIN: 1.16,  // 적 체력: 분당 지수 성장(1.1~1.3). 밸런스의 심장.
-    XP_TO_LEVEL: 65,          // 레벨1→2 기준량(이후 선형 증가 → 초반 빠르고 후반 느리게)
+    XP_TO_LEVEL: 70,          // 레벨1→2 기준량(이후 선형 증가). 물량이 늘어도 레벨업이 쉬워지지 않게 높게 유지.
     SPAWN_INTERVAL: 780,      // 고정 스폰 주기. 밀도는 시간에 따라 batch/최대수로 상승(스웜 형성)
     LOG_INTERVAL: 5000,       // 밸런스 로그 주기(ms)
     // 특수기 전역 딜 = 현재 일반몹 HP 곡선 × 이 배율. 탱크(×1.8)까지 확실히 정리하되,
@@ -43,7 +43,7 @@ const WEAPONS = {
     // 근접(우산·칼)은 한 방이 세고, 원거리(샷건·기관총)는 근접보다 딜이 약한 대신 안전하게 사거리.
     // 우산(항상 켜진 메인)은 방치 클리어 방지를 위해 사거리/데미지를 낮춤.
     umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 560, damage: 15, range: 92 },
-    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 16, range: 105, rangeStep: 38 },
+    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 17, range: 105, rangeStep: 1 },
     shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1050, damage: 5, bullets: 5, spread: 0.6, speed: 540 },
     machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 2, bullets: 1, spread: 0.22, speed: 720 },
 };
@@ -321,18 +321,17 @@ class GameScene extends Phaser.Scene {
     // --- 적 ---
     // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
     // 밀도(스폰)는 시간에 따라 "완만히" 상승 — 체력(지수)과 밀도를 동시에 급격히 올리지 않는다.
-    // 밀도(스폰) = 시간 + 레벨. 레벨 10부터 리젠/밀집을 확 늘려 난이도 급상승.
+    // 밀도(스폰) = 시간 + 레벨 단계. 레벨 10단위(10·20·30…)마다 물량을 크게 늘려 난이도 급상승.
+    tier() { return Math.floor(this.level / 10); } // 10레벨마다 1단계
     maxEnemies() {
-        let cap = 40 + Math.floor((this.gameTime / 60) * 5);
-        if (this.level >= 10) cap += (this.level - 9) * 10; // 레벨10부터 레벨당 최대치 +10
-        return Math.min(cap, 220);
+        const cap = 40 + Math.floor((this.gameTime / 60) * 5) + this.tier() * 45; // 단계마다 최대치 +45
+        return Math.min(cap, 320);
     }
     spawnBatchSize() {
-        let b = 1 + Math.floor((this.gameTime / 60) / 3);
-        if (this.level >= 10) b += 1 + Math.floor((this.level - 10) / 2); // 레벨10 +1, 이후 2레벨마다 +1
-        return Math.min(b, 12);
+        const b = 1 + Math.floor((this.gameTime / 60) / 3) + this.tier() * 2; // 단계마다 배치 +2
+        return Math.min(b, 16);
     }
-    spawnDelay() { return this.level >= 10 ? 550 : CONFIG.SPAWN_INTERVAL; } // 레벨10부터 리젠 속도 ↑
+    spawnDelay() { return Math.max(CONFIG.SPAWN_INTERVAL - this.tier() * 130, 300); } // 단계마다 리젠 주기 단축(하한 300ms)
     refreshSpawnTimer() {
         if (this.spawnTimer) this.spawnTimer.remove(false);
         this.spawnTimer = this.time.addEvent({ delay: this.spawnDelay(), callback: this.spawnEnemy, callbackScope: this, loop: true });
@@ -372,9 +371,9 @@ class GameScene extends Phaser.Scene {
         // 접촉 데미지: 시간 완만 상승 + 레벨10부터 ×1.4 (밀집 스웜이 실제로 위협이 되도록)
         const dmgMul = Math.min(1 + minutes * 0.04, 1.7) * (this.level >= 10 ? 1.4 : 1);
         const types = [
-            { key: 'enemy_normal', anim: 'enemy_normal', scale: 0.13, hp: Math.floor(CONFIG.ENEMY_BASE_HP * hpMul), damage: CONFIG.ENEMY_DAMAGE * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * spdMul, xp: 16 },
-            { key: 'enemy_fast', anim: 'enemy_fast', scale: 0.10, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 0.5 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * spdMul, xp: 20 },
-            { key: 'enemy_tank', anim: 'enemy_tank', scale: 0.18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 1.4 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * spdMul, xp: 30 },
+            { key: 'enemy_normal', anim: 'enemy_normal', scale: 0.13, hp: Math.floor(CONFIG.ENEMY_BASE_HP * hpMul), damage: CONFIG.ENEMY_DAMAGE * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * spdMul, xp: 8 },
+            { key: 'enemy_fast', anim: 'enemy_fast', scale: 0.10, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 0.5 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 0.5 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 1.4 * spdMul, xp: 10 },
+            { key: 'enemy_tank', anim: 'enemy_tank', scale: 0.18, hp: Math.floor(CONFIG.ENEMY_BASE_HP * 1.8 * hpMul), damage: CONFIG.ENEMY_DAMAGE * 1.4 * dmgMul, speed: CONFIG.ENEMY_BASE_SPEED * 0.6 * spdMul, xp: 15 },
         ];
         // 강한 적 등장 확률: 시간에 따라 증가
         const w = [60, 25, 15];
@@ -593,9 +592,9 @@ class GameScene extends Phaser.Scene {
     // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
-        if (this.level === 10) this.refreshSpawnTimer(); // 레벨10 도달: 리젠 주기 단축(난이도 급상승)
-        // 선형 곡선: 레벨이 오를수록 필요 경험치가 일정하게 증가(지수보다 완만)
-        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.50));
+        if (this.level % 10 === 0) this.refreshSpawnTimer(); // 10단위 도달: 리젠 주기 단축(난이도 단계 상승)
+        // 선형 곡선: 레벨이 오를수록 필요 경험치가 가파르게 증가 → 물량이 늘어도 레벨업이 점점 어려워짐
+        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.60));
         this.levelText.setText(`Lv. ${this.level}`);
 
         const t = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', { fontSize: '24px', fill: '#f9ed69', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(100);
