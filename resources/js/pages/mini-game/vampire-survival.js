@@ -25,6 +25,9 @@ const CONFIG = {
     XP_TO_LEVEL: 65,          // 레벨1→2 기준량(이후 선형 증가 → 초반 빠르고 후반 느리게)
     SPAWN_INTERVAL: 780,      // 고정 스폰 주기. 밀도는 시간에 따라 batch/최대수로 상승(스웜 형성)
     LOG_INTERVAL: 5000,       // 밸런스 로그 주기(ms)
+    // 특수기 전역 딜 = 현재 일반몹 HP 곡선 × 이 배율. 탱크(×1.8)까지 확실히 정리하되,
+    // HP를 훨씬 높게 설계한 보스는 한 방에 죽지 않도록 유한값으로 둔다.
+    ULT_DAMAGE_MUL: 3,
 };
 
 // 캐릭터 스프라이트 그리드 (Charactor_move/idle_sprite.png: 4열×4행, 셀 256×256, 투명 배경)
@@ -764,8 +767,8 @@ class GameScene extends Phaser.Scene {
     castUltimate(x, y) {
         this.cameras.main.flash(200, 130, 170, 255);
 
-        // 1) 데미지 판정 — 발동 즉시(광범위 반경)
-        this.dealDamageInRadius(x, y, 650);
+        // 1) 데미지 판정 — 발동 즉시(맵 전체 몹)
+        this.dealDamageToAll();
 
         // 2) 시전 스프라이트: 평소 캐릭터를 숨기고 같은 위치에 시전 시퀀스 재생
         this.player.setVisible(false);
@@ -785,13 +788,14 @@ class GameScene extends Phaser.Scene {
         boom.once('animationcomplete', () => boom.destroy()); // 폭발이 먼저 끝나도 독립적으로 정리
     }
 
-    // 광범위 데미지 판정. (반경/피해량은 여기서 조정 — 현재는 반경 내 적을 큰 피해로 처치)
-    dealDamageInRadius(x, y, radius) {
+    // 특수기 전역 공격: 반경 제한 없이 맵의 모든 활성 몹에게 딜.
+    // 딜은 현재 일반몹 HP 곡선 기준 유한값 — 일반/탱크는 확실히 처치하되 보스(고HP)는 즉사하지 않는다.
+    dealDamageToAll() {
+        const hpMul = Math.pow(CONFIG.HP_GROWTH_PER_MIN, this.gameTime / 60);
+        const dmg = Math.ceil(CONFIG.ENEMY_BASE_HP * hpMul * CONFIG.ULT_DAMAGE_MUL);
         this._ultActive = true; // 궁극기 킬은 특수기 게이지 재충전에서 제외
         this.enemies.children.iterate((e) => {
-            if (e && e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= radius) {
-                this.damageEnemy(e, 99999);
-            }
+            if (e && e.active) this.damageEnemy(e, dmg);
         });
         this._ultActive = false;
     }
