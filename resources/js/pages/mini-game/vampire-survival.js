@@ -41,8 +41,8 @@ const WEAPONS = {
     // 우산(항상 켜진 메인)은 방치 클리어 방지를 위해 사거리/데미지를 낮춤.
     umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 560, damage: 15, range: 92 },
     knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 16, range: 105, rangeStep: 38 },
-    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1050, damage: 7, bullets: 5, spread: 0.6, speed: 540 },
-    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 4, bullets: 1, spread: 0.22, speed: 720 },
+    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1050, damage: 5, bullets: 5, spread: 0.6, speed: 540 },
+    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 2, bullets: 1, spread: 0.22, speed: 720 },
 };
 const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife'];
 const BULLET_COLOR = { shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
@@ -464,8 +464,20 @@ class GameScene extends Phaser.Scene {
         for (const key of Object.keys(this.equipped)) {
             const st = this.equipped[key];
             st.cd -= delta;
-            if (st.cd <= 0) { this.fireWeapon(key, time); st.cd = WEAPONS[key].cooldown; }
+            if (st.cd <= 0) { this.fireWeapon(key, time); st.cd = this.effectiveCooldown(key); }
         }
+    }
+
+    // 총 강화는 탄환 수가 아니라 연사속도(쿨다운 감소)로 반영한다.
+    // 레벨당 쿨다운 -12%, 기본값의 45%까지 단축(연사 상한).
+    effectiveCooldown(key) {
+        const def = WEAPONS[key];
+        const lv = this.equipped[key]?.level ?? 1;
+        return def.type === 'gun' ? Math.round(this.gunCooldownAt(def, lv)) : def.cooldown;
+    }
+
+    gunCooldownAt(def, level) {
+        return def.cooldown * Math.max(0.45, 1 - (level - 1) * 0.12);
     }
 
     fireWeapon(key, time) {
@@ -483,7 +495,7 @@ class GameScene extends Phaser.Scene {
             const target = this.nearestEnemy(700);
             if (!target) return;
             const base = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
-            const n = def.bullets + (st.level - 1) * 3;
+            const n = def.bullets; // 탄환 수는 고정 — 강화는 연사속도로 반영
             if (n <= 1) {
                 this.spawnBullet(base + Phaser.Math.FloatBetween(-def.spread / 2, def.spread / 2), def, dmg, key, time);
             } else {
@@ -621,7 +633,7 @@ class GameScene extends Phaser.Scene {
             if (owned) {
                 const lv = owned.level;
                 const desc = def.type === 'gun'
-                    ? `탄환 ${def.bullets + (lv - 1) * 3} → ${def.bullets + lv * 3}발`
+                    ? `연사속도 ↑ (${Math.round(this.gunCooldownAt(def, lv))}ms → ${Math.round(this.gunCooldownAt(def, lv + 1))}ms)`
                     : `공격 범위 ${def.range + (lv - 1) * def.rangeStep} → ${def.range + lv * def.rangeStep}`;
                 return { icon: key, title: `${def.name} 강화 Lv.${lv}→${lv + 1}`, desc, onPick: () => { owned.level++; } };
             }
