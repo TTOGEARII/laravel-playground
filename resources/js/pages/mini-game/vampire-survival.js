@@ -17,13 +17,13 @@ const getGameSize = () => {
 
 const CONFIG = {
     PLAYER_SPEED: 215,
-    PLAYER_HP: 120,
-    ENEMY_BASE_SPEED: 68,
-    ENEMY_BASE_HP: 20,
-    ENEMY_DAMAGE: 8,
+    PLAYER_HP: 90,
+    ENEMY_BASE_SPEED: 95,
+    ENEMY_BASE_HP: 22,
+    ENEMY_DAMAGE: 11,         // 접촉 피해 상향(스웜에 닿으면 위험하게)
     HP_GROWTH_PER_MIN: 1.16,  // 적 체력: 분당 지수 성장(1.1~1.3). 밸런스의 심장.
-    XP_TO_LEVEL: 60,          // 레벨1→2 기준량(이후 선형 증가 → 초반 빠르고 후반 느리게)
-    SPAWN_INTERVAL: 850,      // 고정 스폰 주기(살짝 빠르게). 밀도는 시간에 따라 batch/최대수로 완만히 상승
+    XP_TO_LEVEL: 65,          // 레벨1→2 기준량(이후 선형 증가 → 초반 빠르고 후반 느리게)
+    SPAWN_INTERVAL: 780,      // 고정 스폰 주기. 밀도는 시간에 따라 batch/최대수로 상승(스웜 형성)
     LOG_INTERVAL: 5000,       // 밸런스 로그 주기(ms)
 };
 
@@ -233,8 +233,8 @@ class GameScene extends Phaser.Scene {
     // --- 적 ---
     // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
     // 밀도(스폰)는 시간에 따라 "완만히" 상승 — 체력(지수)과 밀도를 동시에 급격히 올리지 않는다.
-    maxEnemies() { return Math.min(34 + Math.floor((this.gameTime / 60) * 3), 96); }
-    spawnBatchSize() { return Math.min(1 + Math.floor((this.gameTime / 60) / 4), 6); } // 4분마다 +1
+    maxEnemies() { return Math.min(40 + Math.floor((this.gameTime / 60) * 5), 130); }
+    spawnBatchSize() { return Math.min(1 + Math.floor((this.gameTime / 60) / 3), 8); } // 3분마다 +1
 
     spawnEnemy() {
         if (this.isGameOver || this.paused) return;
@@ -480,7 +480,7 @@ class GameScene extends Phaser.Scene {
     levelUp() {
         this.level++;
         // 선형 곡선: 레벨이 오를수록 필요 경험치가 일정하게 증가(지수보다 완만)
-        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.40));
+        this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.50));
         this.levelText.setText(`Lv. ${this.level}`);
 
         const t = this.add.text(this.player.x, this.player.y - 50, 'LEVEL UP!', { fontSize: '24px', fill: '#f9ed69', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(100);
@@ -494,8 +494,8 @@ class GameScene extends Phaser.Scene {
     }
 
     applyMinorBonus() {
-        this.maxHP += 6;
-        this.playerHP = Math.min(this.maxHP, this.playerHP + 16);
+        this.maxHP += 3;
+        this.playerHP = Math.min(this.maxHP, this.playerHP + 12);
         this.updateHPBar();
     }
 
@@ -508,7 +508,7 @@ class GameScene extends Phaser.Scene {
 
     showStatChoice() {
         this.showChoice('레벨 업! 능력치 강화', [
-            { emoji: '❤️', title: '체력 +30', desc: '최대 체력 증가 & 회복', onPick: () => { this.maxHP += 30; this.playerHP += 30; this.updateHPBar(); } },
+            { emoji: '❤️', title: '체력 +22', desc: '최대 체력 증가 & 회복', onPick: () => { this.maxHP += 22; this.playerHP += 22; this.updateHPBar(); } },
             { emoji: '👟', title: '이동속도 +25', desc: '더 빠르게 이동', onPick: () => { this.playerSpeed += 25; } },
             { emoji: '⚔️', title: '공격력 +8', desc: '모든 무기 데미지 증가', onPick: () => { this.bonusAttack += 8; } },
         ]);
@@ -570,7 +570,7 @@ class GameScene extends Phaser.Scene {
 
     // --- 피격 / 시간 / 게임오버 ---
     onPlayerHit(player, enemy) {
-        this.playerHP -= enemy.getData('damage') * 0.016;
+        this.playerHP -= enemy.getData('damage') * 0.022;
         this.updateHPBar();
         if (Math.random() < 0.1) this.cameras.main.shake(100, 0.005);
         if (this.playerHP <= 0) this.gameOver();
