@@ -146,8 +146,41 @@ abstract class AbstractSourceDriver implements SourceDriver
     protected function extractCodeTokensFromText(string $text): array
     {
         $out = [];
+
+        // 1) 대문자 알파벳 단어가 연속(2~3개, 각 5자 이상)이면 한 코드가 띄어쓰기로 표기된
+        //    경우가 많다(예: NIKKE "UNBREAKABLE MEMORIES" = UNBREAKABLEMEMORIES).
+        //    이런 구간은 이어붙인 토큰만 코드로 채택하고, 개별 조각은 코드에서 제외한다.
+        //    (구성 단어 중 하나라도 보상명/페이지 단어 블랙리스트면 문장/헤드라인으로 보고 건너뜀)
+        $fragments = [];
+        if (preg_match_all('/\b(?:[A-Z]{5,}\s+){1,2}[A-Z]{5,}\b/u', $text, $mm)) {
+            foreach ($mm[0] as $phrase) {
+                $words = preg_split('/\s+/', trim($phrase)) ?: [];
+                $hasDenyWord = false;
+                foreach ($words as $w) {
+                    if (in_array(strtoupper($w), static::CODE_DENYLIST, true)) {
+                        $hasDenyWord = true;
+                        break;
+                    }
+                }
+                if ($hasDenyWord) {
+                    continue;
+                }
+                $glued = implode('', $words);
+                if ($this->looksLikeCode($glued)) {
+                    $out[strtoupper($glued)] = $glued;
+                    foreach ($words as $w) {
+                        $fragments[strtoupper($w)] = true; // 이어붙인 코드의 조각은 개별 채택 금지
+                    }
+                }
+            }
+        }
+
+        // 2) 개별 토큰 추출(위에서 이어붙인 코드의 조각은 건너뜀).
         if (preg_match_all('/[A-Za-z0-9]{4,30}/', $text, $m)) {
             foreach ($m[0] as $t) {
+                if (isset($fragments[strtoupper($t)])) {
+                    continue;
+                }
                 if ($this->looksLikeCode($t)) {
                     $out[strtoupper($t)] = $t;
                 }

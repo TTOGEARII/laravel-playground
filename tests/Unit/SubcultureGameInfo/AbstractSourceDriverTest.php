@@ -75,6 +75,38 @@ class AbstractSourceDriverTest extends TestCase
         $this->assertSame(1, count(array_keys($upper, 'GENSHINGIFT', true)));
     }
 
+    public function test_extract_joins_consecutive_uppercase_word_code(): void
+    {
+        // NIKKE 처럼 여러 단어를 붙인 코드가 소스에 띄어쓰기로 표기된 경우:
+        // 조각(UNBREAKABLE/MEMORIES)이 아니라 이어붙인 UNBREAKABLEMEMORIES 만 코드로 채택.
+        $text = '[니케] 신규 쿠폰 UNBREAKABLE MEMORIES 리딤코드 등록하세요';
+        $tokens = $this->invokeHelper('extractCodeTokensFromText', $text);
+
+        $this->assertContains('UNBREAKABLEMEMORIES', $tokens);
+        $this->assertNotContains('UNBREAKABLE', $tokens);
+        $this->assertNotContains('MEMORIES', $tokens);
+    }
+
+    public function test_extract_does_not_join_when_word_is_denylisted(): void
+    {
+        // 구성 단어 중 하나라도 페이지/보상 단어면 문장/헤드라인으로 보고 이어붙이지 않는다.
+        $text = 'SPECIAL REWARDS EVENT 진행 중';
+        $tokens = $this->invokeHelper('extractCodeTokensFromText', $text);
+
+        $this->assertNotContains('SPECIALREWARDSEVENT', $tokens);
+    }
+
+    public function test_extract_keeps_separate_alphanumeric_codes(): void
+    {
+        // 각각 숫자를 포함한 별개 코드는 이어붙이지 않고 그대로 둘 다 유지.
+        $text = '두 코드 SUMMERGIFT2026 SPRINGCODE1234 동시 등록';
+        $tokens = $this->invokeHelper('extractCodeTokensFromText', $text);
+
+        $this->assertContains('SUMMERGIFT2026', $tokens);
+        $this->assertContains('SPRINGCODE1234', $tokens);
+        $this->assertNotContains('SUMMERGIFT2026SPRINGCODE1234', $tokens);
+    }
+
     // ---------------------------------------------------------------- parseExpiry
     public static function parseExpiryProvider(): array
     {
