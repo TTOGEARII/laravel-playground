@@ -128,8 +128,8 @@ return [
             'publisher' => 'Shift Up',
             'icon' => '🎯',
             'color' => 'accent-pink',
-            'redeem_url_template' => null,
-            'redeem_note' => '게임 내 [메인 메뉴 > 쿠폰] 또는 공식 쿠폰 페이지에서 입력',
+            'redeem_url_template' => 'https://www.blablalink.com/cdk',
+            'redeem_note' => '공식 쿠폰 페이지(블라블라링크)에서 입력, 또는 게임 내 [메인 메뉴 > 쿠폰]',
             'region_default' => 'kr',
             'sort' => 7,
             'sources' => [
@@ -193,9 +193,14 @@ return [
                 'bluearchive' => 'bluearchive',
                 'wuthering' => 'wutheringwaves',
                 'trickcal' => 'trickcal',
-                'nikke' => 'nikke',
+                'nikke' => 'nikketgv',
                 'browndust2' => 'browndust',
             ],
+            // 게임별 쿠폰 카테고리(지정 시: 해당 카테고리의 '최근 recent_days일' 글에서만 코드 수집).
+            'categories' => [
+                'nikke' => '쿠폰',
+            ],
+            'recent_days' => (int) env('SGI_ARCA_RECENT_DAYS', 7),
         ],
 
         // 게임 공식 트위터(X). nitter RSS 로 접근(X 본 사이트는 로그인 벽). accounts = 게임슬러그 → 계정.

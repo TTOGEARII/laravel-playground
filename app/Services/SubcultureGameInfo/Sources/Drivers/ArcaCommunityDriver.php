@@ -48,10 +48,82 @@ class ArcaCommunityDriver extends AbstractSourceDriver implements CodeSearchDriv
 
         $url = $base.'?target=all&keyword='.rawurlencode($code);
 
+        return $this->evaluateSearchRows($this->parseListRows($html), $code, 'arca-search', $url);
+    }
+
+    public function collect(string $gameSlug, array $spec): array
+    {
+        $cfg = config('subculture-game-info.drivers.arca');
+        $channel = $cfg['channels'][$gameSlug] ?? null;
+        if ($channel === null) {
+            return [];
+        }
+
+        $base = rtrim($cfg['base'], '/').'/'.$channel;
+        $region = $this->regionFor($gameSlug);
+        $category = $cfg['categories'][$gameSlug] ?? null;
+
+        // 쿠폰 카테고리가 지정된 게임(예: 니케)은 해당 카테고리의 '최근 N일' 글 제목에서 코드를 수집한다.
+        // 1차 소스(공식 등)에 없던 코드는 신규로 추가되고, 이미 있으면 교차검증으로 신뢰도만 오른다.
+        if ($category !== null) {
+            $days = (int) ($cfg['recent_days'] ?? 7);
+            $html = $this->getHtml($base, ['category' => $category]);
+            if ($html === null) {
+                return [];
+            }
+            $url = $base.'?category='.rawurlencode($category);
+            $cutoff = Carbon::now()->subDays($days);
+
+            $out = [];
+            foreach ($this->parseListRows($html) as [$title, $date]) {
+                // 최근 N일 내 글만(작성일이 없으면 보수적으로 제외).
+                if ($date === null || $date->lt($cutoff)) {
+                    continue;
+                }
+                foreach ($this->extractCodeTokensFromText($title) as $code) {
+                    $out[strtoupper($code)] = new CollectedCodeDto(
+                        gameSlug: $gameSlug,
+                        code: $code,
+                        sourceType: SourceType::Community,
+                        source: $this->driverKey(),
+                        region: $region,
+                        status: CodeStatus::Unverified,
+                        sourceUrl: $url,
+                    );
+                }
+            }
+
+            return array_values($out);
+        }
+
+        // 그 외 게임: 기존 방식(코드 키워드가 든 글 제목에서 토큰 추출).
+        $html = $this->getHtml($base);
+        if ($html === null) {
+            return [];
+        }
+
+        return array_map(fn ($code) => new CollectedCodeDto(
+            gameSlug: $gameSlug,
+            code: $code,
+            sourceType: SourceType::Community,
+            source: $this->driverKey(),
+            region: $region,
+            status: CodeStatus::Unverified,
+            sourceUrl: $base,
+        ), $this->extractCodesFromLinkTitles($html));
+    }
+
+    /**
+     * 아카 채널 글 목록 HTML에서 (제목, 작성일) 행을 파싱한다. searchCode/collect 공용.
+     * 글 행(a.vrow.column)에서 제목(.col-title .title)과 작성일(time[datetime])을 뽑는다.
+     * (a.title 은 채널 헤더라 글 제목이 아니다.)
+     *
+     * @return array<int, array{0: string, 1: ?Carbon}>
+     */
+    private function parseListRows(string $html): array
+    {
         $xp = $this->xpath($html);
         $rows = [];
-        // 글 행(a.vrow.column)에서 제목(.col-title .title)과 작성일(time[datetime])을 뽑는다.
-        // (a.title 은 채널 헤더라 글 제목이 아니다.)
         $vrows = $xp->query("//a[contains(concat(' ', normalize-space(@class), ' '), ' vrow ') and contains(concat(' ', normalize-space(@class), ' '), ' column ')]");
         foreach ($vrows ?: [] as $a) {
             if (! $a instanceof \DOMElement) {
@@ -76,33 +148,6 @@ class ArcaCommunityDriver extends AbstractSourceDriver implements CodeSearchDriv
             $rows[] = [$title, $date];
         }
 
-        return $this->evaluateSearchRows($rows, $code, 'arca-search', $url);
-    }
-
-    public function collect(string $gameSlug, array $spec): array
-    {
-        $cfg = config('subculture-game-info.drivers.arca');
-        $channel = $cfg['channels'][$gameSlug] ?? null;
-        if ($channel === null) {
-            return [];
-        }
-
-        $url = rtrim($cfg['base'], '/').'/'.$channel;
-        $html = $this->getHtml($url);
-        if ($html === null) {
-            return [];
-        }
-
-        $region = $this->regionFor($gameSlug);
-
-        return array_map(fn ($code) => new CollectedCodeDto(
-            gameSlug: $gameSlug,
-            code: $code,
-            sourceType: SourceType::Community,
-            source: $this->driverKey(),
-            region: $region,
-            status: CodeStatus::Unverified,
-            sourceUrl: $url,
-        ), $this->extractCodesFromLinkTitles($html));
+        return $rows;
     }
 }
