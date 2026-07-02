@@ -94,6 +94,10 @@ class GameScene extends Phaser.Scene {
         this.load.spritesheet('enemy_normal', `${base}/stage1/enemy_nomal.png`, { frameWidth: 512, frameHeight: 512 });
         this.load.spritesheet('enemy_fast', `${base}/stage1/enemy_fast.png`, { frameWidth: 512, frameHeight: 512 });
         this.load.spritesheet('enemy_tank', `${base}/stage1/enemy_tank.png`, { frameWidth: 512, frameHeight: 512 });
+        // 궁극기(우산 폭풍): 시전 시퀀스(캐릭터+폭풍) / 폭발 VFX — 각 3x2 6프레임 시트
+        const skill = `${base}/charactor/rainy/skill`;
+        this.load.spritesheet('castSheet', `${skill}/storm1.png`, { frameWidth: 341, frameHeight: 343 });
+        this.load.spritesheet('boomSheet', `${skill}/storm2.png`, { frameWidth: 341, frameHeight: 343 });
     }
 
     create() {
@@ -164,6 +168,14 @@ class GameScene extends Phaser.Scene {
             if (!this.anims.exists(key)) {
                 this.anims.create({ key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 3 }), frameRate: 5, repeat: -1 });
             }
+        }
+
+        // 궁극기 VFX — 절대 루프 금지(repeat: 0), 각 한 번만 재생
+        if (!this.anims.exists('vfx_cast')) {
+            this.anims.create({ key: 'vfx_cast', frames: this.anims.generateFrameNumbers('castSheet', { start: 0, end: 5 }), frameRate: 12, repeat: 0 });
+        }
+        if (!this.anims.exists('vfx_boom')) {
+            this.anims.create({ key: 'vfx_boom', frames: this.anims.generateFrameNumbers('boomSheet', { start: 0, end: 5 }), frameRate: 18, repeat: 0 });
         }
     }
 
@@ -671,27 +683,43 @@ class GameScene extends Phaser.Scene {
         if (this.special < this.specialMax) return;
         this.special = 0;
         this.updateSpecialBar();
-        this.castUltimate();
+        this.castUltimate(this.player.x, this.player.y);
     }
 
-    castUltimate() {
-        // 우산 특수기: 전역 공격 — 맵 전체 적에게 큰 피해 + 화면 이펙트
-        this.cameras.main.flash(320, 130, 170, 255);
-        const px = this.player.x, py = this.player.y;
-        const ring = this.add.graphics().setDepth(60);
-        this.tweens.addCounter({
-            from: 30, to: 1800, duration: 450, ease: 'Cubic.easeOut',
-            onUpdate: (tw) => {
-                const r = tw.getValue();
-                ring.clear();
-                ring.lineStyle(9, 0x66aaff, 0.85); ring.strokeCircle(px, py, r);
-                ring.lineStyle(4, 0xffffff, 0.6); ring.strokeCircle(px, py, r * 0.72);
-            },
-            onComplete: () => this.tweens.add({ targets: ring, alpha: 0, duration: 160, onComplete: () => ring.destroy() }),
+    // 우산 광범위 궁극기: 시전 시퀀스(캐릭터+폭풍) + 폭발 VFX 를 동시에 재생.
+    // 두 이펙트는 각자 독립적으로 끝나고 정리되며(길이 달라도 OK), 절대 루프하지 않는다.
+    castUltimate(x, y) {
+        this.cameras.main.flash(200, 130, 170, 255);
+
+        // 1) 데미지 판정 — 발동 즉시(광범위 반경)
+        this.dealDamageInRadius(x, y, 650);
+
+        // 2) 시전 스프라이트: 평소 캐릭터를 숨기고 같은 위치에 시전 시퀀스 재생
+        this.player.setVisible(false);
+        const cast = this.add.sprite(x, y - 24, 'castSheet', 0).setDepth(11);
+        cast.setDisplaySize(200, 201); // 캐릭터 크기에 맞춰(폭풍 포함)
+        cast.play('vfx_cast');
+        cast.once('animationcomplete', () => {
+            cast.destroy();
+            if (this.player && this.player.active) this.player.setVisible(true); // 평소 캐릭터 복귀
         });
-        // 전체 적 처치(발동 킬은 게이지 충전 제외)
-        this._ultActive = true;
-        this.enemies.children.iterate((e) => { if (e && e.active) this.damageEnemy(e, 99999); });
+
+        // 3) 폭발 VFX: 캐릭터 위에 겹쳐서 동시 재생 — ADD 발광 + 크게 + 더 높은 depth
+        const boom = this.add.sprite(x, y, 'boomSheet', 0).setDepth(60);
+        boom.setBlendMode(Phaser.BlendModes.ADD);
+        boom.setDisplaySize(460, 460);
+        boom.play('vfx_boom');
+        boom.once('animationcomplete', () => boom.destroy()); // 폭발이 먼저 끝나도 독립적으로 정리
+    }
+
+    // 광범위 데미지 판정. (반경/피해량은 여기서 조정 — 현재는 반경 내 적을 큰 피해로 처치)
+    dealDamageInRadius(x, y, radius) {
+        this._ultActive = true; // 궁극기 킬은 특수기 게이지 재충전에서 제외
+        this.enemies.children.iterate((e) => {
+            if (e && e.active && Phaser.Math.Distance.Between(x, y, e.x, e.y) <= radius) {
+                this.damageEnemy(e, 99999);
+            }
+        });
         this._ultActive = false;
     }
 
