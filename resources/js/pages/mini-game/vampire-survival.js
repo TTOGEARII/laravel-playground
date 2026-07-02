@@ -191,14 +191,75 @@ class GameScene extends Phaser.Scene {
     }
 
     createBackground() {
-        // 배경을 이음새 없이 한 장으로 깔고, 그 크기를 맵(월드) 경계로 삼는다.
+        // 맵을 배경 이미지의 3배 크기로 넓히고, 배경은 TileSprite로 반복해서 깐다.
         const src = this.textures.get('bg').getSourceImage();
-        this.worldW = src.width;
-        this.worldH = src.height;
+        const MAP_SCALE = 3; // 맵 배율 (배경 한 장 대비)
+        this.worldW = src.width * MAP_SCALE;
+        this.worldH = src.height * MAP_SCALE;
         this.physics.world.setBounds(0, 0, this.worldW, this.worldH);
-        this.add.image(0, 0, 'bg').setOrigin(0, 0).setDepth(-10);
-        // 카메라가 배경(맵) 밖으로 넘어가지 않게 경계 고정
+        // 원본 해상도 그대로 반복 → 선명함 유지
+        this.add.tileSprite(0, 0, this.worldW, this.worldH, 'bg').setOrigin(0, 0).setDepth(-10);
+        // 카메라가 맵 밖으로 넘어가지 않게 경계 고정
         this.cameras.main.setBounds(0, 0, this.worldW, this.worldH);
+
+        // 반복 이음새/격자감을 감추기 위한 장치 두 가지
+        this.scatterGroundDecals(); // ① 월드 전역에 지면 장식물 랜덤 배치
+        this.createVignette();      // ② 화면 가장자리 비네트(먼 반복부로 시선 안 가게)
+    }
+
+    // 반복 패턴을 깨기 위해 바위/마른 풀/흙자국 데칼을 절차적으로 만들어 월드에 흩뿌린다.
+    scatterGroundDecals() {
+        const mk = (key, w, h, draw) => {
+            if (this.textures.exists(key)) return;
+            const g = this.add.graphics();
+            draw(g);
+            g.generateTexture(key, w, h);
+            g.destroy();
+        };
+        mk('decal_rock', 44, 30, (g) => {
+            g.fillStyle(0x4a4038, 1); g.fillEllipse(22, 17, 38, 22);
+            g.fillStyle(0x5b5148, 1); g.fillEllipse(18, 13, 22, 13);
+        });
+        mk('decal_grass', 42, 30, (g) => {
+            g.fillStyle(0x5c6b3a, 1);
+            for (let i = 0; i < 6; i++) { const x = 6 + i * 5; g.fillTriangle(x, 28, x - 3, 8 + (i % 2) * 5, x + 3, 28); }
+        });
+        mk('decal_patch', 56, 40, (g) => {
+            g.fillStyle(0x312820, 0.6); g.fillEllipse(28, 20, 52, 36);
+        });
+
+        const decals = ['decal_rock', 'decal_grass', 'decal_patch'];
+        const count = Math.round((this.worldW * this.worldH) / 95000); // 면적 비례 밀도
+        for (let i = 0; i < count; i++) {
+            const key = Phaser.Utils.Array.GetRandom(decals);
+            const x = Phaser.Math.Between(30, this.worldW - 30);
+            const y = Phaser.Math.Between(30, this.worldH - 30);
+            this.add.image(x, y, key)
+                .setDepth(-9)
+                .setScale(Phaser.Math.FloatBetween(0.7, 1.9))
+                .setAngle(Phaser.Math.Between(0, 359))
+                .setAlpha(Phaser.Math.FloatBetween(0.5, 0.9));
+        }
+    }
+
+    // 화면 고정 비네트(가장자리 어둡게) — 먼 곳의 반복 패턴을 눈에 덜 띄게 한다.
+    createVignette() {
+        if (!this.textures.exists('vignette')) {
+            const size = 512;
+            const cv = this.textures.createCanvas('vignette', size, size);
+            const ctx = cv.getContext();
+            const grd = ctx.createRadialGradient(size / 2, size / 2, size * 0.28, size / 2, size / 2, size * 0.5);
+            grd.addColorStop(0, 'rgba(0,0,0,0)');
+            grd.addColorStop(0.7, 'rgba(0,0,0,0)');
+            grd.addColorStop(1, 'rgba(0,0,0,0.5)');
+            ctx.fillStyle = grd; ctx.fillRect(0, 0, size, size);
+            cv.refresh();
+        }
+        const cam = this.cameras.main;
+        this.add.image(cam.width / 2, cam.height / 2, 'vignette')
+            .setScrollFactor(0)
+            .setDepth(45) // 게임 오브젝트 위, UI(100) 아래
+            .setDisplaySize(cam.width * 1.05, cam.height * 1.05);
     }
 
     createPlayer() {
