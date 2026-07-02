@@ -43,7 +43,8 @@ const WEAPONS = {
     // 근접(우산·칼)은 한 방이 세고, 원거리(샷건·기관총)는 근접보다 딜이 약한 대신 안전하게 사거리.
     // 우산(항상 켜진 메인)은 방치 클리어 방지를 위해 사거리/데미지를 낮춤.
     umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 560, damage: 15, range: 92 },
-    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 17, range: 92, rangeStep: 5 },
+    // 칼: 적 방향으로 베는 초승달(부채꼴) 아크. 레벨업 시 슬래시 방향이 앞·뒤·좌·우 순으로 1개씩 늘어난다.
+    knife:      { name: '칼',   kind: 'sub',  type: 'melee', arc: true, cooldown: 430, damage: 17, range: 110, arcHalfAngle: Math.PI / 5 },
     shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1050, damage: 5, bullets: 5, spread: 0.6, speed: 540 },
     machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 2, bullets: 1, spread: 0.22, speed: 720 },
 };
@@ -486,7 +487,9 @@ class GameScene extends Phaser.Scene {
         const def = WEAPONS[key], st = this.equipped[key];
         const dmg = def.damage + this.bonusAttack;
         if (def.type === 'melee') {
-            const range = def.range + (def.rangeStep ? (st.level - 1) * def.rangeStep : 0);
+            if (def.arc) { this.fireKnife(def, st, dmg); return; }
+            // 전체 원형: 사거리 내 모든 적 타격(원복).
+            const range = def.range;
             let hit = false;
             this.enemies.children.iterate((e) => {
                 if (!e || !e.active) return;
@@ -531,6 +534,54 @@ class GameScene extends Phaser.Scene {
         g.lineStyle(3, color, 0.7); g.strokeCircle(this.player.x, this.player.y, range);
         g.fillStyle(color, 0.12); g.fillCircle(this.player.x, this.player.y, range);
         this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+    }
+
+    // 칼: 적 방향으로 초승달 아크 슬래시. 아크(사거리+각도) 안에 들어온 적은 모두 피격.
+    fireKnife(def, st, dmg) {
+        const target = this.nearestEnemy(760);
+        if (!target) return; // 벨 대상이 없으면 발동 안 함
+        const front = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+        const angles = this.knifeSlashAngles(st.level, front);
+        const range = def.range, half = def.arcHalfAngle;
+
+        this.enemies.children.iterate((e) => {
+            if (!e || !e.active) return;
+            if (Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y) > range) return;
+            const ea = Phaser.Math.Angle.Between(this.player.x, this.player.y, e.x, e.y);
+            for (const sa of angles) {
+                if (Math.abs(Phaser.Math.Angle.Wrap(ea - sa)) <= half) { this.damageEnemy(e, dmg); break; }
+            }
+        });
+
+        this.knifeEffect(angles, range, half);
+    }
+
+    // 레벨별 슬래시 방향: 앞(0)·뒤(π)·좌(-π/2)·우(π/2) 순으로 1개씩. 4방향을 다 채우면
+    // 다음 회차부터 같은 방향에 추가 슬래시를 좌우로 벌려(부채꼴) 앞2·뒤2·…앞3 처럼 늘린다.
+    knifeSlashAngles(level, front) {
+        const base = [0, Math.PI, -Math.PI / 2, Math.PI / 2]; // 앞·뒤·좌·우
+        const out = [];
+        for (let i = 0; i < level; i++) {
+            const pass = Math.floor(i / 4);
+            const spread = pass === 0 ? 0 : (pass % 2 ? 1 : -1) * Math.ceil(pass / 2) * 0.5;
+            out.push(front + base[i % 4] + spread);
+        }
+        return out;
+    }
+
+    knifeEffect(angles, range, half) {
+        const g = this.add.graphics().setDepth(8);
+        g.fillStyle(0xffffff, 0.18);
+        g.lineStyle(3, 0xffffff, 0.85);
+        for (const a of angles) {
+            g.beginPath();
+            g.moveTo(this.player.x, this.player.y);
+            g.arc(this.player.x, this.player.y, range, a - half, a + half, false);
+            g.closePath();
+            g.fillPath();
+            g.strokePath();
+        }
+        this.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
     }
 
     damageEnemy(enemy, dmg) {
@@ -636,7 +687,9 @@ class GameScene extends Phaser.Scene {
                 const lv = owned.level;
                 const desc = def.type === 'gun'
                     ? `연사속도 ↑ (${Math.round(this.gunCooldownAt(def, lv))}ms → ${Math.round(this.gunCooldownAt(def, lv + 1))}ms)`
-                    : `공격 범위 ${def.range + (lv - 1) * def.rangeStep} → ${def.range + lv * def.rangeStep}`;
+                    : def.arc
+                        ? `슬래시 ${lv} → ${lv + 1}방향 (앞·뒤·좌·우 순 확장)`
+                        : `공격 범위 ${def.range + (lv - 1) * (def.rangeStep ?? 0)} → ${def.range + lv * (def.rangeStep ?? 0)}`;
                 return { icon: key, title: `${def.name} 강화 Lv.${lv}→${lv + 1}`, desc, onPick: () => { owned.level++; } };
             }
             return { icon: key, title: `${def.name} 새 장착`, desc: this.weaponDesc(key), onPick: () => { this.equipped[key] = { level: 1, cd: 0 }; } };
@@ -645,7 +698,7 @@ class GameScene extends Phaser.Scene {
     }
 
     weaponDesc(key) {
-        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '강력한 근접 범위 공격' }[key] || '';
+        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '적 방향으로 베는 근접 슬래시(레벨업 시 방향 추가)' }[key] || '';
     }
 
     showChoice(title, cards) {
