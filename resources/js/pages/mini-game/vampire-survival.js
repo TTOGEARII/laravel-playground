@@ -40,9 +40,9 @@ const WEAPONS = {
     // 근접(우산·칼)은 한 방이 세고, 원거리(샷건·기관총)는 근접보다 딜이 약한 대신 안전하게 사거리.
     // 우산(항상 켜진 메인)은 방치 클리어 방지를 위해 사거리/데미지를 낮춤.
     umbrella:   { name: '우산', kind: 'main', type: 'melee', cooldown: 560, damage: 15, range: 92 },
-    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 20, range: 105, rangeStep: 38 },
-    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1000, damage: 11, bullets: 5, spread: 0.6, speed: 540 },
-    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 260, damage: 6, bullets: 1, spread: 0.22, speed: 720 },
+    knife:      { name: '칼',   kind: 'sub',  type: 'melee', cooldown: 430, damage: 16, range: 105, rangeStep: 38 },
+    shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1050, damage: 7, bullets: 5, spread: 0.6, speed: 540 },
+    machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 4, bullets: 1, spread: 0.22, speed: 720 },
 };
 const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife'];
 const BULLET_COLOR = { shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
