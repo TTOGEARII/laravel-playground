@@ -322,8 +322,8 @@ class GameScene extends Phaser.Scene {
     // --- 적 ---
     // 레벨에 따라 늘어나는 값들 (적이 점점 많아지도록)
     // 밀도(스폰)는 시간에 따라 "완만히" 상승 — 체력(지수)과 밀도를 동시에 급격히 올리지 않는다.
-    // 밀도(스폰) = 시간 + 레벨 단계. 레벨 10단위(10·20·30…)마다 물량을 크게 늘려 난이도 급상승.
-    tier() { return Math.floor(this.level / 10); } // 10레벨마다 1단계
+    // 밀도(스폰) = 시간 + 레벨 단계. 레벨 5단위(5·10·15…)마다 물량을 크게 늘려 난이도 급상승.
+    tier() { return Math.floor(this.level / 5); } // 5레벨마다 1단계(레벨5부터 물량 증가)
     maxEnemies() {
         const cap = 40 + Math.floor((this.gameTime / 60) * 5) + this.tier() * 45; // 단계마다 최대치 +45
         return Math.min(cap, 320);
@@ -643,7 +643,7 @@ class GameScene extends Phaser.Scene {
     // --- 레벨업 & 선택 ---
     levelUp() {
         this.level++;
-        if (this.level % 10 === 0) this.refreshSpawnTimer(); // 10단위 도달: 리젠 주기 단축(난이도 단계 상승)
+        if (this.level % 5 === 0) this.refreshSpawnTimer(); // 5단위 도달: 리젠 주기 단축(난이도 단계 상승)
         // 선형 곡선: 레벨이 오를수록 필요 경험치가 가파르게 증가 → 물량이 늘어도 레벨업이 점점 어려워짐
         this.xpToNext = Math.floor(CONFIG.XP_TO_LEVEL * (1 + (this.level - 1) * 0.60));
         this.levelText.setText(`Lv. ${this.level}`);
