@@ -50,9 +50,13 @@ const WEAPONS = {
     knife:      { name: '칼',   kind: 'sub',  type: 'melee', arc: true, cooldown: 430, damage: 15, range: 110, arcHalfAngle: Math.PI / 5 },
     shotgun:    { name: '샷건', kind: 'sub',  type: 'gun',   cooldown: 1050, damage: 5, bullets: 5, spread: 0.6, speed: 540 },
     machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 3, bullets: 1, spread: 0.22, speed: 720, fireRateStep: 0.046, fireRateFloor: 0.35 },
+    // 부메랑: 원거리 관통 무기. 캐릭터에서 나가 최대 사거리까지 갔다가 되돌아오며(왕복 2회) 적을 관통 타격.
+    // 데미지는 기관총급, 공격속도는 샷건급, 범위는 칼보다 약간 좁음. 레벨업 시 개수 증가.
+    boomerang:  { name: '부메랑', kind: 'sub', type: 'boomerang', cooldown: 1050, damage: 3, range: 96, speed: 380 },
 };
-const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife'];
-const MAX_WEAPON_LEVEL = 15; // 모든 무기 최대 강화 레벨
+const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife', 'boomerang'];
+const MAX_WEAPON_LEVEL = 15;     // 모든 무기 최대 강화 레벨
+const MAX_EQUIPPED_WEAPONS = 3;  // 동시 장착 최대(메인 우산 포함). 초과 장착 시 기존 무기 교체.
 const BULLET_COLOR = { shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
 
 class GameScene extends Phaser.Scene {
@@ -90,6 +94,8 @@ class GameScene extends Phaser.Scene {
         const main = CHARACTERS[this.charKey].main;
         this.equipped = {};
         this.equipped[main] = { level: 1, cd: 0 };
+        // 무기 레벨 저장소: 교체로 해제된 무기의 강화 레벨을 보존(재장착 시 복원)
+        this.weaponStats = {};
     }
 
     preload() {
@@ -97,6 +103,8 @@ class GameScene extends Phaser.Scene {
         // 캐릭터(레이니): 걷기/대기 시트 (4x4/256)
         this.load.image('char2', `${base}/charactor/rainy/Charactor_move_sprite.png`);
         this.load.image('charIdle', `${base}/charactor/rainy/Charactor_idle_sprite.png`);
+        // 우산 기본공격 이펙트(물방울 버스트): 4x3 그리드(256x254), 0~4프레임 확산·소멸
+        this.load.spritesheet('umbrellaFx', `${base}/charactor/rainy/rainy_attack_effect.png`, { frameWidth: 256, frameHeight: 254 });
         // 스테이지1: 배경 + 적 스프라이트(각 2x2/512, 4프레임)
         this.load.image('bg', `${base}/stage1/background.png`);
         this.load.spritesheet('enemy_normal', `${base}/stage1/enemy_nomal.png`, { frameWidth: 512, frameHeight: 512 });
@@ -125,11 +133,13 @@ class GameScene extends Phaser.Scene {
         this.xpOrbs = this.physics.add.group();
         this.bullets = this.physics.add.group();
         this.enemyBullets = this.physics.add.group(); // 원거리 몹 투사체
+        this.boomerangs = this.physics.add.group();   // 부메랑(관통·왕복)
 
         this.physics.add.overlap(this.player, this.enemies, this.onPlayerHit, null, this);
         this.physics.add.overlap(this.player, this.xpOrbs, this.collectXP, null, this);
         this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHit, null, this);
         this.physics.add.overlap(this.player, this.enemyBullets, this.onEnemyProjectileHit, null, this);
+        this.physics.add.overlap(this.boomerangs, this.enemies, this.onBoomerangHit, null, this);
 
         this.cursors = this.input.keyboard.createCursorKeys();
         this.wasd = this.input.keyboard.addKeys({ up: 'W', down: 'S', left: 'A', right: 'D' });
@@ -209,6 +219,11 @@ class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'enemy_proj', frames: this.anims.generateFrameNumbers('enemy_projectile', { start: 0, end: 3 }), frameRate: 10, repeat: -1 });
         }
 
+        // 우산 기본공격 이펙트(1회 재생)
+        if (!this.anims.exists('umbrella_fx')) {
+            this.anims.create({ key: 'umbrella_fx', frames: this.anims.generateFrameNumbers('umbrellaFx', { start: 0, end: 4 }), frameRate: 18, repeat: 0 });
+        }
+
         // 궁극기 VFX — 절대 루프 금지(repeat: 0), 각 한 번만 재생
         if (!this.anims.exists('vfx_cast')) {
             this.anims.create({ key: 'vfx_cast', frames: this.anims.generateFrameNumbers('castSheet', { start: 0, end: 5 }), frameRate: 8, repeat: 0 });
@@ -226,6 +241,15 @@ class GameScene extends Phaser.Scene {
             g.fillStyle(color); g.fillCircle(5, 5, 5);
             g.fillStyle(0xffffff, 0.7); g.fillCircle(4, 4, 2);
             g.generateTexture(tk, 10, 10); g.destroy();
+        }
+        // 부메랑 임시 텍스처(실 이미지는 추후 교체): 주황 ∧ 형태(회전하면 부메랑처럼 보임)
+        if (!this.textures.exists('boomerangTex')) {
+            const g = this.add.graphics();
+            g.lineStyle(9, 0xffa733, 1);
+            g.beginPath(); g.moveTo(6, 32); g.lineTo(20, 7); g.lineTo(34, 32); g.strokePath();
+            g.lineStyle(3, 0xffe6bf, 1);
+            g.beginPath(); g.moveTo(6, 32); g.lineTo(20, 7); g.lineTo(34, 32); g.strokePath();
+            g.generateTexture('boomerangTex', 40, 40); g.destroy();
         }
     }
 
@@ -436,7 +460,7 @@ class GameScene extends Phaser.Scene {
                 damage: CONFIG.ENEMY_DAMAGE * 0.4 * dmgMul, // 접촉은 약하게
                 speed: CONFIG.ENEMY_BASE_SPEED * 0.75 * spdMul,
                 xp: 20,
-                attackRange: 330, projSpeed: 285, projDamage: Math.max(5, Math.round(6 * dmgMul)), attackCd: 2000,
+                attackRange: 330, projSpeed: 235, projDamage: Math.max(5, Math.round(6 * dmgMul)), attackCd: 2000,
             });
             w.push(22);
         }
@@ -534,6 +558,7 @@ class GameScene extends Phaser.Scene {
         this.updateEnemies();
         this.updateXPMagnet();
         this.fireWeapons(delta, time);
+        this.updateBoomerangs();
         this.cleanupBullets(time);
         this.cleanupEnemyBullets(time);
         this.updatePlayerAnim(mv.vx, mv.vy);
@@ -612,6 +637,7 @@ class GameScene extends Phaser.Scene {
     fireWeapon(key, time) {
         const def = WEAPONS[key], st = this.equipped[key];
         const dmg = def.damage + this.bonusAttack;
+        if (def.type === 'boomerang') { this.fireBoomerang(def, st, dmg); return; }
         if (def.type === 'melee') {
             if (def.arc) { this.fireKnife(def, st, dmg); return; }
             // 전체 원형: 사거리 내 모든 적 타격(원복).
@@ -655,11 +681,69 @@ class GameScene extends Phaser.Scene {
     }
 
     meleeEffect(key, range) {
-        const color = key === 'umbrella' ? 0x66aaff : 0xffffff;
-        const g = this.add.graphics().setDepth(8);
-        g.lineStyle(3, color, 0.7); g.strokeCircle(this.player.x, this.player.y, range);
-        g.fillStyle(color, 0.12); g.fillCircle(this.player.x, this.player.y, range);
-        this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+        // 우산: 물방울 버스트 스프라이트(사거리를 대략 덮는 크기), 1회 재생 후 소멸
+        const fx = this.add.sprite(this.player.x, this.player.y, 'umbrellaFx', 0).setDepth(8);
+        fx.setDisplaySize(range * 2.3, range * 2.3);
+        fx.play('umbrella_fx');
+        fx.once('animationcomplete', () => fx.destroy());
+    }
+
+    // 부메랑: 가까운 적 방향으로 나갔다가 되돌아오며 관통 타격(왕복 2회). 레벨업 시 개수 증가.
+    boomerangCount(level) { return 1 + Math.floor((level - 1) / 3); } // Lv1=1, Lv4=2, Lv7=3 …
+
+    fireBoomerang(def, st, dmg) {
+        const target = this.nearestEnemy(600);
+        const baseAngle = target
+            ? Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y)
+            : (this.facing === -1 ? Math.PI : 0);
+        const n = this.boomerangCount(st.level);
+        const spread = 0.42;
+        for (let i = 0; i < n; i++) {
+            const a = n === 1 ? baseAngle : baseAngle - spread / 2 + (spread / (n - 1)) * i;
+            this.spawnBoomerang(a, def, dmg);
+        }
+    }
+
+    spawnBoomerang(angle, def, dmg) {
+        const b = this.boomerangs.create(this.player.x, this.player.y, 'boomerangTex');
+        b.setDepth(9);
+        b.body.setCircle(18, 2, 2); // 40px 텍스처 기준 충돌 원
+        b.setData('damage', dmg);
+        b.setData('phase', 'out');       // out(나감) → back(복귀)
+        b.setData('range', def.range);
+        b.setData('speed', def.speed);
+        b.setData('hitSet', new Set());  // 한 패스당 적별 1회 타격(왕복 = 최대 2회)
+        b.setData('die', this.time.now + 2600);
+        b.setVelocity(Math.cos(angle) * def.speed, Math.sin(angle) * def.speed);
+    }
+
+    updateBoomerangs() {
+        const now = this.time.now;
+        this.boomerangs.children.iterate((b) => {
+            if (!b || !b.active) return;
+            b.rotation += 0.5; // 회전 연출
+            if (now > b.getData('die')) { b.destroy(); return; }
+            const distToPlayer = Phaser.Math.Distance.Between(this.player.x, this.player.y, b.x, b.y);
+            if (b.getData('phase') === 'out') {
+                if (distToPlayer >= b.getData('range')) {
+                    b.setData('phase', 'back');
+                    b.getData('hitSet').clear(); // 복귀 패스에서 다시 타격 가능
+                }
+            } else {
+                const a = Phaser.Math.Angle.Between(b.x, b.y, this.player.x, this.player.y);
+                const sp = b.getData('speed');
+                b.setVelocity(Math.cos(a) * sp, Math.sin(a) * sp);
+                if (distToPlayer < 28) b.destroy(); // 캐릭터로 돌아오면 소멸
+            }
+        });
+    }
+
+    onBoomerangHit(boomerang, enemy) {
+        if (!boomerang.active || !enemy.active) return;
+        const hitSet = boomerang.getData('hitSet');
+        if (hitSet.has(enemy)) return; // 이번 패스에서 이미 맞은 적은 스킵(관통 유지)
+        hitSet.add(enemy);
+        this.damageEnemy(enemy, boomerang.getData('damage'));
     }
 
     // 칼: 적 방향으로 초승달 아크 슬래시. 아크(사거리+각도) 안에 들어온 적은 모두 피격.
@@ -827,6 +911,24 @@ class GameScene extends Phaser.Scene {
         ]);
     }
 
+    // 카드 아이콘: 아이콘 PNG 있으면 사용, 없으면(부메랑 등) 이모지로.
+    weaponIcon(key) { return key === 'boomerang' ? { emoji: '🪃' } : { icon: key }; }
+
+    equippedSubKeys() { return Object.keys(this.equipped).filter((k) => WEAPONS[k].kind === 'sub'); }
+
+    upgradeDesc(def, lv) {
+        if (def.type === 'gun') return `연사속도 ↑ (${Math.round(this.gunCooldownAt(def, lv))}ms → ${Math.round(this.gunCooldownAt(def, lv + 1))}ms)`;
+        if (def.type === 'boomerang') return `부메랑 ${this.boomerangCount(lv)} → ${this.boomerangCount(lv + 1)}개`;
+        if (def.arc) return `슬래시 ${lv} → ${lv + 1}방향 (앞·뒤·좌·우 순 확장)`;
+        return `공격 범위 ${def.range + (lv - 1) * (def.rangeStep ?? 0)} → ${def.range + lv * (def.rangeStep ?? 0)}`;
+    }
+
+    // 무기 레벨 변경 시 저장소도 동기화(교체돼도 레벨 보존).
+    setWeaponLevel(key, level) {
+        if (this.equipped[key]) this.equipped[key].level = level;
+        this.weaponStats[key] = level;
+    }
+
     showWeaponChoice() {
         const pool = Phaser.Utils.Array.Shuffle(SUB_WEAPONS.slice()).slice(0, 3);
         const cards = pool.map((key) => {
@@ -834,22 +936,52 @@ class GameScene extends Phaser.Scene {
             if (owned) {
                 const lv = owned.level;
                 if (lv >= MAX_WEAPON_LEVEL) {
-                    return { icon: key, title: `${def.name} (MAX)`, desc: `최고 레벨 도달 (Lv.${MAX_WEAPON_LEVEL})`, onPick: () => {} };
+                    return { ...this.weaponIcon(key), title: `${def.name} (MAX)`, desc: `최고 레벨 도달 (Lv.${MAX_WEAPON_LEVEL})`, onPick: () => {} };
                 }
-                const desc = def.type === 'gun'
-                    ? `연사속도 ↑ (${Math.round(this.gunCooldownAt(def, lv))}ms → ${Math.round(this.gunCooldownAt(def, lv + 1))}ms)`
-                    : def.arc
-                        ? `슬래시 ${lv} → ${lv + 1}방향 (앞·뒤·좌·우 순 확장)`
-                        : `공격 범위 ${def.range + (lv - 1) * (def.rangeStep ?? 0)} → ${def.range + lv * (def.rangeStep ?? 0)}`;
-                return { icon: key, title: `${def.name} 강화 Lv.${lv}→${lv + 1}`, desc, onPick: () => { owned.level = Math.min(owned.level + 1, MAX_WEAPON_LEVEL); } };
+                return { ...this.weaponIcon(key), title: `${def.name} 강화 Lv.${lv}→${lv + 1}`, desc: this.upgradeDesc(def, lv), onPick: () => { this.setWeaponLevel(key, Math.min(lv + 1, MAX_WEAPON_LEVEL)); } };
             }
-            return { icon: key, title: `${def.name} 새 장착`, desc: this.weaponDesc(key), onPick: () => { this.equipped[key] = { level: 1, cd: 0 }; } };
+            return {
+                ...this.weaponIcon(key), title: `${def.name} 새 장착`, desc: this.weaponDesc(key),
+                onPick: () => {
+                    if (Object.keys(this.equipped).length < MAX_EQUIPPED_WEAPONS) {
+                        this.equipWeapon(key); // 슬롯 여유 → 바로 장착
+                    } else {
+                        this.showReplaceChoice(key); // 슬롯 가득 → 교체할 무기 선택
+                    }
+                },
+            };
         });
-        this.showChoice('레벨 10! 서브무기 장착 / 강화', cards);
+        this.showChoice(`레벨 ${this.level}! 무기 장착 / 강화 (최대 ${MAX_EQUIPPED_WEAPONS}개)`, cards);
+    }
+
+    // 무기 장착(저장된 강화 레벨이 있으면 복원, 없으면 Lv.1).
+    equipWeapon(key) {
+        const lv = this.weaponStats[key] ?? 1;
+        this.equipped[key] = { level: lv, cd: 0 };
+        this.weaponStats[key] = lv;
+    }
+
+    // 슬롯이 가득 찼을 때: 해제할 무기(서브만)를 골라 교체. 해제 무기의 레벨은 저장소에 남아 재장착 시 복원됨.
+    showReplaceChoice(newKey) {
+        const newDef = WEAPONS[newKey];
+        const cards = this.equippedSubKeys().map((key) => {
+            const def = WEAPONS[key];
+            return {
+                ...this.weaponIcon(key),
+                title: `${def.name} 해제`,
+                desc: `${def.name}(Lv.${this.equipped[key].level}) 빼고 ${newDef.name} 장착 · 스탯은 저장됨`,
+                onPick: () => {
+                    this.weaponStats[key] = this.equipped[key].level; // 레벨 보존
+                    delete this.equipped[key];
+                    this.equipWeapon(newKey);
+                },
+            };
+        });
+        this.showChoice(`${newDef.name} 장착 — 교체할 무기 선택`, cards);
     }
 
     weaponDesc(key) {
-        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '적 방향으로 베는 근접 슬래시(레벨업 시 방향 추가)' }[key] || '';
+        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '적 방향으로 베는 근접 슬래시(레벨업 시 방향 추가)', boomerang: '왕복하며 관통 타격(원거리, 레벨업 시 개수↑)' }[key] || '';
     }
 
     showChoice(title, cards) {
@@ -872,6 +1004,7 @@ class GameScene extends Phaser.Scene {
                 overlay.hidden = true;
                 cd.onPick();
                 this.updateWeaponHUD();
+                if (!overlay.hidden) return; // onPick 이 새 선택(무기 교체 등)을 띄웠으면 대기
                 if (this.pendingChoices.length) this.processChoiceQueue();
                 else this.resumePlay();
             });
