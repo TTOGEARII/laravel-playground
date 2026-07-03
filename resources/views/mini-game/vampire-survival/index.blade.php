@@ -51,6 +51,24 @@
                     <button type="button" class="vs-back-btn" data-back>← 뒤로</button>
                 </div>
 
+                {{-- 조작 방법 선택 (모바일: 캐릭터 선택 후 노출) --}}
+                <div id="vs-control-select" class="vs-menu-panel" hidden>
+                    <h3 class="vs-panel-title">조작 방법 선택</h3>
+                    <div class="vs-control-grid">
+                        <button type="button" class="vs-control-opt" data-control="touch">
+                            <span class="vs-control-ic">👆</span>
+                            <span class="vs-control-nm">터치 방향</span>
+                            <span class="vs-control-ds">화면을 터치한 방향으로 이동</span>
+                        </button>
+                        <button type="button" class="vs-control-opt" data-control="joystick">
+                            <span class="vs-control-ic">🕹️</span>
+                            <span class="vs-control-nm">가상 방향키</span>
+                            <span class="vs-control-ds">좌하단 조이스틱으로 이동</span>
+                        </button>
+                    </div>
+                    <button type="button" class="vs-back-btn" data-back>← 뒤로</button>
+                </div>
+
                 {{-- 옵션 (사운드는 추후 연동) --}}
                 <div id="vs-menu-options" class="vs-menu-panel" hidden>
                     <h3 class="vs-panel-title">옵션</h3>
@@ -70,10 +88,11 @@
                 <div id="vs-menu-controls" class="vs-menu-panel" hidden>
                     <h3 class="vs-panel-title">조작법</h3>
                     <ul class="vs-controls-list">
-                        <li><strong>이동</strong>: WASD / 방향키 · 모바일은 화면을 터치한 방향</li>
+                        <li><strong>이동</strong>: WASD / 방향키 · 모바일은 <strong>터치 방향</strong> 또는 <strong>가상 방향키</strong>(캐릭터 선택 후 지정)</li>
                         <li>장착한 무기는 <strong>자동으로 발동</strong>합니다.</li>
                         <li><strong>레벨 3</strong>마다 능력치, <strong>레벨 5</strong>마다 무기를 선택.</li>
                         <li><strong>특수기</strong>: 적을 처치해 게이지가 차면 <strong>Space</strong> 또는 우하단 버튼으로 전역공격.</li>
+                        <li><strong>일시정지</strong>: 우측 상단 ⏸ 버튼(게임 종료·옵션·조작법 변경).</li>
                     </ul>
                     <button type="button" class="vs-back-btn" data-back>← 뒤로</button>
                 </div>
@@ -98,6 +117,37 @@
         <span class="vs-special-icon">🌂</span>
         <span id="vs-special-label" class="vs-special-label">0%</span>
     </button>
+
+    {{-- 일시정지 버튼(우측 상단) --}}
+    <button id="vs-pause-btn" class="vs-pause-btn" type="button" hidden aria-label="일시정지">⏸</button>
+
+    {{-- 가상 방향키(가상 방향키 조작 선택 시) --}}
+    <div id="vs-joystick" class="vs-joystick" hidden>
+        <div id="vs-joystick-thumb" class="vs-joystick-thumb"></div>
+    </div>
+
+    {{-- 일시정지 메뉴 --}}
+    <div id="vs-pause-menu" class="vs-pause-menu" hidden>
+        <div class="vs-pause-box" role="dialog" aria-modal="true" aria-label="일시정지 메뉴">
+            <h3 class="vs-pause-title">⏸ 일시정지</h3>
+            <button type="button" class="vs-pause-item vs-pause-item--primary" id="vs-pause-resume">계속하기</button>
+            <button type="button" class="vs-pause-item" id="vs-pause-options-btn">옵션</button>
+            <button type="button" class="vs-pause-item" id="vs-pause-controls-btn" hidden>조작법 변경</button>
+            <button type="button" class="vs-pause-item vs-pause-item--danger" id="vs-pause-quit">게임 종료</button>
+
+            {{-- 옵션 서브패널 --}}
+            <div id="vs-pause-options" class="vs-pause-sub" hidden>
+                <label class="vs-opt-row"><span>사운드</span><input type="checkbox" id="vs-pause-sound"></label>
+                <label class="vs-opt-row"><span>소리 크기</span><input type="range" id="vs-pause-volume" min="0" max="100" value="70"></label>
+                <p class="vs-opt-note">※ 사운드는 추후 추가 예정입니다.</p>
+            </div>
+            {{-- 조작법 변경 서브패널(모바일) --}}
+            <div id="vs-pause-controls" class="vs-pause-sub" hidden>
+                <button type="button" class="vs-pause-ctl" data-control="touch">👆 터치 방향</button>
+                <button type="button" class="vs-pause-ctl" data-control="joystick">🕹️ 가상 방향키</button>
+            </div>
+        </div>
+    </div>
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
@@ -194,6 +244,86 @@
         .vs-special-btn.ready .vs-special-label { color: #fde68a; }
         @keyframes vsSpecialPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
         @media (max-width: 768px) { .vs-special-btn { width: 78px; height: 78px; right: 14px; bottom: 14px; } }
+
+        /* 조작 방법 선택 */
+        .vs-control-grid { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+        .vs-control-opt {
+            width: 150px; background: #141426; border: 2px solid #2a2a44; border-radius: 14px;
+            padding: 16px 12px; cursor: pointer; color: #e2e8f0; transition: transform .12s, border-color .12s;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .vs-control-opt:hover { transform: translateY(-3px); border-color: #6366f1; }
+        .vs-control-ic { font-size: 34px; line-height: 1; }
+        .vs-control-nm { font-weight: 800; font-size: 15px; }
+        .vs-control-ds { font-size: 12px; color: #94a3b8; text-align: center; }
+
+        /* 게임 중 페이지 스크롤 잠금 */
+        body.vs-playing { overflow: hidden; overscroll-behavior: none; touch-action: none; }
+        #game-container { touch-action: none; }
+
+        /* 일시정지 버튼(우측 상단) */
+        .vs-pause-btn {
+            position: fixed; top: 14px; right: 16px; z-index: 45;
+            width: 46px; height: 46px; border-radius: 12px; padding: 0;
+            border: 1px solid #475569; background: rgba(15, 23, 42, 0.85); color: #e2e8f0;
+            font-size: 20px; line-height: 1; cursor: pointer; transition: filter .15s, border-color .15s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .vs-pause-btn:hover { border-color: #6366f1; filter: brightness(1.1); }
+        .vs-pause-btn[hidden] { display: none; }
+
+        /* 일시정지 메뉴 */
+        .vs-pause-menu {
+            position: fixed; inset: 0; z-index: 9997;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(4px); padding: 20px;
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+        }
+        .vs-pause-menu[hidden] { display: none; }
+        .vs-pause-box {
+            width: 100%; max-width: 320px; background: #0f172a; border: 1px solid #1e293b;
+            border-radius: 16px; padding: 22px; text-align: center;
+            display: flex; flex-direction: column; gap: 10px; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+        }
+        .vs-pause-title { margin: 0 0 8px; font-size: 19px; font-weight: 800; color: #f9ed69; }
+        .vs-pause-item {
+            width: 100%; padding: 13px 16px; border-radius: 11px; cursor: pointer;
+            border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-weight: 800; font-size: 15px;
+            transition: transform .12s, border-color .12s, background .12s;
+        }
+        .vs-pause-item:hover { transform: translateY(-2px); border-color: #6366f1; }
+        .vs-pause-item--primary { background: #6366f1; border-color: #6366f1; color: #fff; }
+        .vs-pause-item--danger { border-color: #7f1d1d; color: #fca5a5; }
+        .vs-pause-item--danger:hover { border-color: #ef4444; background: #3b1414; }
+        .vs-pause-item[hidden] { display: none; }
+        .vs-pause-sub {
+            display: flex; flex-direction: column; gap: 10px;
+            background: #0b1220; border: 1px solid #1e293b; border-radius: 11px; padding: 14px; margin-top: 2px;
+        }
+        .vs-pause-sub[hidden] { display: none; }
+        .vs-pause-ctl {
+            padding: 11px 14px; border-radius: 10px; border: 1px solid #334155;
+            background: #1e293b; color: #e2e8f0; font-weight: 700; font-size: 14px; cursor: pointer;
+        }
+        .vs-pause-ctl:hover { border-color: #6366f1; }
+
+        /* 가상 방향키 */
+        .vs-joystick {
+            position: fixed; left: 24px; bottom: 24px; z-index: 44;
+            width: 128px; height: 128px; border-radius: 50%;
+            background: rgba(30, 41, 59, 0.45); border: 2px solid rgba(148, 163, 184, 0.5);
+            touch-action: none; user-select: none;
+        }
+        .vs-joystick[hidden] { display: none; }
+        .vs-joystick-thumb {
+            position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px;
+            border-radius: 50%; background: rgba(99, 102, 241, 0.85); border: 2px solid #a5b4fc;
+            transition: transform .02s linear; pointer-events: none;
+        }
+        @media (max-width: 768px) {
+            .vs-pause-btn { top: 10px; right: 12px; width: 42px; height: 42px; }
+            .vs-joystick { left: 18px; bottom: 18px; width: 118px; height: 118px; }
+        }
     </style>
     @endpush
 
