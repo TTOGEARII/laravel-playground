@@ -219,9 +219,19 @@ class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'enemy_proj', frames: this.anims.generateFrameNumbers('enemy_projectile', { start: 0, end: 3 }), frameRate: 10, repeat: -1 });
         }
 
-        // 우산 기본공격 이펙트(1회 재생)
+        // 우산 기본공격 이펙트(1회 재생). 셀 경계의 검은 격자선이 프레임에 들어오지 않도록
+        // 각 셀을 안쪽으로 여백(inset)을 두고 잘라 커스텀 프레임으로 등록한다.
         if (!this.anims.exists('umbrella_fx')) {
-            this.anims.create({ key: 'umbrella_fx', frames: this.anims.generateFrameNumbers('umbrellaFx', { start: 0, end: 4 }), frameRate: 18, repeat: 0 });
+            const tex = this.textures.get('umbrellaFx');
+            const cellW = 1024 / 4, cellH = 764 / 3, inset = 7;
+            const frames = [];
+            for (let i = 0; i <= 4; i++) {
+                const r = Math.floor(i / 4), c = i % 4;
+                const fk = 'ufx_' + i;
+                if (!tex.has(fk)) tex.add(fk, 0, c * cellW + inset, r * cellH + inset, cellW - inset * 2, cellH - inset * 2);
+                frames.push({ key: 'umbrellaFx', frame: fk });
+            }
+            this.anims.create({ key: 'umbrella_fx', frames, frameRate: 18, repeat: 0 });
         }
 
         // 궁극기 VFX — 절대 루프 금지(repeat: 0), 각 한 번만 재생
@@ -681,8 +691,9 @@ class GameScene extends Phaser.Scene {
     }
 
     meleeEffect(key, range) {
-        // 우산: 물방울 버스트 스프라이트(사거리를 대략 덮는 크기), 1회 재생 후 소멸
-        const fx = this.add.sprite(this.player.x, this.player.y, 'umbrellaFx', 0).setDepth(8);
+        // 우산: 물방울 버스트 스프라이트(사거리를 대략 덮는 크기), 1회 재생 후 소멸.
+        // depth를 적(5)보다 낮게 둬서 적 피격 모션(플래시/스케일)이 버스트에 가리지 않게 한다.
+        const fx = this.add.sprite(this.player.x, this.player.y, 'umbrellaFx', 0).setDepth(4);
         fx.setDisplaySize(range * 2.3, range * 2.3);
         fx.play('umbrella_fx');
         fx.once('animationcomplete', () => fx.destroy());
