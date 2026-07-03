@@ -52,11 +52,12 @@ const WEAPONS = {
     machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 3, bullets: 1, spread: 0.22, speed: 720, fireRateStep: 0.046, fireRateFloor: 0.35 },
     // 부메랑: 원거리 관통 무기. 캐릭터에서 나가 최대 사거리까지 갔다가 되돌아오며(왕복 2회) 적을 관통 타격.
     // 데미지는 기관총급, 공격속도는 샷건급, 범위는 칼보다 약간 좁음. 레벨업 시 개수 증가.
-    boomerang:  { name: '부메랑', kind: 'sub', type: 'boomerang', cooldown: 1050, damage: 3, range: 96, speed: 380 },
+    boomerang:  { name: '부메랑', kind: 'sub', type: 'boomerang', cooldown: 1050, damage: 3, range: 160, speed: 430 },
 };
 const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife', 'boomerang'];
 const MAX_WEAPON_LEVEL = 15;     // 모든 무기 최대 강화 레벨
-const MAX_EQUIPPED_WEAPONS = 3;  // 동시 장착 최대(메인 우산 포함). 초과 장착 시 기존 무기 교체.
+const RUN_WEAPON_COUNT = 3;      // 한 판에서 등장하는 서브무기 수(구현된 무기 중 랜덤 선택)
+const MAX_EQUIPPED_WEAPONS = 4;  // 동시 장착 최대(메인 우산 + 이번 판 랜덤 3무기).
 const BULLET_COLOR = { shotgun: 0xffb74d, machinegun: 0x4dd0e1 };
 
 class GameScene extends Phaser.Scene {
@@ -96,6 +97,8 @@ class GameScene extends Phaser.Scene {
         this.equipped[main] = { level: 1, cd: 0 };
         // 무기 레벨 저장소: 교체로 해제된 무기의 강화 레벨을 보존(재장착 시 복원)
         this.weaponStats = {};
+        // 이번 판 무기 풀: 구현된 서브무기 중 3개만 랜덤 선택(판마다 다르게).
+        this.runWeaponPool = Phaser.Utils.Array.Shuffle(SUB_WEAPONS.slice()).slice(0, RUN_WEAPON_COUNT);
     }
 
     preload() {
@@ -941,7 +944,8 @@ class GameScene extends Phaser.Scene {
     }
 
     showWeaponChoice() {
-        const pool = Phaser.Utils.Array.Shuffle(SUB_WEAPONS.slice()).slice(0, 3);
+        // 이번 판은 구현된 무기 중 랜덤으로 뽑힌 3개(runWeaponPool)만 등장.
+        const pool = this.runWeaponPool;
         const cards = pool.map((key) => {
             const def = WEAPONS[key], owned = this.equipped[key];
             if (owned) {
@@ -962,7 +966,7 @@ class GameScene extends Phaser.Scene {
                 },
             };
         });
-        this.showChoice(`레벨 ${this.level}! 무기 장착 / 강화 (최대 ${MAX_EQUIPPED_WEAPONS}개)`, cards);
+        this.showChoice(`레벨 ${this.level}! 무기 장착 / 강화 (이번 판 무기 ${RUN_WEAPON_COUNT}종)`, cards);
     }
 
     // 무기 장착(저장된 강화 레벨이 있으면 복원, 없으면 Lv.1).
