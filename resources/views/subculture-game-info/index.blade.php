@@ -17,17 +17,37 @@
 @endsection
 
 @section('content')
+    @php($currentGame = $selected ? $games->firstWhere('slug', $selected) : null)
     <div class="sgi-page">
-        <nav class="sgi-tabs">
-            <a href="{{ route('subculture-game-info.index') }}"
-               class="sgi-tab {{ $selected === null ? 'is-active' : '' }}">전체</a>
-            @foreach ($games as $game)
-                <a href="{{ route('subculture-game-info.index', ['game' => $game->slug]) }}"
-                   class="sgi-tab {{ $selected === $game->slug ? 'is-active' : '' }}">
-                    <span class="sgi-tab-icon">{{ $game->icon }}</span> {{ $game->name }}
-                </a>
-            @endforeach
-        </nav>
+        <div class="sgi-filters">
+            {{-- 검색 가능한 게임 선택 셀렉트 --}}
+            <div class="sgi-select" id="sgi-game-select">
+                <button type="button" class="sgi-select-btn" id="sgi-select-btn" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="sgi-select-current">{{ $currentGame ? $currentGame->icon.' '.$currentGame->name : '🎮 전체 게임' }}</span>
+                    <span class="sgi-select-caret" aria-hidden="true">▾</span>
+                </button>
+                <div class="sgi-select-panel" hidden>
+                    <input type="text" class="sgi-select-search" id="sgi-select-search" placeholder="게임 검색…" autocomplete="off">
+                    <ul class="sgi-select-list" role="listbox">
+                        <li class="sgi-select-opt {{ $selected === null ? 'is-active' : '' }}" role="option"
+                            data-name="전체 게임" data-url="{{ route('subculture-game-info.index') }}">🎮 전체 게임</li>
+                        @foreach ($games as $game)
+                            <li class="sgi-select-opt {{ $selected === $game->slug ? 'is-active' : '' }}" role="option"
+                                data-name="{{ $game->name }}"
+                                data-url="{{ route('subculture-game-info.index', ['game' => $game->slug]) }}">
+                                <span class="sgi-tab-icon">{{ $game->icon }}</span> {{ $game->name }}
+                            </li>
+                        @endforeach
+                        <li class="sgi-select-empty" hidden>검색 결과 없음</li>
+                    </ul>
+                </div>
+            </div>
+
+            {{-- 교환완료 안 한 코드만 보기 --}}
+            <label class="sgi-hide-redeemed-toggle">
+                <input type="checkbox" id="sgi-hide-redeemed"> 교환완료 안 한 코드만 보기
+            </label>
+        </div>
 
         @forelse ($groups as $g)
             <section class="sgi-game">
@@ -127,6 +147,7 @@
                         // 낙관적 UI 갱신
                         if (on) redeemed.add(id); else redeemed.delete(id);
                         paint(id, on);
+                        recomputeEmpty(); // 필터 켜져 있으면 빈 섹션 갱신
 
                         if (IS_LOGGED_IN) {
                             btn.disabled = true;
@@ -135,6 +156,7 @@
                                 if (!ok) { // 롤백
                                     if (on) redeemed.delete(id); else redeemed.add(id);
                                     paint(id, !on);
+                                    recomputeEmpty();
                                 }
                             });
                         } else {
@@ -142,6 +164,74 @@
                         }
                     });
                 });
+
+                // === 교환완료 안 한 코드만 보기 필터 ===
+                var page = document.querySelector('.sgi-page');
+                var hideChk = document.getElementById('sgi-hide-redeemed');
+                var HIDE_KEY = 'sgi_hide_redeemed';
+
+                // 필터로 카드가 모두 숨겨진 섹션/커뮤니티 묶음은 통째로 숨긴다.
+                function recomputeEmpty() {
+                    document.querySelectorAll('.sgi-community, .sgi-game').forEach(function (box) {
+                        var cards = box.querySelectorAll('.sgi-code-card');
+                        var anyVisible = Array.prototype.some.call(cards, function (c) { return c.offsetParent !== null; });
+                        box.classList.toggle('sgi-hidden-empty', cards.length > 0 && !anyVisible);
+                    });
+                }
+                function applyHide(on) {
+                    if (page) page.classList.toggle('sgi-hide-redeemed', on);
+                    recomputeEmpty();
+                }
+                if (hideChk) {
+                    var savedHide = localStorage.getItem(HIDE_KEY) === '1';
+                    hideChk.checked = savedHide;
+                    applyHide(savedHide);
+                    hideChk.addEventListener('change', function () {
+                        localStorage.setItem(HIDE_KEY, hideChk.checked ? '1' : '0');
+                        applyHide(hideChk.checked);
+                    });
+                } else {
+                    recomputeEmpty();
+                }
+
+                // === 검색 가능한 게임 셀렉트 ===
+                var selRoot = document.getElementById('sgi-game-select');
+                if (selRoot) {
+                    var selBtn = document.getElementById('sgi-select-btn');
+                    var selPanel = selRoot.querySelector('.sgi-select-panel');
+                    var selSearch = document.getElementById('sgi-select-search');
+                    var selEmpty = selRoot.querySelector('.sgi-select-empty');
+                    var selOpts = Array.prototype.slice.call(selRoot.querySelectorAll('.sgi-select-opt'));
+
+                    function selFilter(q) {
+                        q = (q || '').trim().toLowerCase();
+                        var shown = 0;
+                        selOpts.forEach(function (o) {
+                            var name = (o.dataset.name || o.textContent).toLowerCase();
+                            var ok = !q || name.indexOf(q) !== -1;
+                            o.style.display = ok ? '' : 'none';
+                            if (ok) shown++;
+                        });
+                        if (selEmpty) selEmpty.hidden = shown > 0;
+                    }
+                    function selOpen() {
+                        selPanel.hidden = false;
+                        selBtn.setAttribute('aria-expanded', 'true');
+                        selSearch.value = ''; selFilter('');
+                        selSearch.focus();
+                    }
+                    function selClose() {
+                        selPanel.hidden = true;
+                        selBtn.setAttribute('aria-expanded', 'false');
+                    }
+                    selBtn.addEventListener('click', function () { selPanel.hidden ? selOpen() : selClose(); });
+                    selSearch.addEventListener('input', function () { selFilter(selSearch.value); });
+                    selOpts.forEach(function (o) {
+                        o.addEventListener('click', function () { if (o.dataset.url) window.location.href = o.dataset.url; });
+                    });
+                    document.addEventListener('click', function (e) { if (!selRoot.contains(e.target)) selClose(); });
+                    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') selClose(); });
+                }
             })();
 
             document.querySelectorAll('.sgi-copy').forEach(function (btn) {
@@ -164,5 +254,55 @@
                 });
             });
         </script>
+    @endpush
+
+    @push('styles')
+    <style>
+        .sgi-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-bottom: 22px; }
+
+        /* 검색 가능한 게임 셀렉트 */
+        .sgi-select { position: relative; }
+        .sgi-select-btn {
+            display: inline-flex; align-items: center; gap: 10px; min-width: 200px;
+            padding: 11px 14px; border-radius: 11px; border: 1px solid #334155;
+            background: #1e293b; color: #e2e8f0; font-size: 15px; font-weight: 700; cursor: pointer;
+            font-family: inherit; transition: border-color .12s;
+        }
+        .sgi-select-btn:hover { border-color: #6366f1; }
+        .sgi-select-current { flex: 1; text-align: left; white-space: nowrap; }
+        .sgi-select-caret { color: #94a3b8; font-size: 12px; }
+        .sgi-select-panel {
+            position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+            width: 260px; max-width: 80vw; background: #0f172a; border: 1px solid #1e293b;
+            border-radius: 12px; padding: 10px; box-shadow: 0 18px 44px rgba(0,0,0,0.5);
+        }
+        .sgi-select-panel[hidden] { display: none; }
+        .sgi-select-search {
+            width: 100%; box-sizing: border-box; padding: 9px 11px; margin-bottom: 8px;
+            border-radius: 9px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+            font-size: 14px; font-family: inherit;
+        }
+        .sgi-select-search:focus { outline: none; border-color: #6366f1; }
+        .sgi-select-list { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
+        .sgi-select-opt {
+            padding: 9px 11px; border-radius: 8px; cursor: pointer; color: #cbd5e1;
+            font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 7px;
+        }
+        .sgi-select-opt:hover { background: #1e293b; color: #fff; }
+        .sgi-select-opt.is-active { background: #6366f1; color: #fff; }
+        .sgi-select-empty { padding: 10px 11px; color: #64748b; font-size: 13px; text-align: center; }
+        .sgi-select-empty[hidden] { display: none; }
+
+        /* 교환완료 필터 토글 */
+        .sgi-hide-redeemed-toggle {
+            display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+            color: #cbd5e1; font-size: 14px; font-weight: 600; user-select: none;
+        }
+        .sgi-hide-redeemed-toggle input { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+
+        /* 필터 ON: 교환완료 카드 숨김 + 카드가 모두 사라진 섹션 숨김 */
+        .sgi-page.sgi-hide-redeemed .sgi-code-card.is-redeemed { display: none; }
+        .sgi-hidden-empty { display: none !important; }
+    </style>
     @endpush
 @endsection
