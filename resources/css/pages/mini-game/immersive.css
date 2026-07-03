@@ -23,37 +23,40 @@
 .game-exit-btn:hover { border-color: #ef4444; color: #fecaca; }
 @media (max-width: 768px) { .game-exit-btn { top: 10px; left: 12px; padding: 8px 12px; } }
 
-/* 시작화면 조작법 버튼 + 도움말 모달 */
-.start-btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
-.game-help-button {
-    padding: 13px 22px; border-radius: 12px; border: 1px solid #334155;
-    background: #1e293b; color: #e2e8f0; font-size: 16px; font-weight: 800; cursor: pointer;
-    font-family: 'Outfit', 'Noto Sans KR', sans-serif; transition: transform .12s, border-color .12s;
+/* 시작화면 메뉴 (뱀파이어 서바이벌과 동일 구조: 시작 / 옵션 / 조작법 / 게임 종료) */
+.game-menu { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 22px; }
+.game-menu[hidden] { display: none; }
+.game-menu-btn {
+    width: 240px; max-width: 80vw; padding: 13px 20px; border-radius: 12px;
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+    font-family: 'Outfit', 'Noto Sans KR', sans-serif; font-size: 16px; font-weight: 800;
+    cursor: pointer; text-align: center; text-decoration: none;
+    transition: transform .12s, border-color .12s, background .12s;
 }
-.game-help-button:hover { transform: translateY(-2px); border-color: #6366f1; }
+.game-menu-btn:hover { transform: translateY(-2px); border-color: #6366f1; }
+.game-menu-btn--primary { background: #6366f1; border-color: #6366f1; color: #fff; }
+.game-menu-btn--danger { border-color: #7f1d1d; color: #fca5a5; }
+.game-menu-btn--danger:hover { border-color: #ef4444; background: #3b1414; }
 
-.game-help-overlay {
-    position: fixed; inset: 0; z-index: 9997;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(4px); padding: 20px;
+.game-menu-panel { margin-top: 18px; width: 100%; max-width: 460px; }
+.game-menu-panel[hidden] { display: none; }
+.game-panel-title { color: #f9ed69; font-size: 18px; font-weight: 800; margin: 0 0 14px; }
+.game-menu-back {
+    margin-top: 16px; padding: 9px 18px; border-radius: 10px;
+    border: 1px solid #334155; background: transparent; color: #94a3b8; font-weight: 700; cursor: pointer;
     font-family: 'Outfit', 'Noto Sans KR', sans-serif;
 }
-.game-help-overlay[hidden] { display: none; }
-.game-help-box {
-    position: relative; width: 100%; max-width: 520px; max-height: 82vh; overflow-y: auto;
-    background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 26px 24px;
-    color: #cbd5e1; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-}
-.game-help-box h3 { color: #f9ed69; font-size: 19px; font-weight: 800; margin: 0 0 14px; }
-.game-help-box ul { list-style: none; margin: 0; padding: 0; }
-.game-help-box li { padding: 8px 2px; border-bottom: 1px solid #1e293b; font-size: 14px; line-height: 1.6; }
-.game-help-box li:last-child { border-bottom: none; }
-.game-help-box kbd {
+.game-menu-back:hover { color: #e2e8f0; border-color: #475569; }
+.game-opt-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 300px; margin: 0 auto 14px; color: #cbd5e1; font-size: 15px; }
+.game-opt-row input[type="range"] { width: 150px; }
+.game-opt-note { color: #64748b; font-size: 12px; margin: 4px 0 0; }
+.game-ctrl-list { list-style: none; padding: 0; margin: 0 auto; max-width: 440px; text-align: left; color: #cbd5e1; font-size: 14px; }
+.game-ctrl-list li { padding: 7px 2px; border-bottom: 1px solid #1e293b; line-height: 1.6; }
+.game-ctrl-list li:last-child { border-bottom: none; }
+.game-ctrl-list kbd {
     display: inline-block; padding: 1px 7px; border-radius: 5px; border: 1px solid #334155;
     background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 700;
 }
-.game-help-close {
-    position: absolute; top: 12px; right: 14px; background: none; border: none;
-    color: #94a3b8; font-size: 22px; line-height: 1; cursor: pointer;
-}
-.game-help-close:hover { color: #e2e8f0; }
+
+/* 게임 시작 후에만 좌상단 종료 버튼 노출(시작화면에선 메뉴의 '게임 종료'로 나간다) */
+.game-exit-btn[hidden] { display: none; }

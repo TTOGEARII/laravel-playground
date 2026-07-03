@@ -17,6 +17,8 @@
                     <button type="button" class="vs-menu-btn vs-menu-btn--primary" data-menu="select">시작</button>
                     <button type="button" class="vs-menu-btn" data-menu="options">옵션</button>
                     <button type="button" class="vs-menu-btn" data-menu="controls">조작법</button>
+                    <a href="{{ route('mini-game.index') }}" class="vs-menu-btn vs-menu-btn--danger"
+                       onclick="return confirm('게임 목록으로 돌아갈까요?')">게임 종료</a>
                 </div>
 
                 {{-- 시작 → 캐릭터 선택 --}}
@@ -158,6 +160,8 @@
         }
         .vs-menu-btn:hover { transform: translateY(-2px); border-color: #6366f1; }
         .vs-menu-btn--primary { background: #6366f1; border-color: #6366f1; color: #fff; }
+        .vs-menu-btn--danger { border-color: #7f1d1d; color: #fca5a5; }
+        .vs-menu-btn--danger:hover { border-color: #ef4444; background: #3b1414; }
         .vs-menu-panel { margin-top: 16px; }
         .vs-menu-panel[hidden] { display: none; }
         .vs-panel-title { color: #f9ed69; font-size: 18px; font-weight: 800; margin: 0 0 14px; }

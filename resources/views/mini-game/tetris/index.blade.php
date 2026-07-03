@@ -5,16 +5,42 @@
 @section('body-class', 'tetris-page game-immersive')
 
 @section('content')
-    <a class="game-exit-btn" href="{{ route('mini-game.index') }}"
+    <a class="game-exit-btn" id="gameExitBtn" href="{{ route('mini-game.index') }}" hidden
        onclick="return confirm('게임을 종료하고 목록으로 돌아갈까요?')">✕ 게임 종료</a>
     <div class="game-wrapper">
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
                 <h2>🟦 테트리스</h2>
                 <p>블록을 쌓아 줄을 지우고 점수를 올려라!<br>홀드·소프트드롭·티스핀(2배 점수)까지.</p>
-                <div class="start-btn-row">
-                    <button id="startGameBtn" class="start-game-button">게임 시작</button>
-                    <button type="button" id="helpBtn" class="game-help-button">조작법</button>
+
+                <div class="game-menu" id="gameMenuMain">
+                    <button id="startGameBtn" class="game-menu-btn game-menu-btn--primary">게임 시작</button>
+                    <button type="button" class="game-menu-btn" data-menu="options">옵션</button>
+                    <button type="button" class="game-menu-btn" data-menu="controls">조작법</button>
+                    <a href="{{ route('mini-game.index') }}" class="game-menu-btn game-menu-btn--danger"
+                       onclick="return confirm('게임 목록으로 돌아갈까요?')">게임 종료</a>
+                </div>
+
+                <div class="game-menu-panel" id="game-panel-options" hidden>
+                    <h3 class="game-panel-title">옵션</h3>
+                    <label class="game-opt-row"><span>사운드</span><input type="checkbox" id="mgOptSound"></label>
+                    <label class="game-opt-row"><span>소리 크기</span><input type="range" id="mgOptVolume" min="0" max="100" value="70"></label>
+                    <p class="game-opt-note">※ 사운드는 추후 추가 예정입니다.</p>
+                    <button type="button" class="game-menu-back">← 뒤로</button>
+                </div>
+
+                <div class="game-menu-panel" id="game-panel-controls" hidden>
+                    <h3 class="game-panel-title">조작법</h3>
+                    <ul class="game-ctrl-list">
+                        <li class="desktop-only"><kbd>←</kbd> <kbd>→</kbd> 이동 · <kbd>↓</kbd> 소프트드롭(가속) · <kbd>Space</kbd> 하드드롭</li>
+                        <li class="desktop-only"><kbd>↑</kbd> / <kbd>X</kbd> 시계방향 회전 · <kbd>Z</kbd> 반시계방향 회전</li>
+                        <li class="desktop-only"><kbd>C</kbd> 또는 <kbd>Shift</kbd> 홀드(조각 보관/교체, 한 조각당 1회)</li>
+                        <li class="mobile-only">화면 하단 가상 버튼: ◀ ▼ ▶ 이동/소프트드롭 · ↻ 회전 · HOLD 홀드 · ⤓ 하드드롭</li>
+                        <li>가로 한 줄을 가득 채우면 줄이 사라지고 점수를 얻습니다 (1·2·3·4줄 = 100·300·500·800 × 레벨)</li>
+                        <li><strong>티스핀</strong>(T조각을 회전으로 끼워 넣어 줄 제거)에 성공하면 <strong>점수 2배</strong>!</li>
+                        <li>10줄마다 레벨이 오르고 블록이 더 빠르게 떨어집니다.</li>
+                    </ul>
+                    <button type="button" class="game-menu-back">← 뒤로</button>
                 </div>
             </div>
         </div>
@@ -629,33 +655,29 @@ if (startBtn) {
 }
     </script>
     <script>
-        // 조작법 모달 토글
+        // 시작화면 메뉴 네비게이션(옵션/조작법 패널) + 옵션 저장 + 게임 시작 시 종료버튼 노출
         (function () {
-            var help = document.getElementById('gameHelp');
-            var open = document.getElementById('helpBtn');
-            var close = document.getElementById('helpClose');
-            if (open) open.addEventListener('click', function () { help.hidden = false; });
-            if (close) close.addEventListener('click', function () { help.hidden = true; });
-            if (help) help.addEventListener('click', function (e) { if (e.target === help) help.hidden = true; });
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && help && !help.hidden) help.hidden = true; });
+            document.querySelectorAll('.game-menu-btn[data-menu]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.getElementById('gameMenuMain').hidden = true;
+                    var p = document.getElementById('game-panel-' + btn.dataset.menu);
+                    if (p) p.hidden = false;
+                });
+            });
+            document.querySelectorAll('.game-menu-back').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.game-menu-panel').forEach(function (p) { p.hidden = true; });
+                    document.getElementById('gameMenuMain').hidden = false;
+                });
+            });
+            var snd = document.getElementById('mgOptSound');
+            var vol = document.getElementById('mgOptVolume');
+            if (snd) { snd.checked = localStorage.getItem('mg_sound') !== '0'; snd.addEventListener('change', function () { localStorage.setItem('mg_sound', snd.checked ? '1' : '0'); }); }
+            if (vol) { vol.value = localStorage.getItem('mg_volume') || '70'; vol.addEventListener('input', function () { localStorage.setItem('mg_volume', vol.value); }); }
+            var startBtn = document.getElementById('startGameBtn');
+            var exitBtn = document.getElementById('gameExitBtn');
+            if (startBtn && exitBtn) startBtn.addEventListener('click', function () { exitBtn.hidden = false; });
         })();
     </script>
     @endpush
-
-    {{-- 조작법 모달 --}}
-    <div class="game-help-overlay" id="gameHelp" hidden>
-        <div class="game-help-box">
-            <button type="button" class="game-help-close" id="helpClose" aria-label="닫기">✕</button>
-            <h3>🟦 테트리스 게임 방법</h3>
-            <ul>
-                <li class="desktop-only"><kbd>←</kbd> <kbd>→</kbd> 이동 · <kbd>↓</kbd> 소프트드롭(가속) · <kbd>Space</kbd> 하드드롭</li>
-                <li class="desktop-only"><kbd>↑</kbd> / <kbd>X</kbd> 시계방향 회전 · <kbd>Z</kbd> 반시계방향 회전</li>
-                <li class="desktop-only"><kbd>C</kbd> 또는 <kbd>Shift</kbd> 홀드(조각 보관/교체, 한 조각당 1회)</li>
-                <li class="mobile-only">화면 하단 가상 버튼: ◀ ▼ ▶ 이동/소프트드롭 · ↻ 회전 · HOLD 홀드 · ⤓ 하드드롭</li>
-                <li>가로 한 줄을 가득 채우면 줄이 사라지고 점수를 얻습니다 (1·2·3·4줄 = 100·300·500·800 × 레벨)</li>
-                <li><strong>티스핀</strong>(T조각을 회전으로 끼워 넣어 줄 제거)에 성공하면 <strong>점수 2배</strong>!</li>
-                <li>10줄마다 레벨이 오르고 블록이 더 빠르게 떨어집니다.</li>
-            </ul>
-        </div>
-    </div>
 @endsection
