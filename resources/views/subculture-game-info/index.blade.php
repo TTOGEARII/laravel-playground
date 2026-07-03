@@ -17,29 +17,36 @@
 @endsection
 
 @section('content')
-    @php($currentGame = $selected ? $games->firstWhere('slug', $selected) : null)
+    @php($selCount = count($selected))
+    @php($selLabel = $selCount === 0
+        ? '🎮 전체 게임'
+        : ($selCount === 1 ? optional($games->firstWhere('slug', $selected[0]))->name : $selCount.'개 게임 선택'))
     <div class="sgi-page">
         <div class="sgi-filters">
-            {{-- 검색 가능한 게임 선택 셀렉트 --}}
-            <div class="sgi-select" id="sgi-game-select">
-                <button type="button" class="sgi-select-btn" id="sgi-select-btn" aria-haspopup="listbox" aria-expanded="false">
-                    <span class="sgi-select-current">{{ $currentGame ? $currentGame->icon.' '.$currentGame->name : '🎮 전체 게임' }}</span>
+            {{-- 검색 가능한 다중 선택 게임 셀렉트 --}}
+            <div class="sgi-select" id="sgi-game-select" data-base-url="{{ route('subculture-game-info.index') }}">
+                <button type="button" class="sgi-select-btn" id="sgi-select-btn" aria-haspopup="true" aria-expanded="false">
+                    <span class="sgi-select-current">{{ $selLabel }}</span>
                     <span class="sgi-select-caret" aria-hidden="true">▾</span>
                 </button>
                 <div class="sgi-select-panel" hidden>
                     <input type="text" class="sgi-select-search" id="sgi-select-search" placeholder="게임 검색…" autocomplete="off">
-                    <ul class="sgi-select-list" role="listbox">
-                        <li class="sgi-select-opt {{ $selected === null ? 'is-active' : '' }}" role="option"
-                            data-name="전체 게임" data-url="{{ route('subculture-game-info.index') }}">🎮 전체 게임</li>
+                    <ul class="sgi-select-list">
                         @foreach ($games as $game)
-                            <li class="sgi-select-opt {{ $selected === $game->slug ? 'is-active' : '' }}" role="option"
-                                data-name="{{ $game->name }}"
-                                data-url="{{ route('subculture-game-info.index', ['game' => $game->slug]) }}">
-                                <span class="sgi-tab-icon">{{ $game->icon }}</span> {{ $game->name }}
+                            <li class="sgi-select-opt" data-name="{{ $game->name }}">
+                                <label class="sgi-opt-label">
+                                    <input type="checkbox" class="sgi-opt-chk" value="{{ $game->slug }}" @checked(in_array($game->slug, $selected)) >
+                                    <span class="sgi-tab-icon">{{ $game->icon }}</span>
+                                    <span>{{ $game->name }}</span>
+                                </label>
                             </li>
                         @endforeach
                         <li class="sgi-select-empty" hidden>검색 결과 없음</li>
                     </ul>
+                    <div class="sgi-select-foot">
+                        <button type="button" class="sgi-select-clear" id="sgi-select-clear">전체 보기</button>
+                        <button type="button" class="sgi-select-apply" id="sgi-select-apply">적용</button>
+                    </div>
                 </div>
             </div>
 
@@ -194,9 +201,10 @@
                     recomputeEmpty();
                 }
 
-                // === 검색 가능한 게임 셀렉트 ===
+                // === 검색 가능한 다중 선택 게임 셀렉트 ===
                 var selRoot = document.getElementById('sgi-game-select');
                 if (selRoot) {
+                    var baseUrl = selRoot.dataset.baseUrl || '';
                     var selBtn = document.getElementById('sgi-select-btn');
                     var selPanel = selRoot.querySelector('.sgi-select-panel');
                     var selSearch = document.getElementById('sgi-select-search');
@@ -224,11 +232,17 @@
                         selPanel.hidden = true;
                         selBtn.setAttribute('aria-expanded', 'false');
                     }
+                    function applySelection() {
+                        var slugs = Array.prototype.slice.call(selRoot.querySelectorAll('.sgi-opt-chk:checked'))
+                            .map(function (c) { return c.value; });
+                        if (slugs.length === 0) { window.location.href = baseUrl; return; }
+                        var qs = slugs.map(function (s) { return 'game[]=' + encodeURIComponent(s); }).join('&');
+                        window.location.href = baseUrl + '?' + qs;
+                    }
                     selBtn.addEventListener('click', function () { selPanel.hidden ? selOpen() : selClose(); });
                     selSearch.addEventListener('input', function () { selFilter(selSearch.value); });
-                    selOpts.forEach(function (o) {
-                        o.addEventListener('click', function () { if (o.dataset.url) window.location.href = o.dataset.url; });
-                    });
+                    document.getElementById('sgi-select-apply').addEventListener('click', applySelection);
+                    document.getElementById('sgi-select-clear').addEventListener('click', function () { window.location.href = baseUrl; });
                     document.addEventListener('click', function (e) { if (!selRoot.contains(e.target)) selClose(); });
                     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') selClose(); });
                 }
@@ -284,14 +298,24 @@
         }
         .sgi-select-search:focus { outline: none; border-color: #6366f1; }
         .sgi-select-list { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow-y: auto; }
-        .sgi-select-opt {
-            padding: 9px 11px; border-radius: 8px; cursor: pointer; color: #cbd5e1;
-            font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 7px;
+        .sgi-select-opt { border-radius: 8px; }
+        .sgi-select-opt:hover { background: #1e293b; }
+        .sgi-opt-label {
+            display: flex; align-items: center; gap: 8px; padding: 9px 11px; cursor: pointer;
+            color: #cbd5e1; font-size: 14px; font-weight: 600;
         }
-        .sgi-select-opt:hover { background: #1e293b; color: #fff; }
-        .sgi-select-opt.is-active { background: #6366f1; color: #fff; }
+        .sgi-opt-chk { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; flex: none; }
         .sgi-select-empty { padding: 10px 11px; color: #64748b; font-size: 13px; text-align: center; }
         .sgi-select-empty[hidden] { display: none; }
+        .sgi-select-foot { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #1e293b; }
+        .sgi-select-clear, .sgi-select-apply {
+            flex: 1; padding: 9px 12px; border-radius: 9px; font-size: 14px; font-weight: 700;
+            cursor: pointer; font-family: inherit; border: 1px solid #334155;
+        }
+        .sgi-select-clear { background: transparent; color: #94a3b8; }
+        .sgi-select-clear:hover { color: #e2e8f0; border-color: #475569; }
+        .sgi-select-apply { background: #6366f1; border-color: #6366f1; color: #fff; }
+        .sgi-select-apply:hover { filter: brightness(1.1); }
 
         /* 교환완료 필터 토글 */
         .sgi-hide-redeemed-toggle {

@@ -21,11 +21,14 @@ class RedeemCodeService
      *
      * @return array<int, array{game: Game, verified: \Illuminate\Support\Collection, unverified: \Illuminate\Support\Collection}>
      */
-    public function grouped(?string $slug = null): array
+    public function grouped(string|array|null $slug = null): array
     {
+        // 단일 slug(문자열)·다중(배열)·전체(null) 모두 허용. 빈 값은 제외.
+        $slugs = array_values(array_filter((array) $slug, fn ($s) => $s !== null && $s !== ''));
+
         $games = Game::where('active_flg', true)
             ->orderBy('sort')
-            ->when($slug, fn ($q) => $q->where('slug', $slug))
+            ->when(! empty($slugs), fn ($q) => $q->whereIn('slug', $slugs))
             ->with(['codes' => function ($q) {
                 $q->usable()
                     ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'unverified' THEN 1 ELSE 2 END")
