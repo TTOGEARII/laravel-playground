@@ -52,7 +52,7 @@ const WEAPONS = {
     machinegun: { name: '기관총', kind: 'sub', type: 'gun',  cooldown: 320, damage: 3, bullets: 1, spread: 0.22, speed: 720, fireRateStep: 0.046, fireRateFloor: 0.35 },
     // 부메랑: 원거리 관통 무기. 캐릭터에서 나가 최대 사거리까지 갔다가 되돌아오며(왕복 2회) 적을 관통 타격.
     // 데미지는 기관총급, 공격속도는 샷건급, 범위는 칼보다 약간 좁음. 레벨업 시 개수 증가.
-    boomerang:  { name: '부메랑', kind: 'sub', type: 'boomerang', cooldown: 1050, damage: 3, range: 160, speed: 430 },
+    boomerang:  { name: '부메랑', kind: 'sub', type: 'boomerang', cooldown: 1050, damage: 3, range: 260, speed: 520 },
 };
 const SUB_WEAPONS = ['shotgun', 'machinegun', 'knife', 'boomerang'];
 const MAX_WEAPON_LEVEL = 15;     // 모든 무기 최대 강화 레벨
