@@ -1345,10 +1345,10 @@ document.getElementById('vs-pause-controls-btn')?.addEventListener('click', () =
     el.hidden = !el.hidden;
     document.getElementById('vs-pause-options').hidden = true;
 });
-document.getElementById('vs-pause-quit')?.addEventListener('click', () => {
+document.getElementById('vs-pause-quit')?.addEventListener('click', (e) => {
     window.removeEventListener('popstate', onPopState);
-    const back = document.querySelector('.game-header-bar .back-button');
-    if (back && back.href) window.location.href = back.href; else window.location.reload();
+    const url = e.currentTarget.dataset.exitUrl; // 게임 목록으로
+    if (url) window.location.href = url; else window.location.reload();
 });
 // 일시정지 중 조작법 변경(모바일)
 document.querySelectorAll('#vs-pause-controls .vs-pause-ctl[data-control]').forEach((btn) => {

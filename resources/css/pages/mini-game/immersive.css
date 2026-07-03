@@ -1,0 +1,59 @@
+/* ============================================================
+   미니게임 몰입형(풀스크린)
+   - 헤더/푸터 제거, 게임이 화면을 꽉 채움
+   - 게임 종료 버튼(유일한 나가기 경로) + 시작화면 조작법 모달
+   대상: body.game-immersive
+   ============================================================ */
+
+.game-immersive .footer { display: none !important; }
+.game-immersive .header { display: none; }
+.game-immersive .container { padding: 0; max-width: 100%; }
+.game-immersive main { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+.game-immersive .game-wrapper { flex: 1 1 auto; min-height: 100vh; min-height: 100dvh; }
+
+/* 게임 종료(나가기) 버튼 — 좌상단 고정. 게임에서 목록으로 나가는 유일한 경로 */
+.game-exit-btn {
+    position: fixed; top: 14px; left: 16px; z-index: 60;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 11px;
+    border: 1px solid #7f1d1d; background: rgba(15, 23, 42, 0.9); color: #fca5a5;
+    font-size: 14px; font-weight: 800; cursor: pointer; text-decoration: none;
+    font-family: 'Outfit', 'Noto Sans KR', sans-serif; transition: filter .15s, border-color .15s;
+}
+.game-exit-btn:hover { border-color: #ef4444; color: #fecaca; }
+@media (max-width: 768px) { .game-exit-btn { top: 10px; left: 12px; padding: 8px 12px; } }
+
+/* 시작화면 조작법 버튼 + 도움말 모달 */
+.start-btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.game-help-button {
+    padding: 13px 22px; border-radius: 12px; border: 1px solid #334155;
+    background: #1e293b; color: #e2e8f0; font-size: 16px; font-weight: 800; cursor: pointer;
+    font-family: 'Outfit', 'Noto Sans KR', sans-serif; transition: transform .12s, border-color .12s;
+}
+.game-help-button:hover { transform: translateY(-2px); border-color: #6366f1; }
+
+.game-help-overlay {
+    position: fixed; inset: 0; z-index: 9997;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(4px); padding: 20px;
+    font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+}
+.game-help-overlay[hidden] { display: none; }
+.game-help-box {
+    position: relative; width: 100%; max-width: 520px; max-height: 82vh; overflow-y: auto;
+    background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; padding: 26px 24px;
+    color: #cbd5e1; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.game-help-box h3 { color: #f9ed69; font-size: 19px; font-weight: 800; margin: 0 0 14px; }
+.game-help-box ul { list-style: none; margin: 0; padding: 0; }
+.game-help-box li { padding: 8px 2px; border-bottom: 1px solid #1e293b; font-size: 14px; line-height: 1.6; }
+.game-help-box li:last-child { border-bottom: none; }
+.game-help-box kbd {
+    display: inline-block; padding: 1px 7px; border-radius: 5px; border: 1px solid #334155;
+    background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 700;
+}
+.game-help-close {
+    position: absolute; top: 12px; right: 14px; background: none; border: none;
+    color: #94a3b8; font-size: 22px; line-height: 1; cursor: pointer;
+}
+.game-help-close:hover { color: #e2e8f0; }

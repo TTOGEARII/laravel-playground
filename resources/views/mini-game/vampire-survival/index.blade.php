@@ -2,19 +2,10 @@
 
 @section('title', '뱀파이어 서바이벌 - Mini Game')
 
-@section('body-class', 'vampire-survival-page')
+@section('body-class', 'vampire-survival-page game-immersive')
 
 @section('content')
     <div class="game-wrapper">
-        <div class="game-header-bar">
-            <a href="{{ route('mini-game.index') }}" class="back-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                돌아가기
-            </a>
-            <span class="game-title">🧛 뱀파이어 서바이벌</span>
-        </div>
 
         {{-- 시작 화면 = 메뉴(시작/옵션/조작법) → 시작 시 캐릭터 선택 --}}
         <div class="game-start-screen" id="startScreen">
@@ -133,7 +124,7 @@
             <button type="button" class="vs-pause-item vs-pause-item--primary" id="vs-pause-resume">계속하기</button>
             <button type="button" class="vs-pause-item" id="vs-pause-options-btn">옵션</button>
             <button type="button" class="vs-pause-item" id="vs-pause-controls-btn" hidden>조작법 변경</button>
-            <button type="button" class="vs-pause-item vs-pause-item--danger" id="vs-pause-quit">게임 종료</button>
+            <button type="button" class="vs-pause-item vs-pause-item--danger" id="vs-pause-quit" data-exit-url="{{ route('mini-game.index') }}">게임 종료</button>
 
             {{-- 옵션 서브패널 --}}
             <div id="vs-pause-options" class="vs-pause-sub" hidden>

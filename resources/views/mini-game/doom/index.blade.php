@@ -2,20 +2,12 @@
 
 @section('title', 'DOOM - Mini Game')
 
-@section('body-class', 'doom-page')
+@section('body-class', 'doom-page game-immersive')
 
 @section('content')
+    <a class="game-exit-btn" href="{{ route('mini-game.index') }}"
+       onclick="return confirm('게임을 종료하고 목록으로 돌아갈까요?')">✕ 게임 종료</a>
     <div class="game-wrapper">
-        <div class="game-header-bar">
-            <a href="{{ route('mini-game.index') }}" class="back-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                돌아가기
-            </a>
-            <span class="game-title">🔫 DOOM</span>
-        </div>
-
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
                 <h2>🔫 DOOM</h2>
@@ -23,7 +15,10 @@
                     WebAssembly로 실행되는 <strong>오리지널 DOOM</strong> (셰어웨어 에피소드 1).<br>
                     엔진 prboom + id Software 셰어웨어 WAD. <strong>PC 키보드</strong> 플레이를 권장합니다.
                 </p>
-                <button id="startGameBtn" class="start-game-button">게임 시작</button>
+                <div class="start-btn-row">
+                    <button id="startGameBtn" class="start-game-button">게임 시작</button>
+                    <button type="button" id="helpBtn" class="game-help-button">조작법</button>
+                </div>
                 <p class="doom-hint-mobile">※ 모바일은 화면 하단 가상 버튼으로 조작합니다.</p>
             </div>
         </div>
@@ -262,17 +257,33 @@
     });
 })();
     </script>
+    <script>
+        // 조작법 모달 토글
+        (function () {
+            var help = document.getElementById('gameHelp');
+            var open = document.getElementById('helpBtn');
+            var close = document.getElementById('helpClose');
+            if (open) open.addEventListener('click', function () { help.hidden = false; });
+            if (close) close.addEventListener('click', function () { help.hidden = true; });
+            if (help) help.addEventListener('click', function (e) { if (e.target === help) help.hidden = true; });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && help && !help.hidden) help.hidden = true; });
+        })();
+    </script>
     @endpush
 
-    <div class="game-instructions">
-        <h3>조작 방법 (PC 키보드 / 마우스)</h3>
-        <ul>
-            <li><kbd>W</kbd> <kbd>S</kbd> 전진/후진 · <kbd>Q</kbd> <kbd>E</kbd> 회전 · <kbd>A</kbd> <kbd>D</kbd> 좌우 이동(스트레이프)</li>
-            <li><strong>마우스 좌클릭</strong> 발사 · <kbd>Space</kbd> 문 열기/사용 · <kbd>Shift</kbd> 달리기 · <kbd>Alt</kbd> 스트레이프 전환</li>
-            <li><kbd>1</kbd>~<kbd>7</kbd> 무기 교체 · 캔버스를 클릭하면 마우스로 시점을 돌릴 수 있습니다(포인터 락)</li>
-            <li class="mobile-only">모바일: 하단 가상 버튼(▲▼ 전후 · ◀▶ 회전 · 발사 · 사용 · ↵ 확인 · ESC 메뉴)으로 플레이</li>
-            <li>오리지널 DOOM 셰어웨어(에피소드 1: Knee-Deep in the Dead) 데이터로 동작합니다.</li>
-            <li>엔진: prboom (GPL) · WAD: id Software 셰어웨어(재배포 허용) · 포팅: webDOOM</li>
-        </ul>
+    {{-- 조작법 모달 --}}
+    <div class="game-help-overlay" id="gameHelp" hidden>
+        <div class="game-help-box">
+            <button type="button" class="game-help-close" id="helpClose" aria-label="닫기">✕</button>
+            <h3>🔫 DOOM 조작 방법 (PC 키보드 / 마우스)</h3>
+            <ul>
+                <li><kbd>W</kbd> <kbd>S</kbd> 전진/후진 · <kbd>Q</kbd> <kbd>E</kbd> 회전 · <kbd>A</kbd> <kbd>D</kbd> 좌우 이동(스트레이프)</li>
+                <li><strong>마우스 좌클릭</strong> 발사 · <kbd>Space</kbd> 문 열기/사용 · <kbd>Shift</kbd> 달리기 · <kbd>Alt</kbd> 스트레이프 전환</li>
+                <li><kbd>1</kbd>~<kbd>7</kbd> 무기 교체 · 캔버스를 클릭하면 마우스로 시점을 돌릴 수 있습니다(포인터 락)</li>
+                <li class="mobile-only">모바일: 하단 가상 버튼(▲▼ 전후 · ◀▶ 회전 · 발사 · 사용 · ↵ 확인 · ESC 메뉴)으로 플레이</li>
+                <li>오리지널 DOOM 셰어웨어(에피소드 1: Knee-Deep in the Dead) 데이터로 동작합니다.</li>
+                <li>엔진: prboom (GPL) · WAD: id Software 셰어웨어(재배포 허용) · 포팅: webDOOM</li>
+            </ul>
+        </div>
     </div>
 @endsection

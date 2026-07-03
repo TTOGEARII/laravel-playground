@@ -2,24 +2,20 @@
 
 @section('title', '테트리스 - Mini Game')
 
-@section('body-class', 'tetris-page')
+@section('body-class', 'tetris-page game-immersive')
 
 @section('content')
+    <a class="game-exit-btn" href="{{ route('mini-game.index') }}"
+       onclick="return confirm('게임을 종료하고 목록으로 돌아갈까요?')">✕ 게임 종료</a>
     <div class="game-wrapper">
-        <div class="game-header-bar">
-            <a href="{{ route('mini-game.index') }}" class="back-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                돌아가기
-            </a>
-            <span class="game-title">🟦 테트리스</span>
-        </div>
         <div class="game-start-screen" id="startScreen">
             <div class="start-screen-content">
                 <h2>🟦 테트리스</h2>
                 <p>블록을 쌓아 줄을 지우고 점수를 올려라!<br>홀드·소프트드롭·티스핀(2배 점수)까지.</p>
-                <button id="startGameBtn" class="start-game-button">게임 시작</button>
+                <div class="start-btn-row">
+                    <button id="startGameBtn" class="start-game-button">게임 시작</button>
+                    <button type="button" id="helpBtn" class="game-help-button">조작법</button>
+                </div>
             </div>
         </div>
         <div id="game-container" style="display: none;" tabindex="0"></div>
@@ -632,18 +628,34 @@ if (startBtn) {
     });
 }
     </script>
+    <script>
+        // 조작법 모달 토글
+        (function () {
+            var help = document.getElementById('gameHelp');
+            var open = document.getElementById('helpBtn');
+            var close = document.getElementById('helpClose');
+            if (open) open.addEventListener('click', function () { help.hidden = false; });
+            if (close) close.addEventListener('click', function () { help.hidden = true; });
+            if (help) help.addEventListener('click', function (e) { if (e.target === help) help.hidden = true; });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && help && !help.hidden) help.hidden = true; });
+        })();
+    </script>
     @endpush
 
-    <div class="game-instructions">
-        <h3>게임 방법</h3>
-        <ul>
-            <li class="desktop-only"><kbd>←</kbd> <kbd>→</kbd> 이동 · <kbd>↓</kbd> 소프트드롭(가속) · <kbd>Space</kbd> 하드드롭</li>
-            <li class="desktop-only"><kbd>↑</kbd> / <kbd>X</kbd> 시계방향 회전 · <kbd>Z</kbd> 반시계방향 회전</li>
-            <li class="desktop-only"><kbd>C</kbd> 또는 <kbd>Shift</kbd> 홀드(조각 보관/교체, 한 조각당 1회)</li>
-            <li class="mobile-only">화면 하단 가상 버튼: ◀ ▼ ▶ 이동/소프트드롭 · ↻ 회전 · HOLD 홀드 · ⤓ 하드드롭</li>
-            <li>가로 한 줄을 가득 채우면 줄이 사라지고 점수를 얻습니다 (1·2·3·4줄 = 100·300·500·800 × 레벨)</li>
-            <li><strong>티스핀</strong>(T조각을 회전으로 끼워 넣어 줄 제거)에 성공하면 <strong>점수 2배</strong>!</li>
-            <li>10줄마다 레벨이 오르고 블록이 더 빠르게 떨어집니다.</li>
-        </ul>
+    {{-- 조작법 모달 --}}
+    <div class="game-help-overlay" id="gameHelp" hidden>
+        <div class="game-help-box">
+            <button type="button" class="game-help-close" id="helpClose" aria-label="닫기">✕</button>
+            <h3>🟦 테트리스 게임 방법</h3>
+            <ul>
+                <li class="desktop-only"><kbd>←</kbd> <kbd>→</kbd> 이동 · <kbd>↓</kbd> 소프트드롭(가속) · <kbd>Space</kbd> 하드드롭</li>
+                <li class="desktop-only"><kbd>↑</kbd> / <kbd>X</kbd> 시계방향 회전 · <kbd>Z</kbd> 반시계방향 회전</li>
+                <li class="desktop-only"><kbd>C</kbd> 또는 <kbd>Shift</kbd> 홀드(조각 보관/교체, 한 조각당 1회)</li>
+                <li class="mobile-only">화면 하단 가상 버튼: ◀ ▼ ▶ 이동/소프트드롭 · ↻ 회전 · HOLD 홀드 · ⤓ 하드드롭</li>
+                <li>가로 한 줄을 가득 채우면 줄이 사라지고 점수를 얻습니다 (1·2·3·4줄 = 100·300·500·800 × 레벨)</li>
+                <li><strong>티스핀</strong>(T조각을 회전으로 끼워 넣어 줄 제거)에 성공하면 <strong>점수 2배</strong>!</li>
+                <li>10줄마다 레벨이 오르고 블록이 더 빠르게 떨어집니다.</li>
+            </ul>
+        </div>
     </div>
 @endsection
