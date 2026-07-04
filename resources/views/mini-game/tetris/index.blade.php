@@ -124,6 +124,7 @@ class TetrisScene extends Phaser.Scene {
         this.lines = 0;
         this.level = 1;
         this.dropInterval = 800;
+        this.elapsedMs = 0;      // 누적 플레이 시간(시간 경과 가속용)
         this.gravityAcc = 0;
         this.lockTimer = 0;
         this.resting = false;
@@ -371,7 +372,7 @@ class TetrisScene extends Phaser.Scene {
 
         if (cleared > 0) this.lines += cleared;
         this.level = Math.floor(this.lines / 10) + 1;
-        this.dropInterval = Math.max(80, 800 - (this.level - 1) * 70);
+        // dropInterval 은 update()에서 레벨 + 경과시간으로 매 프레임 재계산한다.
 
         if (tSpin) this.showFlash('T-SPIN! x2', '#a855f7');
         else if (cleared === 4) this.showFlash('TETRIS!', '#22d3ee');
@@ -420,6 +421,11 @@ class TetrisScene extends Phaser.Scene {
         if (!this.cell || !this.piece) return;
 
         this.handleInput(delta);
+
+        // 낙하 속도: 레벨(줄 삭제) + 시간 경과 둘 다로 가속. 12초마다 -35ms(최대 -520ms), 하한 60ms.
+        this.elapsedMs += delta;
+        const timeSpeedup = Math.min(Math.floor(this.elapsedMs / 12000) * 35, 520);
+        this.dropInterval = Math.max(60, 800 - (this.level - 1) * 70 - timeSpeedup);
 
         this.softHeld = this.keys.down.isDown || this.touch.soft;
         const interval = this.softHeld ? SOFT_INTERVAL : this.dropInterval;
