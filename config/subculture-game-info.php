@@ -79,7 +79,7 @@ return [
             'sources' => [
                 ['driver' => 'naver'],
                 ['driver' => 'twitter'],
-                ['driver' => 'html', 'url' => 'https://mollulog.net/coupons'],
+                ['driver' => 'mollulog'],
                 ['driver' => 'html', 'url' => 'https://www.pocketgamer.com/blue-archive/coupon-codes/'],
                 ['driver' => 'dc'],
                 ['driver' => 'arca'],

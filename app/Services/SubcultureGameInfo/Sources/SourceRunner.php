@@ -7,6 +7,7 @@ use App\Services\SubcultureGameInfo\Sources\Drivers\ArcaCommunityDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\DcCommunityDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\EnneadApiDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\HtmlDriver;
+use App\Services\SubcultureGameInfo\Sources\Drivers\MollulogDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\NaverGameLoungeDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\SeriaApiDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\TwitterDriver;
@@ -30,8 +31,9 @@ class SourceRunner
         TwitterDriver $twitter,
         DcCommunityDriver $dc,
         ArcaCommunityDriver $arca,
+        MollulogDriver $mollulog,
     ) {
-        foreach ([$ennead, $seria, $html, $naver, $twitter, $dc, $arca] as $driver) {
+        foreach ([$ennead, $seria, $html, $naver, $twitter, $dc, $arca, $mollulog] as $driver) {
             $this->drivers[$driver->driverKey()] = $driver;
         }
     }
