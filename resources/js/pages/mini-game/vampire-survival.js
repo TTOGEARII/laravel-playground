@@ -760,12 +760,15 @@ class GameScene extends Phaser.Scene {
         this.damageEnemy(enemy, boomerang.getData('damage'));
     }
 
-    // 칼: 적 방향으로 초승달 아크 슬래시. 아크(사거리+각도) 안에 들어온 적은 모두 피격.
+    // 칼 베기 수: 부메랑과 동일하게 3레벨마다 +1 (Lv1=1, Lv4=2, Lv7=3 …).
+    knifeCount(level) { return 1 + Math.floor((level - 1) / 3); }
+
+    // 칼: 적 방향으로 초승달 슬래시. 베기 수만큼 부채꼴로 휘두르고, 아크 안 적은 모두 피격.
     fireKnife(def, st, dmg) {
         const target = this.nearestEnemy(760);
         if (!target) return; // 벨 대상이 없으면 발동 안 함
         const front = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
-        const angles = this.knifeSlashAngles(st.level, front);
+        const angles = this.knifeSlashAngles(this.knifeCount(st.level), front);
         const range = def.range, half = def.arcHalfAngle;
 
         this.enemies.children.iterate((e) => {
@@ -777,15 +780,16 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        this.knifeEffect(angles, range, half);
+        for (const a of angles) this.knifeSlashEffect(a, range, half);
     }
 
-    // 레벨별 슬래시 방향: 앞(0)·뒤(π)·좌(-π/2)·우(π/2) 순으로 1개씩. 4방향을 다 채우면
+    // 베기 방향: 앞(0)·뒤(π)·좌(-π/2)·우(π/2) 순으로 1개씩(원래 방식 유지). 4방향을 다 채우면
     // 다음 회차부터 같은 방향에 추가 슬래시를 좌우로 벌려(부채꼴) 앞2·뒤2·…앞3 처럼 늘린다.
-    knifeSlashAngles(level, front) {
+    // count 만큼 생성 — count(=베기 수)는 부메랑과 동일하게 3레벨마다 +1.
+    knifeSlashAngles(count, front) {
         const base = [0, Math.PI, -Math.PI / 2, Math.PI / 2]; // 앞·뒤·좌·우
         const out = [];
-        for (let i = 0; i < level; i++) {
+        for (let i = 0; i < count; i++) {
             const pass = Math.floor(i / 4);
             const spread = pass === 0 ? 0 : (pass % 2 ? 1 : -1) * Math.ceil(pass / 2) * 0.5;
             out.push(front + base[i % 4] + spread);
@@ -793,19 +797,40 @@ class GameScene extends Phaser.Scene {
         return out;
     }
 
-    knifeEffect(angles, range, half) {
-        const g = this.add.graphics().setDepth(8);
-        g.fillStyle(0xffffff, 0.18);
-        g.lineStyle(3, 0xffffff, 0.85);
-        for (const a of angles) {
+    // 칼 휘두르는 초승달 슬래시 이펙트(한 번의 베기). 바깥 호를 따라 얇게 휜 칼날 모양 +
+    // 각도를 살짝 쓸어(sweep) 그리며 빠르게 사라져 실제로 칼을 휘두르는 느낌을 낸다.
+    knifeSlashEffect(angle, range, half) {
+        const cx = this.player.x, cy = this.player.y;
+        const rOut = range, rIn = range * 0.62; // 초승달 두께(칼날 폭)
+        const g = this.add.graphics().setDepth(9);
+
+        const draw = (a0, a1, alpha) => {
+            g.clear();
+            // 초승달 띠: 바깥 호 → 안쪽 호(역방향)로 닫아 얇은 칼날 곡선을 만든다.
+            g.fillStyle(0xffffff, 0.55 * alpha);
             g.beginPath();
-            g.moveTo(this.player.x, this.player.y);
-            g.arc(this.player.x, this.player.y, range, a - half, a + half, false);
+            g.arc(cx, cy, rOut, a0, a1, false);
+            g.arc(cx, cy, rIn, a1, a0, true);
             g.closePath();
             g.fillPath();
+            // 칼날 끝(바깥 호) 밝은 테두리
+            g.lineStyle(3, 0xcdeaff, 0.95 * alpha);
+            g.beginPath();
+            g.arc(cx, cy, rOut, a0, a1, false);
             g.strokePath();
-        }
-        this.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
+        };
+
+        // 시작 각을 뒤에서 앞으로 쓸어내리는 궤적(잔상처럼)
+        const sweep = half * 0.6;
+        this.tweens.addCounter({
+            from: 0, to: 1, duration: 150, ease: 'Cubic.easeOut',
+            onUpdate: (tw) => {
+                const t = tw.getValue();
+                const center = angle - sweep + sweep * 2 * t; // 각도 쓸기
+                draw(center - half, center + half, 1 - t * 0.85);
+            },
+            onComplete: () => g.destroy(),
+        });
     }
 
     damageEnemy(enemy, dmg) {
@@ -933,7 +958,7 @@ class GameScene extends Phaser.Scene {
     upgradeDesc(def, lv) {
         if (def.type === 'gun') return `연사속도 ↑ (${Math.round(this.gunCooldownAt(def, lv))}ms → ${Math.round(this.gunCooldownAt(def, lv + 1))}ms)`;
         if (def.type === 'boomerang') return `부메랑 ${this.boomerangCount(lv)} → ${this.boomerangCount(lv + 1)}개`;
-        if (def.arc) return `슬래시 ${lv} → ${lv + 1}방향 (앞·뒤·좌·우 순 확장)`;
+        if (def.arc) return `베기 ${this.knifeCount(lv)} → ${this.knifeCount(lv + 1)}개 (3레벨마다 +1)`;
         return `공격 범위 ${def.range + (lv - 1) * (def.rangeStep ?? 0)} → ${def.range + lv * (def.rangeStep ?? 0)}`;
     }
 
@@ -996,7 +1021,7 @@ class GameScene extends Phaser.Scene {
     }
 
     weaponDesc(key) {
-        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '적 방향으로 베는 근접 슬래시(레벨업 시 방향 추가)', boomerang: '왕복하며 관통 타격(원거리, 레벨업 시 개수↑)' }[key] || '';
+        return { shotgun: '넓게 퍼지는 산탄(원거리)', machinegun: '연사(원거리, 딜 약함)', knife: '적 방향으로 휘두르는 근접 슬래시(레벨업 시 베기 수↑)', boomerang: '왕복하며 관통 타격(원거리, 레벨업 시 개수↑)' }[key] || '';
     }
 
     showChoice(title, cards) {
