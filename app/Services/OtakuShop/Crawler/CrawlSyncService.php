@@ -197,7 +197,8 @@ class CrawlSyncService
         // 이름이 충분히 변별적인 '피규어' 카테고리에만 적용한다.
         $scale = self::extractScale($dto->title);
         if ($product === null && $makerCode === null && $ipId !== null && $categoryId !== null
-            && $dto->categoryCode === self::FUZZY_CATEGORY && $scale !== null && count($tokens) >= self::FUZZY_MIN_SHARED) {
+            && $dto->categoryCode === self::FUZZY_CATEGORY && self::looksLikeScaleFigure($dto->title)
+            && count($tokens) >= self::FUZZY_MIN_SHARED) {
             $product = $this->fuzzyMatchProduct($ipId, (int) $categoryId, $tokens, $scale);
         }
 
@@ -335,10 +336,18 @@ class CrawlSyncService
         return preg_match('#(\d)\s*/\s*(\d{1,2})#u', $title, $m) ? $m[1].'/'.$m[2] : null;
     }
 
-    /** 스케일 피규어(1/7, 1/8 등)인지 — 굿즈류 오병합을 막기 위한 추가 신호. */
+    /**
+     * 스케일 피규어(본체)인지 — 굿즈류 오병합을 막기 위한 추가 신호.
+     * 1/N 스케일이 있어야 하고, 케이스/스탠드/태피스트리 등 '부속품'은 본체 스케일을 제목에 적어도 제외한다
+     * (예: "1/7스케일 … LED 디스플레이 케이스"는 피규어 본체가 아님 → 본체와 병합하면 안 됨).
+     */
     public static function looksLikeScaleFigure(string $title): bool
     {
-        return self::extractScale($title) !== null;
+        if (self::extractScale($title) === null) {
+            return false;
+        }
+
+        return ! preg_match('/(케이스|디스플레이|아크릴|태피스트리|쿠션|포스터|스탠드|받침)/iu', $title);
     }
 
     /**
