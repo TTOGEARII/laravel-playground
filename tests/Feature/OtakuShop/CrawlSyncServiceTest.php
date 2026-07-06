@@ -203,6 +203,24 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(2, OtakuProduct::count());
     }
 
+    public function test_same_figure_merges_despite_split_word_conjugation_and_missing_scale(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 같은 '아리스 슈퍼노바 각성' 1/7 피규어인데 표기만 다름:
+        //  - 슈퍼노바 vs '슈퍼 노바'(분할)  - 각성하라 vs 각성입니다(어미)  - 스케일 표기 유무
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[예약]블루 아카이브 아리스 각성하라 슈퍼 노바 1/7 피규어', 250000, categoryCode: 'figure'),
+            $this->dto('animate', 'B1', '아리스 각성하라, 슈퍼노바! / 블루 아카이브', 250000, categoryCode: 'figure'),
+            $this->dto('ttabbaemall', 'C1', '[27년 07월 발매] 블루 아카이브 굿스마일 컴퍼니 1/7 스케일 피규어 - 아리스 슈퍼노바, 각성입니다! Ver.', 240000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '세 표기가 동일 상품으로 묶여 가격비교돼야 함');
+        $this->assertSame(3, OtakuOffer::count());
+    }
+
     public function test_goods_category_is_not_fuzzy_merged_even_when_containment(): void
     {
         $service = $this->app->make(CrawlSyncService::class);

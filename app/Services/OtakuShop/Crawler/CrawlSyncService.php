@@ -19,6 +19,9 @@ class CrawlSyncService
     /** 이름 유사(포함관계) 매칭을 허용하는 카테고리 코드 (변별적 이름이 보장되는 피규어만). */
     private const FUZZY_CATEGORY = 'figure';
 
+    /** 이름 유사 매칭에 필요한 최소 공통 코어 토큰 수(과병합 방지). */
+    public const FUZZY_MIN_SHARED = 3;
+
     public function __construct(
         private ProductNormalizer $normalizer
     ) {}
@@ -194,7 +197,7 @@ class CrawlSyncService
         // 이름이 충분히 변별적인 '피규어' 카테고리에만 적용한다.
         $scale = self::extractScale($dto->title);
         if ($product === null && $makerCode === null && $ipId !== null && $categoryId !== null
-            && $dto->categoryCode === self::FUZZY_CATEGORY && $scale !== null) {
+            && $dto->categoryCode === self::FUZZY_CATEGORY && count($tokens) >= self::FUZZY_MIN_SHARED) {
             $product = $this->fuzzyMatchProduct($ipId, (int) $categoryId, $tokens, $scale);
         }
 
@@ -272,26 +275,24 @@ class CrawlSyncService
      */
     public function fuzzyMatchProduct(int $ipId, int $cateId, array $tokens, ?string $scale = null): ?OtakuProduct
     {
-        if (count($tokens) < 3) {
+        if (count($tokens) < self::FUZZY_MIN_SHARED) {
             return null;
         }
 
         $best = null;
-        $bestDiff = PHP_INT_MAX;
+        $bestShared = -1;
         foreach ($this->bucketCandidates($ipId, $cateId) as $cand) {
-            if ($cand['scale'] !== $scale) {  // 스케일(1/7 vs 1/6 등)이 다르면 다른 상품
+            if (! self::scalesCompatible($cand['scale'], $scale)) {  // 스케일(1/7 vs 1/6)이 다르면 다른 상품
                 continue;
             }
             $ct = $cand['tokens'];
-            if (count($ct) < 3) {
+            if (count($ct) < self::FUZZY_MIN_SHARED || ! self::tokensSimilar($tokens, $ct)) {
                 continue;
             }
-            if (! $this->isSubset($tokens, $ct) && ! $this->isSubset($ct, $tokens)) {
-                continue;
-            }
-            $diff = abs(count($tokens) - count($ct));  // 추가 토큰이 적을수록 더 확실한 동일상품
-            if ($diff < $bestDiff) {
-                $bestDiff = $diff;
+            // 가장 많이 겹치는(공통 토큰 최다) 후보를 동일 상품으로 선택
+            [$shared] = self::tokenDiff($tokens, $ct);
+            if ($shared > $bestShared) {
+                $bestShared = $shared;
                 $best = $cand['id'];
             }
         }
@@ -313,7 +314,6 @@ class CrawlSyncService
                 ->where('ok_product_cate_id', $cateId)
                 ->whereNull('ok_product_maker_code')
                 ->get(['ok_product_id', 'ok_product_match_sig', 'ok_product_title'])
-                ->filter(fn ($p) => self::looksLikeScaleFigure((string) $p->ok_product_title))
                 ->map(fn ($p) => [
                     'id' => (int) $p->ok_product_id,
                     'scale' => self::extractScale((string) $p->ok_product_title),
@@ -340,6 +340,154 @@ class CrawlSyncService
         return self::extractScale($title) !== null;
     }
 
+    /**
+     * 스케일 호환: 둘 다 있으면 같아야 하고, 하나만 있으면 OK, 둘 다 없으면 매칭 안 함(스케일없는 굿즈 오병합 방지).
+     */
+    public static function scalesCompatible(?string $a, ?string $b): bool
+    {
+        if ($a !== null && $b !== null) {
+            return $a === $b;
+        }
+
+        return $a !== null || $b !== null;
+    }
+
+    /**
+     * 두 토큰 집합이 동일 상품으로 볼 만큼 유사한가.
+     * 규칙: 공통 코어 ≥ FUZZY_MIN_SHARED(정확일치 + 분할결합 흡수) 이고,
+     *   - 한쪽이 완전 포함(고유 토큰 0)이거나
+     *   - 남는 고유 토큰들이 서로 '같은 단어의 다른 표기'(각성하라 vs 각성입니다)일 때만 동일 상품.
+     * 무관한 단어(아스나 vs 시로코)면 다른 상품으로 본다.
+     *
+     * @param  array<int, string>  $a
+     * @param  array<int, string>  $b
+     */
+    public static function tokensSimilar(array $a, array $b): bool
+    {
+        [$shared, $uniqA, $uniqB] = self::tokenDiff(array_values(array_unique($a)), array_values(array_unique($b)));
+        if ($shared < self::FUZZY_MIN_SHARED) {
+            return false;
+        }
+        if ($uniqA === [] || $uniqB === []) {
+            return true;  // 부분집합(한쪽 완전 포함)
+        }
+
+        return self::uniquesReconcilable($uniqA, $uniqB);
+    }
+
+    /**
+     * 정확 일치 + 분할결합(한쪽 한 토큰 == 다른쪽 두 토큰 결합, 예: 슈퍼노바 == 슈퍼+노바)을 흡수해
+     * [공통 토큰 수, A 고유, B 고유] 를 반환한다.
+     *
+     * @param  array<int, string>  $a
+     * @param  array<int, string>  $b
+     * @return array{0:int, 1:array<int,string>, 2:array<int,string>}
+     */
+    private static function tokenDiff(array $a, array $b): array
+    {
+        $shared = 0;
+        foreach ($a as $i => $t) {  // 1) 정확 일치
+            $j = array_search($t, $b, true);
+            if ($j !== false) {
+                unset($a[$i], $b[$j]);
+                $shared++;
+            }
+        }
+        $a = array_values($a);
+        $b = array_values($b);
+        // 2) 분할 결합(양방향)
+        $shared += self::consumeSplits($a, $b);
+        $shared += self::consumeSplits($b, $a);
+
+        return [$shared, array_values($a), array_values($b)];
+    }
+
+    /** $whole 의 각 토큰이 $parts 의 서로 다른 두 토큰 결합과 같으면 양쪽에서 소거하고 개수 반환(참조 수정). */
+    private static function consumeSplits(array &$whole, array &$parts): int
+    {
+        $n = 0;
+        foreach ($whole as $wi => $t) {
+            $pair = self::findSplitPair($t, $parts);
+            if ($pair !== null) {
+                unset($whole[$wi], $parts[$pair[0]], $parts[$pair[1]]);
+                $parts = array_values($parts);
+                $n++;
+            }
+        }
+        $whole = array_values($whole);
+
+        return $n;
+    }
+
+    /** $parts 의 서로 다른 두 인덱스를 결합해 $t 가 되면 [i,j], 없으면 null. */
+    private static function findSplitPair(string $t, array $parts): ?array
+    {
+        $c = count($parts);
+        for ($i = 0; $i < $c; $i++) {
+            for ($j = 0; $j < $c; $j++) {
+                if ($i !== $j && $t === $parts[$i].$parts[$j]) {
+                    return [$i, $j];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 양쪽 고유 토큰이 서로 '같은 단어의 다른 표기'인지(각성하라 vs 각성입니다 = O, 아스나 vs 시로코 = X).
+     * 각 고유 토큰이 상대 쪽 고유 토큰 중 하나와 (포함 또는 2자 이상 공통 접두)로 짝지어져야 한다.
+     *
+     * @param  array<int, string>  $ua
+     * @param  array<int, string>  $ub
+     */
+    private static function uniquesReconcilable(array $ua, array $ub): bool
+    {
+        $hasPartner = function (string $x, array $others): bool {
+            foreach ($others as $y) {
+                if (self::wordVariant($x, $y)) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+        foreach ($ua as $x) {
+            if (! $hasPartner($x, $ub)) {
+                return false;
+            }
+        }
+        foreach ($ub as $y) {
+            if (! $hasPartner($y, $ua)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** 두 단어가 같은 단어의 다른 표기인지: 동일/포함/2자 이상 공통 접두. */
+    private static function wordVariant(string $x, string $y): bool
+    {
+        if ($x === $y) {
+            return true;
+        }
+        if ($x !== '' && $y !== '' && (mb_strpos($x, $y) !== false || mb_strpos($y, $x) !== false)) {
+            return true;
+        }
+        $n = min(mb_strlen($x), mb_strlen($y));
+        $prefix = 0;
+        for ($i = 0; $i < $n; $i++) {
+            if (mb_substr($x, $i, 1) === mb_substr($y, $i, 1)) {
+                $prefix++;
+            } else {
+                break;
+            }
+        }
+
+        return $prefix >= 2;
+    }
+
     /** 새로/매칭된 상품을 버킷 캐시에 반영해 같은 런의 후속 상품이 이어서 묶이도록 한다. */
     private function indexProduct(OtakuProduct $product, array $tokens): void
     {
@@ -354,24 +502,6 @@ class CrawlSyncService
                 'tokens' => $tokens,
             ];
         }
-    }
-
-    /**
-     * $a 의 모든 토큰이 $b 에 들어 있으면 true (a ⊆ b).
-     *
-     * @param  array<int, string>  $a
-     * @param  array<int, string>  $b
-     */
-    private function isSubset(array $a, array $b): bool
-    {
-        $set = array_flip($b);
-        foreach ($a as $token) {
-            if (! isset($set[$token])) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

@@ -26,11 +26,6 @@ class OtakuShopRematchCommand extends Command
 
     protected $description = '기존 상품을 재분류·재매칭해 동일상품을 병합(가격비교 소급 적용)';
 
-    /** 포함관계 매칭에 필요한 최소 토큰 수 / 허용 토큰 차이. */
-    private const MIN_TOKENS = 3;
-
-    private const MAX_TOKEN_DIFF = 2;
-
     public function handle(CrawlSyncService $sync, ProductNormalizer $normalizer): int
     {
         $dryRun = (bool) $this->option('dry-run');
@@ -237,11 +232,9 @@ class OtakuShopRematchCommand extends Command
             ->orderBy('ok_product_cate_id')
             ->select(['ok_product_id', 'ok_product_ip_id', 'ok_product_cate_id', 'ok_product_match_sig', 'ok_product_title'])
             ->chunk(2000, function ($rows) use (&$groups) {
-                // 카테고리 오분류(아크릴 스탠드 등)를 거르기 위해 스케일 피규어(1/N)만 대상으로.
-                $rows = $rows->filter(fn ($p) => CrawlSyncService::looksLikeScaleFigure((string) $p->ok_product_title));
                 $byBucket = $rows->groupBy(fn ($p) => $p->ok_product_ip_id.':'.$p->ok_product_cate_id);
                 foreach ($byBucket as $bucket) {
-                    foreach ($this->clusterByContainment($bucket) as $cluster) {
+                    foreach ($this->clusterBySimilarity($bucket) as $cluster) {
                         if (count($cluster) > 1) {
                             $groups[] = $cluster;
                         }
@@ -253,58 +246,62 @@ class OtakuShopRematchCommand extends Command
     }
 
     /**
-     * 한 (ip,카테고리) 버킷을 포함관계로 클러스터링한다(시드 기반, 비전이적).
+     * 한 (ip,카테고리) 버킷을 이름 유사도로 전이적 클러스터링한다(union-find).
+     * A~B, A~C 가 유사하면 B~C 직접 유사가 아니어도 한 그룹({A,B,C})으로 묶인다.
+     * 유사도 판정(공통코어·분할결합·같은단어 변형·스케일 호환)은 CrawlSyncService 로직을 공유한다.
      *
      * @param  \Illuminate\Support\Collection<int, OtakuProduct>  $bucket
      * @return array<int, array<int, int>>
      */
-    private function clusterByContainment($bucket): array
+    private function clusterBySimilarity($bucket): array
     {
-        // 토큰 많은(구체적) 순으로 시드 후보를 본다.
         $items = $bucket
             ->map(fn ($p) => [
                 'id' => (int) $p->ok_product_id,
                 'scale' => CrawlSyncService::extractScale((string) $p->ok_product_title),
                 'tokens' => explode(' ', (string) $p->ok_product_match_sig),
             ])
-            ->filter(fn ($it) => count($it['tokens']) >= self::MIN_TOKENS)
-            ->sortByDesc(fn ($it) => count($it['tokens']))
-            ->values();
+            ->filter(fn ($it) => count($it['tokens']) >= CrawlSyncService::FUZZY_MIN_SHARED)
+            ->values()
+            ->all();
 
-        $seeds = [];  // ['scale'=>?, 'tokens'=>[], 'ids'=>[]]
-        foreach ($items as $it) {
-            $placed = false;
-            foreach ($seeds as &$seed) {
-                $diff = count($seed['tokens']) - count($it['tokens']);
-                if ($seed['scale'] === $it['scale'] && $diff >= 0 && $diff <= self::MAX_TOKEN_DIFF && $this->isSubset($it['tokens'], $seed['tokens'])) {
-                    $seed['ids'][] = $it['id'];
-                    $placed = true;
-                    break;
+        $n = count($items);
+        if ($n < 2) {
+            return [];
+        }
+
+        $parent = range(0, $n - 1);
+        $find = function (int $x) use (&$parent): int {
+            while ($parent[$x] !== $x) {
+                $parent[$x] = $parent[$parent[$x]];
+                $x = $parent[$x];
+            }
+
+            return $x;
+        };
+
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                if (! CrawlSyncService::scalesCompatible($items[$i]['scale'], $items[$j]['scale'])) {
+                    continue;
+                }
+                if (! CrawlSyncService::tokensSimilar($items[$i]['tokens'], $items[$j]['tokens'])) {
+                    continue;
+                }
+                $pi = $find($i);
+                $pj = $find($j);
+                if ($pi !== $pj) {
+                    $parent[$pi] = $pj;
                 }
             }
-            unset($seed);
-            if (! $placed) {
-                $seeds[] = ['scale' => $it['scale'], 'tokens' => $it['tokens'], 'ids' => [$it['id']]];
-            }
         }
 
-        return array_map(fn ($s) => $s['ids'], $seeds);
-    }
-
-    /**
-     * @param  array<int, string>  $a
-     * @param  array<int, string>  $b
-     */
-    private function isSubset(array $a, array $b): bool
-    {
-        $set = array_flip($b);
-        foreach ($a as $token) {
-            if (! isset($set[$token])) {
-                return false;
-            }
+        $clusters = [];
+        for ($i = 0; $i < $n; $i++) {
+            $clusters[$find($i)][] = $items[$i]['id'];
         }
 
-        return true;
+        return array_values($clusters);
     }
 
     /**
