@@ -543,6 +543,8 @@ onBeforeUnmount(cancelTimer);
   gap: 14px;
   scroll-behavior: smooth;
 }
+/* 대화가 적을 때 위쪽에 뜨지 않고 입력창 쪽(아래)부터 쌓이게 — 넘치면 일반 스크롤 그대로 */
+.mw-stream > :first-child { margin-top: auto; }
 .mw-turn { display: flex; flex-direction: column; gap: 10px; }
 
 .mw-narration {

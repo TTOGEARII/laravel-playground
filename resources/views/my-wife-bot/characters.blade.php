@@ -117,6 +117,11 @@
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 32px;
 }
+@media (max-width: 640px) {
+    /* 좁은 화면에서는 뒤로가기/제목/버튼이 어중간하게 감기므로 세로 중앙 정렬로 정리 */
+    .my-wife-bot-header-bar { flex-direction: column; align-items: center; gap: 12px; }
+    .my-wife-bot-header-bar .back-button { align-self: flex-start; }
+}
 .add-character-button {
     display: inline-flex;
     align-items: center;
@@ -307,8 +312,17 @@
 }
 .character-more-button:hover { text-decoration: underline; }
 
-/* 캐릭터 상세 모달 */
-.character-modal { position: fixed; inset: 0; z-index: 100; }
+/* 캐릭터 상세 모달 — 화면 정중앙 배치 */
+.character-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.character-modal[hidden] { display: none; } /* display:flex 가 hidden 속성을 덮지 않게 */
 .character-modal-backdrop {
     position: absolute;
     inset: 0;
@@ -318,9 +332,8 @@
 .character-modal-panel {
     position: relative;
     max-width: 720px;
-    width: calc(100% - 32px);
-    max-height: calc(100vh - 80px);
-    margin: 40px auto;
+    width: 100%;
+    max-height: calc(100vh - 48px);
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 20px;
@@ -340,7 +353,12 @@
 }
 .character-modal-close:hover { color: var(--text-primary); }
 .character-modal-body { display: flex; gap: 24px; }
-.character-modal-illust { flex: 0 0 260px; }
+.character-modal-illust {
+    flex: 0 0 260px;
+    position: sticky; /* 긴 설명 스크롤 중에도 일러스트가 보이게 고정 */
+    top: 0;
+    align-self: flex-start;
+}
 .character-modal-illust img {
     width: 100%;
     border-radius: 16px;
@@ -353,7 +371,13 @@
 .character-modal-detail { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap; }
 @media (max-width: 640px) {
     .character-modal-body { flex-direction: column; }
-    .character-modal-illust { flex: none; max-width: 320px; margin: 0 auto; }
+    .character-modal-illust {
+        flex: none;
+        max-width: 320px;
+        margin: 0 auto;
+        position: static; /* 세로 배치에서는 고정하면 텍스트를 가리므로 해제 */
+        width: 100%;
+    }
 }
 .character-button {
     display: inline-flex;
