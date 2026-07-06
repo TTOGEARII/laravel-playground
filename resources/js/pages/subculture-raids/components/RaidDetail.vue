@@ -55,6 +55,9 @@
           · <span class="sgr-legend-sub">■</span> 대체 투입 — 미보유 슬롯을 내가 보유한 대체 캐릭터로 치환해 표시
         </template>
       </p>
+
+      <!-- 미보유 제외 실전 편성 — 원본 랭킹에서 미보유 캐릭터 없이 클리어한 실제 편성 (블아·니케) -->
+      <AlternativeParties v-if="composeMode" :raid="raid" :pool="pool" />
     </section>
 
     <!-- 커뮤니티 공략글 -->
@@ -78,6 +81,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import AlternativeParties from './AlternativeParties.vue';
 import PartyCard from './PartyCard.vue';
 
 const props = defineProps({

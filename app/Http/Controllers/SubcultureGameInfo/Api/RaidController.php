@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\SubcultureGameInfo\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SubcultureGameInfo\AlternativePartyRequest;
 use App\Models\SubcultureGameInfo\Raid;
+use App\Services\SubcultureGameInfo\Raids\AlternativeParties\AlternativePartyService;
 use App\Services\SubcultureGameInfo\Raids\RaidQueryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RaidController extends Controller
 {
-    public function __construct(private RaidQueryService $query) {}
+    public function __construct(
+        private RaidQueryService $query,
+        private AlternativePartyService $alternativeParties,
+    ) {}
 
     /**
      * 레이드 목록. 쿼리: game(slug), status(active|upcoming|ended)
@@ -34,5 +39,16 @@ class RaidController extends Controller
     public function show(Raid $raid): JsonResponse
     {
         return response()->json(['data' => $this->query->showRaid($raid)]);
+    }
+
+    /**
+     * 미보유 캐릭터 제외 실전 편성 — 원본 랭킹 사이트(몰루로그/레츠도로) 프록시.
+     * body: { exclude: [external_key...], page? }
+     */
+    public function alternativeParties(AlternativePartyRequest $request, Raid $raid): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->alternativeParties->findParties($raid, $request->excludeKeys(), $request->pageNumber()),
+        ]);
     }
 }

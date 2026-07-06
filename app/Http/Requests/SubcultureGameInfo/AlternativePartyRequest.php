@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Requests\SubcultureGameInfo;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * 미보유 캐릭터 제외 실전 편성 조회 검증.
+ * exclude 는 미보유 캐릭터 external_key 배열(문자열) — 원본 랭킹 API 에 그대로 전달되므로 상한을 둔다.
+ */
+class AlternativePartyRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true; // 공개 API(레이드 상세와 동일)
+    }
+
+    public function rules(): array
+    {
+        return [
+            'exclude' => ['nullable', 'array', 'max:500'],
+            'exclude.*' => ['string', 'max:40'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:1000'],
+        ];
+    }
+
+    /** @return list<string> 중복 제거한 제외 캐릭터 external_key 목록 */
+    public function excludeKeys(): array
+    {
+        return collect($this->validated('exclude') ?? [])
+            ->map(fn ($key) => (string) $key)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function pageNumber(): int
+    {
+        return (int) ($this->validated('page') ?? 1);
+    }
+}

@@ -1,0 +1,158 @@
+<template>
+  <section v-if="visible" class="sgr-alt">
+    <h4 class="sgr-alt-title">
+      🏆 미보유 제외 실전 편성
+      <span v-if="result" class="sgr-count">{{ result.total_count.toLocaleString() }}</span>
+    </h4>
+
+    <p v-if="ownedCount === 0" class="sgr-empty">
+      내 캐릭터 탭에서 보유 캐릭터를 먼저 체크해 주세요.
+    </p>
+
+    <template v-else>
+      <p v-if="result && result.mode === 'squad'" class="sgr-alt-notice">
+        전체 편성이 모두 가능한 랭커가 적어 부대 단위로 보여드려요.
+      </p>
+
+      <p v-if="error" class="sgr-empty">{{ error }}</p>
+      <p v-else-if="result && result.parties.length === 0" class="sgr-empty">
+        미보유 캐릭터를 제외하고 클리어한 편성이 없어요.
+      </p>
+
+      <div class="sgr-party-list">
+        <article v-for="(party, i) in parties" :key="i" class="sgr-party sgr-alt-party">
+          <div class="sgr-party-head">
+            <strong class="sgr-party-title">{{ party.title }}</strong>
+            <span v-if="party.score" class="sgr-alt-score">{{ Number(party.score).toLocaleString() }}</span>
+          </div>
+          <div class="sgr-alt-members">
+            <div v-for="(m, j) in party.members" :key="j" class="sgr-alt-member">
+              <img v-if="m.image_url" :src="m.image_url" :alt="m.name" loading="lazy" />
+              <span v-else class="sgr-member-placeholder">{{ (m.name || '?').slice(0, 2) }}</span>
+              <span class="sgr-alt-member-name">{{ m.name }}</span>
+              <span v-if="m.meta?.is_assist" class="sgr-alt-assist">조력</span>
+              <span v-else-if="memberCaption(m)" class="sgr-alt-caption">{{ memberCaption(m) }}</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <p v-if="loading" class="sgr-empty">실전 편성을 불러오는 중…</p>
+
+      <div class="sgr-alt-foot">
+        <button
+          v-if="result && result.has_more && !loading"
+          type="button"
+          class="sgr-btn"
+          @click="loadMore"
+        >더 보기</button>
+        <a
+          v-if="sourceHref"
+          :href="sourceHref"
+          target="_blank"
+          rel="noopener"
+          class="sgr-source-link"
+        >{{ sourceName }} 출처 ↗</a>
+      </div>
+    </template>
+  </section>
+</template>
+
+<script setup>
+import { computed, ref, watch } from 'vue';
+import { raidApi } from '../api';
+
+const props = defineProps({
+  raid: { type: Object, required: true },
+  pool: { type: Object, default: () => ({}) },
+});
+
+const characters = ref(null); // 게임 전체 활성 캐릭터 (미보유 계산용)
+const result = ref(null);
+const parties = ref([]);
+const page = ref(1);
+const loading = ref(false);
+const error = ref('');
+const unsupported = ref(false);
+
+// 동일 조건(레이드+보유 상태) 재호출 방지용 세션 캐시
+const sessionCache = new Map();
+
+const ownedCount = computed(() => Object.values(props.pool).filter((e) => e?.owned).length);
+const visible = computed(() => !unsupported.value);
+const sourceName = computed(() => ({ mollulog: '몰루로그', letsdoro: '레츠도로' }[result.value?.source] ?? result.value?.source));
+const sourceHref = computed(() => {
+  const url = result.value?.source_url;
+  return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null;
+});
+
+function memberCaption(m) {
+  const tier = m.meta?.tier;
+  const weapon = m.meta?.weapon_tier;
+  if (!tier) return '';
+  return `★${tier}${weapon ? ` · 전${weapon}` : ''}`;
+}
+
+/** 미보유 external_key 목록 (API 상한 500개) */
+function excludeKeys() {
+  return characters.value
+    .filter((c) => props.pool[c.external_key]?.owned !== true)
+    .map((c) => c.external_key)
+    .slice(0, 500);
+}
+
+async function load(nextPage = 1) {
+  if (loading.value) return;
+  loading.value = true;
+  error.value = '';
+  try {
+    if (characters.value === null) {
+      const res = await raidApi.getCharacters(props.raid.game.slug);
+      characters.value = res.data;
+    }
+    if (ownedCount.value === 0) return; // 안내 문구만 표시
+
+    const cacheKey = `${props.raid.id}:${nextPage}:${Object.keys(props.pool).filter((k) => props.pool[k]?.owned).sort().join(',')}`;
+    let data = sessionCache.get(cacheKey);
+    if (!data) {
+      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), nextPage);
+      sessionCache.set(cacheKey, data);
+    }
+
+    if (data.supported === false) {
+      unsupported.value = true;
+      return;
+    }
+    result.value = data;
+    parties.value = nextPage === 1 ? data.parties : [...parties.value, ...data.parties];
+    page.value = nextPage;
+  } catch (e) {
+    // 보유 체크 연타 등으로 스로틀(429)에 걸리면 직전 결과를 유지하고 조용히 넘어간다
+    if (e.response?.status === 429) {
+      console.warn('실전 편성 조회 스로틀 — 직전 결과 유지');
+      return;
+    }
+    console.error('실전 편성 조회 실패', e);
+    error.value = '실전 편성을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  } finally {
+    loading.value = false;
+  }
+}
+
+function loadMore() {
+  load(page.value + 1);
+}
+
+// 마운트 시 + 보유 풀이 바뀌면 1페이지부터 다시.
+// 보유 체크를 연달아 바꾸는 동안 매번 쏘지 않도록 디바운스(500ms) 후 최종 상태로 1회 조회.
+let reloadTimer = null;
+watch(
+  () => [props.raid.id, ownedCount.value],
+  ([raidId], [prevRaidId] = []) => {
+    if (raidId !== prevRaidId) sessionCache.clear(); // 레이드가 바뀌면 캐시도 비워 메모리 증가 방지
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => { parties.value = []; result.value = null; load(1); }, 500);
+  },
+  { immediate: true },
+);
+</script>

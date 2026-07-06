@@ -863,3 +863,72 @@
     opacity: 0.45;
     cursor: not-allowed;
 }
+
+/* 미보유 제외 실전 편성 */
+.sgr-alt {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-color);
+}
+.sgr-alt-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sgr-alt-notice {
+    font-size: 0.8rem;
+    color: #fbbf24;
+    margin-bottom: 10px;
+}
+.sgr-alt-party { padding: 12px 14px; }
+.sgr-alt-score {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.sgr-alt-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+.sgr-alt-member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 64px;
+    text-align: center;
+}
+.sgr-alt-member img {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+}
+.sgr-alt-member-name {
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    line-height: 1.25;
+    word-break: keep-all;
+}
+.sgr-alt-caption { font-size: 0.68rem; color: var(--text-secondary); }
+.sgr-alt-assist {
+    font-size: 0.66rem;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+.sgr-alt-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+}

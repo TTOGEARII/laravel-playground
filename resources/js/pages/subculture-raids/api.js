@@ -17,6 +17,16 @@ export const raidApi = {
         const { data } = await axios.get(`${API_BASE}/characters`, { params: { game: gameSlug } });
         return data; // { data: [...], meta: { growth_schema } }
     },
+    /**
+     * 미보유 제외 실전 편성 조회 (블아·니케만 supported=true).
+     * @param {number} raidId
+     * @param {string[]} exclude 미보유 캐릭터 external_key 배열 (max 500)
+     * @param {number} page
+     */
+    async getAlternativeParties(raidId, exclude, page = 1) {
+        const { data } = await axios.post(`${API_BASE}/raids/${raidId}/alternative-parties`, { exclude, page });
+        return data.data; // { supported, mode, total_count, parties, source, source_url }
+    },
 };
 
 /**

@@ -88,3 +88,13 @@ Schedule::command('subculture:extract-substitutes')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(30)
     ->runInBackground();
+
+// database 캐시 드라이버는 만료 행을 스스로 지우지 않는다 — 유저별 캐시 키(실전 편성 등)가
+// 쌓여 cache 테이블이 계속 부풀지 않도록 만료분을 매일 정리한다.
+Schedule::call(fn () => \Illuminate\Support\Facades\DB::table('cache')
+    ->where('expiration', '<', now()->getTimestamp())
+    ->delete())
+    ->name('cache-prune-expired')
+    ->dailyAt('04:40')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->when(fn () => config('cache.default') === 'database');

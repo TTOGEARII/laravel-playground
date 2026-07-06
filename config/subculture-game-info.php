@@ -366,5 +366,24 @@ return [
             // 본문 요청 간 딜레이(초) — 커뮤니티 차단 방지(다른 크롤러의 crawl_delay 와 동일 원칙)
             'fetch_delay_seconds' => (float) env('SGI_SUB_FETCH_DELAY', 1.0),
         ],
+
+        // 미보유 캐릭터 제외 실전 편성 — 원본 랭킹 사이트 프록시(블아=몰루로그, 니케=레츠도로).
+        'alternative_parties' => [
+            'per_page' => (int) env('SGI_ALT_PARTY_PER_PAGE', 5),
+            // 니케 랭커 단위 필터 결과가 이 수 미만이면 스쿼드 단위 필터로 보강한다
+            'min_ranker_results' => 3,
+            'timeout' => 10,
+            'mollulog' => [
+                'graphql_endpoint' => 'https://api.baql.net/graphql',
+                'ranks_endpoint' => 'https://ranks.baql.net/v1/ranks',
+                'schedule_cache_ttl' => 86400, // 시즌 매핑(GraphQL) — 일정은 거의 안 바뀌므로 1일
+                'ranks_cache_ttl' => 3600,     // 랭킹(protobuf) — CloudFront 엣지 캐시(24h)와 별개로 우리 쪽 1시간
+            ],
+            'letsdoro' => [
+                'endpoint' => 'https://api3.letsdoro.com/api/soloraid',
+                'server' => 'KR',
+                'cache_ttl' => 1800, // 원본 응답이 no-cache 라 우리 쪽 캐시 필수(30분)
+            ],
+        ],
     ],
 ];
