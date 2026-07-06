@@ -107,6 +107,28 @@ class CodeSyncService
             ->update(['status' => CodeStatus::Expired->value, 'updated_at' => Carbon::now()]);
     }
 
+    /**
+     * 만료된 지 유예기간(기본 7일)을 넘긴 코드를 DB에서 삭제한다(교환완료 기록도 cascade 삭제).
+     * 기준: 만료일(expires_at)이 있으면 그로부터 N일, 없으면 만료 처리 시각(updated_at)으로부터 N일.
+     * 바로 삭제하지 않고 유예를 두는 이유: 재등장(재검증)·직전 만료 코드 확인 여지를 남기기 위함.
+     */
+    public function pruneExpired(?int $graceDays = null): int
+    {
+        $graceDays ??= (int) config('subculture-game-info.prune_grace_days', 7);
+        $cutoff = Carbon::now()->subDays(max(0, $graceDays));
+
+        return RedeemCode::query()
+            ->where('status', CodeStatus::Expired->value)
+            ->where(function ($q) use ($cutoff) {
+                $q->where(function ($q2) use ($cutoff) {
+                    $q2->whereNotNull('expires_at')->where('expires_at', '<', $cutoff);
+                })->orWhere(function ($q2) use ($cutoff) {
+                    $q2->whereNull('expires_at')->where('updated_at', '<', $cutoff);
+                });
+            })
+            ->delete();
+    }
+
     private function effectiveStatus(CollectedCodeDto $dto): CodeStatus
     {
         if ($dto->expiresAt !== null && $dto->expiresAt->isPast()) {

@@ -24,10 +24,10 @@ class CollectCodesCommand extends Command
         $stats = $collector->collect($includeCommunity, $verify);
 
         $this->table(
-            ['수집(raw)', '신규', '갱신', '스킵', '교차검증', '검색만료', '만료정리'],
+            ['수집(raw)', '신규', '갱신', '스킵', '교차검증', '검색만료', '만료정리', '삭제'],
             [[
                 $stats['collected'], $stats['created'], $stats['updated'], $stats['skipped'],
-                $stats['corroborated'], $stats['search_expired'], $stats['expired'],
+                $stats['corroborated'], $stats['search_expired'], $stats['expired'], $stats['pruned'],
             ]]
         );
         $this->info('완료.');

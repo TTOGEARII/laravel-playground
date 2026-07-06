@@ -282,4 +282,43 @@ class CodeSyncServiceTest extends TestCase
 
         $this->assertSame(0, $this->sync->markExpiredPastDue());
     }
+
+    // ---------------------------------------------------------------- pruneExpired
+    public function test_prune_deletes_codes_expired_beyond_grace_by_expiry_date(): void
+    {
+        $this->game();
+        $this->sync->sync([
+            $this->dto(['code' => 'OLDEXP0001', 'status' => CodeStatus::Expired, 'expiresAt' => Carbon::now()->subDays(8)]),  // 유예 초과 → 삭제
+            $this->dto(['code' => 'RECENTEXP1', 'status' => CodeStatus::Expired, 'expiresAt' => Carbon::now()->subDays(3)]),  // 유예 내 → 유지
+        ], usableOnly: false);
+        $this->sync->sync([
+            $this->dto(['code' => 'ACTIVE0001', 'status' => CodeStatus::Active, 'expiresAt' => Carbon::now()->addDays(5)]),  // 활성 → 유지
+        ], usableOnly: false);
+
+        $deleted = $this->sync->pruneExpired(7);
+
+        $this->assertSame(1, $deleted);
+        $this->assertNull(RedeemCode::where('code', 'OLDEXP0001')->first());
+        $this->assertNotNull(RedeemCode::where('code', 'RECENTEXP1')->first());
+        $this->assertNotNull(RedeemCode::where('code', 'ACTIVE0001')->first());
+    }
+
+    public function test_prune_uses_updated_at_when_no_expiry_date(): void
+    {
+        $this->game();
+        $this->sync->sync([
+            $this->dto(['code' => 'NULLEXPOLD', 'status' => CodeStatus::Expired, 'expiresAt' => null]),
+            $this->dto(['code' => 'NULLEXPNEW', 'status' => CodeStatus::Expired, 'expiresAt' => null]),
+        ], usableOnly: false);
+
+        // 만료일 없는 코드는 만료 처리 시각(updated_at) 기준: 하나는 오래전, 하나는 최근
+        RedeemCode::where('code', 'NULLEXPOLD')->update(['updated_at' => Carbon::now()->subDays(10)]);
+        RedeemCode::where('code', 'NULLEXPNEW')->update(['updated_at' => Carbon::now()->subDays(2)]);
+
+        $deleted = $this->sync->pruneExpired(7);
+
+        $this->assertSame(1, $deleted);
+        $this->assertNull(RedeemCode::where('code', 'NULLEXPOLD')->first());
+        $this->assertNotNull(RedeemCode::where('code', 'NULLEXPNEW')->first());
+    }
 }

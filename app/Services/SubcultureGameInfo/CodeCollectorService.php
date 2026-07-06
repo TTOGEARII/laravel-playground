@@ -18,7 +18,7 @@ class CodeCollectorService
     ) {}
 
     /**
-     * @return array{created:int, updated:int, skipped:int, collected:int, expired:int, corroborated:int, search_expired:int}
+     * @return array{created:int, updated:int, skipped:int, collected:int, expired:int, corroborated:int, search_expired:int, pruned:int}
      */
     public function collect(bool $includeCommunity = true, bool $verify = true): array
     {
@@ -39,6 +39,9 @@ class CodeCollectorService
 
         // 만료일이 지난 코드 일괄 정리(검색 만료 처리 반영 후).
         $stats['expired'] = $this->sync->markExpiredPastDue();
+
+        // 만료된 지 유예기간(기본 7일)을 넘긴 코드는 DB에서 삭제.
+        $stats['pruned'] = $this->sync->pruneExpired();
 
         return $stats;
     }
