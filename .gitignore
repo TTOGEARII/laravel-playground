@@ -24,3 +24,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /storage/app/playwright
+
+# Claude Code 로컬 설정/지침 — 저장소에 올리지 않는다
+/CLAUDE.md
+/.claude/
+/.mcp.json
