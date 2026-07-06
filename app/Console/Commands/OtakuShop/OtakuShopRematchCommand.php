@@ -191,19 +191,60 @@ class OtakuShopRematchCommand extends Command
 
     /**
      * 같은 고유값(maker_code)을 가진 상품 그룹(2건 이상).
+     * 품번 번호는 제조사가 다르면 겹칠 수 있어(예: 넨도 No.3057 미쿠 vs 니케 라피),
+     * 같은 품번 그룹이라도 IP(작품)가 다르면 별도 그룹으로 분할해 오병합을 막는다.
      *
      * @return array<int, array<int, int>>
      */
     private function makerCodeGroups(): array
     {
-        return OtakuProduct::query()
+        $byMakerCode = OtakuProduct::query()
             ->whereNotNull('ok_product_maker_code')
-            ->selectRaw('ok_product_maker_code, GROUP_CONCAT(ok_product_id) as ids, COUNT(*) as cnt')
-            ->groupBy('ok_product_maker_code')
-            ->havingRaw('COUNT(*) > 1')
-            ->pluck('ids')
-            ->map(fn ($ids) => array_map('intval', explode(',', $ids)))
-            ->all();
+            ->get(['ok_product_id', 'ok_product_maker_code', 'ok_product_ip_id'])
+            ->groupBy('ok_product_maker_code');
+
+        $groups = [];
+        foreach ($byMakerCode as $products) {
+            if ($products->count() < 2) {
+                continue;
+            }
+            foreach ($this->splitByIp($products) as $ids) {
+                if (count($ids) > 1) {
+                    $groups[] = $ids;
+                }
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * 같은 품번 그룹을 IP(작품)별로 분할한다.
+     * non-null IP가 1종 이하면 기존처럼 전부 한 그룹(IP 미추출 행 포함 — 분리 회귀 방지),
+     * 2종 이상이면 IP별로 나누고 IP 미추출(null) 행은 어느 작품인지 알 수 없어 병합에서 제외한다.
+     *
+     * @param  \Illuminate\Support\Collection<int, OtakuProduct>  $products
+     * @return array<int, array<int, int>>
+     */
+    private function splitByIp($products): array
+    {
+        $byIp = [];
+        $nullIpIds = [];
+        foreach ($products as $product) {
+            if ($product->ok_product_ip_id === null) {
+                $nullIpIds[] = (int) $product->ok_product_id;
+            } else {
+                $byIp[(int) $product->ok_product_ip_id][] = (int) $product->ok_product_id;
+            }
+        }
+
+        if (count($byIp) <= 1) {
+            $onlyIpIds = $byIp === [] ? [] : reset($byIp);
+
+            return [array_merge($onlyIpIds, $nullIpIds)];
+        }
+
+        return array_values($byIp);
     }
 
     /**

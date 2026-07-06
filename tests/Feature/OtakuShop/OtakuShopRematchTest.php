@@ -33,13 +33,19 @@ class OtakuShopRematchTest extends TestCase
 
     private function product(string $code, string $title, ?string $makerCode, int $shopId, string $extId, float $price): OtakuProduct
     {
+        return $this->productWithIp($code, $title, $makerCode, $shopId, $extId, $price, $this->ipId);
+    }
+
+    /** IP를 명시(null 포함)해 상품+오퍼를 시딩한다(품번 IP 분할 테스트용). */
+    private function productWithIp(string $code, string $title, ?string $makerCode, int $shopId, string $extId, float $price, ?int $ipId): OtakuProduct
+    {
         $p = OtakuProduct::create([
             'ok_product_code' => $code,
             'ok_product_title' => $title,
             'ok_product_maker_code' => $makerCode,
             'ok_product_active_flg' => true,
             'ok_product_cate_id' => $this->cateId,
-            'ok_product_ip_id' => $this->ipId,
+            'ok_product_ip_id' => $ipId,
         ]);
         OtakuOffer::create([
             'ok_offer_product_id' => $p->ok_product_id,
@@ -71,6 +77,34 @@ class OtakuShopRematchTest extends TestCase
         // maker code 없고 토큰 1개 차이지만 같은 ip+카테고리(피규어) + 스케일 + 포함관계.
         $this->product('p1', '블루 아카이브 아스나 교복 메모리얼 로비 1/7 피규어', null, $this->shopA, 'A1', 250000);
         $this->product('p2', '블루 아카이브 아스나 교복 메모리얼 로비 교스나 1/7 스케일 피규어', null, $this->shopB, 'B1', 240000);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(1, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
+    public function test_rematch_does_not_merge_same_maker_number_across_different_ips(): void
+    {
+        $mikuIpId = OtakuIp::create(['ok_ip_code' => '하츠네미쿠', 'ok_ip_label' => '하츠네미쿠', 'ok_ip_sort' => 2])->ok_ip_id;
+        $nikkeIpId = OtakuIp::create(['ok_ip_code' => '승리의여신니케', 'ok_ip_label' => '승리의여신니케', 'ok_ip_sort' => 3])->ok_ip_id;
+
+        // 제조사가 달라 넨도 번호(No.3057)가 겹치는 다른 작품의 상품들 — 품번이 같아도 병합 금지.
+        $this->productWithIp('p1', '[보컬로이드] 넨도로이드 No.3057 캐릭터 보컬 시리즈 01: 하츠네 미쿠 안경×카페 Ver.', 'nendo_3057', $this->shopA, 'A1', 70000, $mikuIpId);
+        $this->productWithIp('p2', '[승리의 여신 니케] 넨도로이드 No.3057 라피: 레드 후드 Ver.', 'nendo_3057', $this->shopB, 'B1', 72000, $nikkeIpId);
+        // IP가 2종 이상인 그룹에선 IP 미추출(null) 행도 어느 작품인지 알 수 없으므로 병합 제외.
+        $this->productWithIp('p3', '넨도로이드 No.3057 캐릭터 상품', 'nendo_3057', $this->shopB, 'B2', 71000, null);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(3, OtakuProduct::count(), '품번이 같아도 IP가 다르거나 불명이면 병합하지 않아야 함');
+    }
+
+    public function test_rematch_null_ip_joins_group_with_single_ip(): void
+    {
+        // 같은 품번 그룹에 non-null IP가 1종뿐이면, IP 미추출(null) 행도 그쪽에 합류해 병합된다(분리 회귀 방지).
+        $this->product('p1', '[리코리스 리코일] 넨도로이드 넘버1955 니시키기 치사토', 'nendo_1955', $this->shopA, 'A1', 63000);
+        $this->productWithIp('p2', '넨도로이드 No.1955 니시키기 치사토', null, $this->shopB, 'B1', 65000, null);
 
         $this->artisan('otaku-shop:rematch')->assertSuccessful();
 
