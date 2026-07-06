@@ -34,6 +34,12 @@ final readonly class CrawledRaidData
 
         $startsAt = self::parseDate($data['starts_at'] ?? null);
         $endsAt = self::parseDate($data['ends_at'] ?? null);
+        // 종료가 날짜만 오면(시각 00:00) 그날 끝까지 진행 중으로 본다.
+        // (몰루로그 등은 표시상 마지막 날짜만 주는데, 실제 종료는 그날 새벽~오전이라
+        //  00:00 기준으로는 마지막 날 내내 '종료'로 잘못 표시된다)
+        if ($endsAt !== null && $endsAt->isStartOfDay()) {
+            $endsAt = $endsAt->endOfDay();
+        }
 
         $externalKey = trim((string) ($data['external_key'] ?? ''));
         if ($externalKey === '') {

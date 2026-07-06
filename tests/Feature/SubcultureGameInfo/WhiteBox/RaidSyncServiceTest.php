@@ -85,6 +85,12 @@ class RaidSyncServiceTest extends TestCase
         $stats = $sync->sync($this->game, 'mollulog', [$item]);
         $this->assertSame(['raids' => 1, 'parties' => 1, 'members' => 1, 'missing_members' => 0, 'skipped' => 0], $stats);
 
+        // 날짜만 온 종료일은 그날 끝(23:59:59)으로 저장 — 마지막 날 '종료' 오표시 방지
+        $this->assertSame(
+            '2026-07-07 23:59:59',
+            $this->game->raids()->first()->ends_at->format('Y-m-d H:i:s'),
+        );
+
         // 수동 편성 추가 후 재크롤 → 수동은 남고 크롤 편성은 재구성
         $raid = $this->game->raids()->first();
         $raid->parties()->create(['title' => '내가 만든 편성', 'sort' => 99, 'source' => 'manual']);
