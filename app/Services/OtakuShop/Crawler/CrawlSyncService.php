@@ -250,6 +250,32 @@ class CrawlSyncService
                 : null;
         }
 
+        // 부속품 앵커 가드(자가치유): 과거 매칭 오염으로 부속품(전용 케이스 등) listing 오퍼가 본체 상품에
+        // 붙어 있으면(또는 그 반대), 앵커를 버리고 별도 상품으로 분리한다. upsertOffer 가 오퍼의
+        // product_id 를 재지정하므로 다음 크롤에서 오염된 기존 데이터가 자동으로 풀린다.
+        if ($product !== null
+            && self::looksLikeAccessory($dto->title) !== self::looksLikeAccessory((string) $product->ok_product_title)) {
+            if ($product->ok_product_code === $bundle['key']) {
+                // 키 드리프트로 상대 상품이 이번 번들 키를 점유 중이면, 자기 제목 기준 키로 되돌려 키를 비운다.
+                // 폴백 키가 이미 점유돼 비울 수 없으면 유니크 충돌을 피해 이번 런은 현상 유지한다.
+                $fallbackKey = $this->normalizer->normalizeKey(
+                    (string) $product->ok_product_title,
+                    $product->ok_product_brand_label,
+                );
+                if ($fallbackKey !== $bundle['key']
+                    && ! OtakuProduct::where('ok_product_code', $fallbackKey)->exists()) {
+                    $product->ok_product_code = $fallbackKey;
+                    $product->save();
+                    $product = null;
+                }
+            } else {
+                // 이번 번들 키의 올바른 소유자가 따로 있으면 그쪽을 재사용, 없으면 신규 생성으로 분리.
+                $product = OtakuProduct::where('ok_product_code', $bundle['key'])
+                    ->where('ok_product_id', '!=', $product->ok_product_id)
+                    ->first();
+            }
+        }
+
         // 정확 키로 못 묶었고 고유값(maker code)도 없으면, 같은 ip+카테고리 안에서
         // 이름 토큰이 포함관계인 기존 상품을 찾아 묶는다(보수적 이름 유사 매칭).
         // 굿즈류(클리어파일/스티커/케이스 등)는 캐릭터·번호만 다른 변형이 많아 오병합 위험이 커,

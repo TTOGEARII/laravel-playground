@@ -309,6 +309,46 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame('jan_4580590189997', OtakuProduct::first()->ok_product_maker_code);
     }
 
+    public function test_recrawl_splits_accessory_offer_stuck_on_figure_product(): void
+    {
+        $this->seedShops();
+        $service = $this->app->make(CrawlSyncService::class);
+
+        // 과거 매칭 오염 상태 재현: 본체 상품 하나에 본체 listing 과 부속품(케이스) listing 오퍼가 함께 붙어 있다.
+        $product = OtakuProduct::create([
+            'ok_product_code' => 'mkr_old_contaminated',
+            'ok_product_title' => '[리코리스 리코일] 넨도로이드 No.1955 니시키기 치사토 (재판)',
+            'ok_product_maker_code' => 'nendo_1955',
+            'ok_product_active_flg' => true,
+        ]);
+        $shopIds = OtakuShop::pluck('ok_shop_id', 'ok_shop_code');
+        foreach ([['dokidokigoods', 'A1', 74000], ['ttabbaemall', 'B1', 19000]] as [$shopCode, $extId, $price]) {
+            OtakuOffer::create([
+                'ok_offer_product_id' => $product->ok_product_id,
+                'ok_offer_shop_id' => $shopIds[$shopCode],
+                'ok_offer_external_id' => $extId,
+                'ok_offer_currency' => 'KRW',
+                'ok_offer_price' => $price,
+                'ok_offer_local_price' => $price,
+                'ok_offer_available_flg' => true,
+                'ok_offer_external_url' => 'https://example.com/'.$extId,
+                'ok_offer_collected_dt' => Carbon::now(),
+            ]);
+        }
+
+        // 재크롤: 부속품 앵커 가드가 케이스 오퍼를 별도 상품으로 분리한다(자가치유).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[입고완료][굿스마일컴퍼니][리코리스 리코일] 넨도로이드 No.1955 니시키기 치사토 (재판)', 74000),
+            $this->dto('ttabbaemall', 'B1', '판도라 넨도로이드 No.1955 리코리스 리코일 니시키기 치사토 피규어 전용 아크릴 케이스', 19000),
+        ], incremental: true);
+
+        $this->assertSame(2, OtakuProduct::count());
+        $bodyOffer = OtakuOffer::where('ok_offer_external_id', 'A1')->first();
+        $caseOffer = OtakuOffer::where('ok_offer_external_id', 'B1')->first();
+        $this->assertSame((int) $product->ok_product_id, (int) $bodyOffer->ok_offer_product_id);
+        $this->assertNotSame((int) $bodyOffer->ok_offer_product_id, (int) $caseOffer->ok_offer_product_id);
+    }
+
     public function test_accessory_detection_and_maker_code_sanitizing_rules(): void
     {
         // 부속품 판별(공용 헬퍼): 케이스/아크릴 등 키워드가 있으면 부속품.
