@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\OtakuShop;
 
+use App\Models\OtakuShop\OtakuIp;
 use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
 use App\Models\OtakuShop\OtakuShop;
@@ -307,6 +308,77 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(1, OtakuProduct::count());
         $this->assertSame(2, OtakuOffer::count());
         $this->assertSame('jan_4580590189997', OtakuProduct::first()->ok_product_maker_code);
+    }
+
+    public function test_same_normalized_title_different_ip_not_bundled_same_run(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 말머리([주술회전]/[은혼])는 정규화에서 제거돼 두 굿즈의 정규화 키가 같아진다.
+        // IP 접미 키가 없으면 다른 작품의 동일 제목 상품이 한 상품으로 합쳐지는 케이스(실제 운영 사례).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[주술회전] 룩업 미니어처 컬렉션 4개입 BOX', 88000),
+            $this->dto('ttabbaemall', 'B1', '[은혼] 룩업 미니어처 컬렉션 4개입 BOX', 88000),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
+    public function test_legacy_shared_key_product_splits_by_ip_without_unique_collision(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 과거 상태 재현: 평키(pr_, IP 접미 없음) 시절 두 작품의 동일 제목 굿즈가 한 상품으로 합쳐져 있다.
+        $legacy = OtakuProduct::create([
+            'ok_product_code' => 'pr_legacyshared',
+            'ok_product_title' => '[주술회전] 룩업 미니어처 컬렉션 4개입 BOX',
+            'ok_product_ip_id' => OtakuIp::where('ok_ip_code', '주술회전')->first()->ok_ip_id,
+            'ok_product_active_flg' => true,
+        ]);
+        $shopIds = OtakuShop::pluck('ok_shop_id', 'ok_shop_code');
+        foreach ([['dokidokigoods', 'A1'], ['ttabbaemall', 'B1']] as [$shopCode, $extId]) {
+            OtakuOffer::create([
+                'ok_offer_product_id' => $legacy->ok_product_id,
+                'ok_offer_shop_id' => $shopIds[$shopCode],
+                'ok_offer_external_id' => $extId,
+                'ok_offer_currency' => 'KRW',
+                'ok_offer_price' => 88000,
+                'ok_offer_local_price' => 88000,
+                'ok_offer_available_flg' => true,
+                'ok_offer_external_url' => 'https://example.com/'.$extId,
+                'ok_offer_collected_dt' => Carbon::now(),
+            ]);
+        }
+
+        // 재크롤: IP 충돌 가드가 은혼 오퍼를 별도 상품으로 분리하며, 유니크 키 충돌(23000) 없이 완료돼야 한다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[주술회전] 룩업 미니어처 컬렉션 4개입 BOX', 88000),
+            $this->dto('ttabbaemall', 'B1', '[은혼] 룩업 미니어처 컬렉션 4개입 BOX', 88000),
+        ], incremental: true);
+
+        $this->assertSame(2, OtakuProduct::count());
+        $jujutsuOffer = OtakuOffer::where('ok_offer_external_id', 'A1')->first();
+        $gintamaOffer = OtakuOffer::where('ok_offer_external_id', 'B1')->first();
+        $this->assertSame((int) $legacy->ok_product_id, (int) $jujutsuOffer->ok_offer_product_id);
+        $this->assertNotSame((int) $legacy->ok_product_id, (int) $gintamaOffer->ok_offer_product_id);
+    }
+
+    public function test_ipless_title_joins_single_ip_bundle_same_run(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 같은 상품인데 한쪽 제목에만 IP 표기가 있는 경우 — IP 접미 키 도입으로 분리되지 않아야 한다(흡수 규칙).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[블루 아카이브] 아스나 클리어 파일', 5000),
+            $this->dto('ttabbaemall', 'B1', '아스나 클리어 파일', 4800),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
     }
 
     public function test_recrawl_splits_accessory_offer_stuck_on_figure_product(): void

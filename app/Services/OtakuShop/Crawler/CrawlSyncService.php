@@ -120,7 +120,7 @@ class CrawlSyncService
      *
      * @param  array<int, CrawledProductDto>  $crawledProducts
      * @param  array<string, int>  $shopIds  shop_code => ok_shop_id
-     * @return array<string, array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
+     * @return array<string, array{key: string, base: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
      */
     private function groupByProduct(array $crawledProducts, array $shopIds): array
     {
@@ -136,18 +136,20 @@ class CrawlSyncService
             // 같은 코드가 나와 동일상품으로 정확히 묶인다. 없으면 기존 제목 정규화 키로 폴백.
             // 단, 부속품(전용 케이스 등) 제목에는 본체 품번이 그대로 들어가므로 라인넘버형 품번은
             // 버린다(sanitizeMakerCode) — 본체와 같은 키로 병합돼 가격비교가 오염되는 것을 방지.
-            // 또 넨도 번호 등 품번은 제조사가 다르면 번호가 겹칠 수 있어(예: 넨도 No.3057 미쿠 vs 니케 라피)
-            // IP(작품) 코드를 키에 함께 넣어, 서로 다른 작품이 같은 번들로 묶이지 않게 한다.
+            // 또 품번 번호는 제조사가 다르면 겹칠 수 있고(예: 넨도 No.3057 미쿠 vs 니케 라피),
+            // 정규화 키도 말머리([은혼]/[주술회전] 등)가 제거돼 다른 작품의 동일 제목 굿즈가 같은 키가
+            // 될 수 있어 — 베이스 키에 IP(작품) 접미를 붙여 서로 다른 작품이 같은 번들로 묶이지 않게 한다.
             $makerCode = self::sanitizeMakerCode(
                 $dto->makerCode ?? $this->normalizer->extractMakerCode($dto->title),
                 $dto->title,
             );
-            $ipCode = $makerCode !== null ? $this->normalizer->extractIpCode($dto->title) : null;
-            $key = $makerCode !== null
-                ? 'mkr_'.md5($makerCode.'|'.($ipCode ?? ''))
+            $ipCode = $this->normalizer->extractIpCode($dto->title);
+            $base = $makerCode !== null
+                ? 'mkr_'.md5($makerCode)
                 : $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
+            $key = $ipCode !== null ? $base.'-'.substr(md5($ipCode), 0, 8) : $base;
 
-            $bundles[$key] ??= ['key' => $key, 'makerCode' => $makerCode, 'ipCode' => $ipCode, 'dto' => $dto, 'offers' => []];
+            $bundles[$key] ??= ['key' => $key, 'base' => $base, 'makerCode' => $makerCode, 'ipCode' => $ipCode, 'dto' => $dto, 'offers' => []];
 
             $existing = $bundles[$key]['offers'][$shopId] ?? null;
             if ($existing === null || $this->preferOffer($dto, $existing)) {
@@ -155,32 +157,32 @@ class CrawlSyncService
             }
         }
 
-        return $this->absorbIplessMakerBundles($bundles);
+        return $this->absorbIplessBundles($bundles);
     }
 
     /**
-     * 2차 패스: 제목에서 IP를 못 뽑은(null) 품번 번들을, 같은 품번의 IP付 번들이
-     * "정확히 1개"일 때만 그쪽으로 흡수한다. 제목에 작품명이 없는 쇼핑몰 표기가
+     * 2차 패스: 제목에서 IP를 못 뽑은(null) 번들을, 같은 베이스 키(품번/정규화 제목)의
+     * IP付 번들이 "정확히 1개"일 때만 그쪽으로 흡수한다. 제목에 작품명이 없는 쇼핑몰 표기가
      * 같은 상품인데도 분리 적재되는 회귀를 막되, IP付 번들이 2개 이상이면
      * 어느 작품인지 판단할 수 없으므로 흡수하지 않는다(과병합 방지).
      *
-     * @param  array<string, array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>  $bundles
-     * @return array<string, array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
+     * @param  array<string, array{key: string, base: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>  $bundles
+     * @return array<string, array{key: string, base: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
      */
-    private function absorbIplessMakerBundles(array $bundles): array
+    private function absorbIplessBundles(array $bundles): array
     {
-        $ipBundleKeysByMaker = [];
+        $ipBundleKeysByBase = [];
         foreach ($bundles as $key => $bundle) {
-            if ($bundle['makerCode'] !== null && $bundle['ipCode'] !== null) {
-                $ipBundleKeysByMaker[$bundle['makerCode']][] = $key;
+            if ($bundle['ipCode'] !== null) {
+                $ipBundleKeysByBase[$bundle['base']][] = $key;
             }
         }
 
         foreach ($bundles as $key => $bundle) {
-            if ($bundle['makerCode'] === null || $bundle['ipCode'] !== null) {
+            if ($bundle['ipCode'] !== null) {
                 continue;
             }
-            $targets = $ipBundleKeysByMaker[$bundle['makerCode']] ?? [];
+            $targets = $ipBundleKeysByBase[$bundle['base']] ?? [];
             if (count($targets) !== 1) {
                 continue;
             }
@@ -219,7 +221,7 @@ class CrawlSyncService
      *     (키를 식별자로 쓰면 사전 변경 시 동일 상품이 대량 재생성되고, 옛 오퍼가 '사라짐=품절'로 오인된다.)
      *  2) 정규화 키 매칭 — 쇼핑몰 간 동일상품 묶기(신규 listing용).
      *
-     * @param  array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
+     * @param  array{key: string, base: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
      * @param  array<string, int>  $categoryByCode
      */
     private function findOrCreateProduct(array $bundle, array $categoryByCode, array $ipIdByCode, array &$stats): OtakuProduct
@@ -287,10 +289,19 @@ class CrawlSyncService
             $product = $this->fuzzyMatchProduct($ipId, (int) $categoryId, $tokens, $scale);
         }
 
+        // 신규 생성 직전 유니크 방어: 가드(IP 충돌·부속품)가 기존 키 소유자 재사용을 거부한 경우
+        // 같은 키로 insert 하면 유니크 충돌(SQLSTATE 23000)로 크롤이 중단된다.
+        // IP id 접두 키로 구분해 생성하고, 같은 조건으로 이미 분리 생성된 상품이 있으면 재사용한다.
+        $createCode = $bundle['key'];
+        if ($product === null && OtakuProduct::where('ok_product_code', $createCode)->exists()) {
+            $createCode = mb_substr('ip'.($ipId ?? 0).'_'.$bundle['key'], 0, 50);
+            $product = OtakuProduct::where('ok_product_code', $createCode)->first();
+        }
+
         if ($product === null) {
             $stats['products_created']++;
             $product = OtakuProduct::create([
-                'ok_product_code' => $bundle['key'],
+                'ok_product_code' => $createCode,
                 'ok_product_title' => $dto->title,
                 'ok_product_subtitle' => $dto->subtitle,
                 'ok_product_brand_label' => $dto->brandLabel,
