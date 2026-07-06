@@ -53,3 +53,31 @@ Schedule::command('subculture:collect')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(20)
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| 서브컬쳐 게임 레이드 정보 (Playwright 사이드카 + 커뮤니티 공략글)
+|--------------------------------------------------------------------------
+| 캐릭터 마스터는 신캐 추가 주기가 낮아 주 1회, 레이드 일정·편성은 매일 1회,
+| 공략글 메타(가벼운 HTTP)는 하루 2회 수집한다.
+| 오타쿠샵(03~04시)·리딤코드(09/15/21시)와 시간대를 분리했다.
+| 사전 준비(브라우저 설치): PLAYWRIGHT_BROWSERS_PATH=storage/app/playwright 로
+|   ./vendor/bin/sail npm exec playwright install chromium
+*/
+Schedule::command('subculture:crawl-characters')
+    ->weeklyOn(1, '05:00') // 매주 월요일 05:00
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
+Schedule::command('subculture:crawl-raids')
+    ->dailyAt('05:30')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
+Schedule::command('subculture:collect-guides')
+    ->cron('0 8,20 * * *') // 매일 08/20시
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(15)
+    ->runInBackground();
