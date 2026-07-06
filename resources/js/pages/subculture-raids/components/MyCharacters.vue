@@ -19,6 +19,8 @@
       <label class="sgr-owned-filter"><input v-model="ownedOnly" type="checkbox" /> 보유만 보기</label>
       <span class="sgr-owned-count">보유 {{ ownedCount }} / {{ characters.length }}</span>
       <div class="sgr-toolbar-actions">
+        <button class="sgr-btn" :disabled="characters.length === 0" @click="setAllOwned(true)">전체 보유</button>
+        <button class="sgr-btn" :disabled="ownedCount === 0" @click="setAllOwned(false)">전체 해제</button>
         <button class="sgr-btn" @click="exportJson">JSON 내보내기</button>
         <button class="sgr-btn" @click="fileInput?.click()">JSON 가져오기</button>
         <input ref="fileInput" type="file" accept="application/json" class="hidden" @change="importJson" />
@@ -149,6 +151,31 @@ async function saveGrowth(growth) {
   } catch (e) {
     console.error('성장도 저장 실패', e);
     flash(e.response?.status === 422 ? '성장도 값이 올바르지 않습니다.' : '저장에 실패했습니다.');
+  }
+}
+
+/**
+ * 전체 보유/해제 일괄 변경 — 요청 1번으로 끝나도록 가져오기(벌크 upsert) 경로를 재사용한다.
+ * 해제 시에도 성장도 입력값은 유지된다(owned 플래그만 내림).
+ */
+async function setAllOwned(owned) {
+  if (!owned && !confirm('보유 체크를 모두 해제할까요? 성장도 입력값은 유지됩니다.')) return;
+  try {
+    await props.store.importData({
+      version: 1,
+      game: currentSlug.value,
+      characters: characters.value.map((c) => ({
+        external_key: c.external_key,
+        name: c.name,
+        owned,
+        growth: pool.value[c.external_key]?.growth ?? null,
+      })),
+    });
+    await selectGame(currentSlug.value);
+    flash(owned ? `전체 ${characters.value.length}명을 보유로 표시했습니다.` : '보유 체크를 모두 해제했습니다.');
+  } catch (e) {
+    console.error('일괄 변경 실패', e);
+    flash('일괄 변경에 실패했습니다.');
   }
 }
 

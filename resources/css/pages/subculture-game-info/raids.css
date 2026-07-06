@@ -657,3 +657,8 @@
     color: var(--text-secondary, #9ca3af);
     text-align: center;
 }
+
+.sgr-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
