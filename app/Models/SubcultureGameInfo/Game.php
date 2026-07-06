@@ -35,6 +35,21 @@ class Game extends Model
         return $this->hasMany(RedeemCode::class, 'subculture_game_id');
     }
 
+    public function characters(): HasMany
+    {
+        return $this->hasMany(Character::class, 'subculture_game_id');
+    }
+
+    public function raids(): HasMany
+    {
+        return $this->hasMany(Raid::class, 'subculture_game_id');
+    }
+
+    public function guidePosts(): HasMany
+    {
+        return $this->hasMany(GuidePost::class, 'subculture_game_id');
+    }
+
     /**
      * 원클릭 교환 직링크. 템플릿에 {code} 가 있으면 치환, 없으면 그대로 반환.
      * 인게임 전용(템플릿 null)이면 null.

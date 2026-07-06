@@ -263,4 +263,79 @@ return [
         'recency_days' => (int) env('SGI_VERIFY_RECENCY_DAYS', 45),
         'delay_ms' => (int) env('SGI_VERIFY_DELAY_MS', 400),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | 레이드 정보 통합 (보스 일정·추천 편성·공략글·내 캐릭터 풀)
+    |--------------------------------------------------------------------------
+    | 캐릭터/레이드 마스터는 서드파티 사이트를 Playwright 사이드카(tools/raid-crawler)로
+    | 크롤한다. 호요버스 게임은 인게임 제공이라 대상에서 제외.
+    | 공략글은 디씨 개념글·아카 추천글 목록을 HTTP 로 수집(갤러리/채널 매핑은
+    | 위 drivers.dc.galleries / drivers.arca.channels 재사용).
+    */
+    'raids' => [
+        // 레이드 기능 대상 게임(위 games 키의 부분집합)
+        'games' => ['bluearchive', 'nikke', 'trickcal', 'browndust2'],
+
+        'crawler' => [
+            'node_binary' => env('SGI_CRAWLER_NODE', 'node'),
+            'script' => base_path('tools/raid-crawler/index.mjs'),
+            // 브라우저 설치 경로. Sail 이미지가 PLAYWRIGHT_BROWSERS_PATH=0 을 컨테이너 env 로
+            // 심어두므로(.env 보다 우선) 전용 키로 명시하고 러너가 프로세스에 직접 주입한다.
+            // 설치: PLAYWRIGHT_BROWSERS_PATH=<이 경로> npx playwright install chromium
+            'browsers_path' => env('SGI_PLAYWRIGHT_BROWSERS_PATH', storage_path('app/playwright')),
+            'timeout' => (int) env('SGI_CRAWLER_TIMEOUT', 300), // Playwright 렌더링 대기 감안(초)
+            'sources' => [
+                'bluearchive' => ['source' => 'mollulog', 'base' => 'https://mollulog.net'],
+                'nikke' => ['source' => 'letsdoro', 'base' => 'https://letsdoro.com'],
+                'trickcal' => ['source' => 'triplelab', 'base' => 'https://tr.triple-lab.com'],
+                'browndust2' => ['source' => 'souseha', 'base' => 'https://browndust2-db.souseha.com'],
+            ],
+            // 이번 수집량이 기존 활성 캐릭터 수의 이 비율 미만이면(마크업 깨짐 의심)
+            // 미등장 캐릭터 비활성화를 건너뛴다.
+            'deactivate_guard_ratio' => 0.5,
+        ],
+
+        // 게임별 성장도 입력 스키마 — user_characters.growth JSON 의 계약.
+        // Vue 동적 폼 렌더링과 Form Request 동적 검증이 모두 이 정의를 따른다.
+        'growth_fields' => [
+            'bluearchive' => [
+                ['key' => 'star', 'label' => '성급', 'type' => 'select', 'options' => [1, 2, 3, 4, 5]],
+                ['key' => 'weapon_star', 'label' => '전용무기', 'type' => 'select', 'options' => [0, 1, 2, 3]],
+                ['key' => 'level', 'label' => '레벨', 'type' => 'number', 'min' => 1, 'max' => 90],
+                ['key' => 'gear_tier', 'label' => '장비 티어', 'type' => 'number', 'min' => 0, 'max' => 10],
+            ],
+            'nikke' => [
+                ['key' => 'level', 'label' => '레벨', 'type' => 'number', 'min' => 1, 'max' => 999],
+                ['key' => 'core', 'label' => '돌파/코어', 'type' => 'select', 'options' => ['미돌파', '1돌', '2돌', '3돌', '코어1', '코어2', '코어3', '코어4', '코어5', '코어6', '코어7']],
+                ['key' => 'skill1', 'label' => '스킬1', 'type' => 'number', 'min' => 1, 'max' => 10],
+                ['key' => 'skill2', 'label' => '스킬2', 'type' => 'number', 'min' => 1, 'max' => 10],
+                ['key' => 'burst', 'label' => '버스트 스킬', 'type' => 'number', 'min' => 1, 'max' => 10],
+            ],
+            'trickcal' => [
+                ['key' => 'star', 'label' => '성급', 'type' => 'select', 'options' => [1, 2, 3, 4, 5]],
+                ['key' => 'level', 'label' => '레벨', 'type' => 'number', 'min' => 1, 'max' => 300],
+            ],
+            'browndust2' => [
+                ['key' => 'plus', 'label' => '돌파(+)', 'type' => 'select', 'options' => [0, 1, 2, 3, 4, 5]],
+                ['key' => 'level', 'label' => '레벨', 'type' => 'number', 'min' => 1, 'max' => 120],
+            ],
+        ],
+
+        // 공략글 수집(디씨 개념글 · 아카 추천글) — 메타만 저장, 본문 파싱 없음.
+        'guides' => [
+            'max_posts_per_source' => (int) env('SGI_GUIDE_MAX_POSTS', 30),
+            'keep_days' => (int) env('SGI_GUIDE_KEEP_DAYS', 60),
+            // 개념글/추천글 대부분은 팬아트·유머라, 제목에 아래 키워드(또는 보스명·레이드 키워드)가
+            // 있는 글만 공략으로 인정해 저장한다.
+            'title_keywords' => ['공략', '편성', '조합', '티어', '육성', '가이드', '세팅', '파티', '클리어', '스펙', '덱', '점수', '스코어', '점수컷', '컷트라인', '무과금'],
+            // 레이드 매칭 보조 키워드(보스명 외 게임별 통칭). 제목 매칭은 boss_name + 아래 키워드.
+            'raid_keywords' => [
+                'bluearchive' => ['총력전', '대결전', '제약해제결전'],
+                'nikke' => ['솔로 레이드', '솔레', '유니온 레이드', '이상 개체'],
+                'trickcal' => ['프론티어', '차원 대충돌', '레이드'],
+                'browndust2' => ['길드 레이드', '악마성', '레이드'],
+            ],
+        ],
+    ],
 ];
