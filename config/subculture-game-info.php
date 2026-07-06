@@ -201,6 +201,15 @@ return [
                 'nikke' => '쿠폰',
             ],
             'recent_days' => (int) env('SGI_ARCA_RECENT_DAYS', 7),
+            // 공략글 수집용 카테고리(채널별 실측). 추천글(mode=best)은 팬아트 위주라
+            // 공략 전용 카테고리를 함께 수집해야 대체 캐릭터 추출 재료가 확보된다.
+            'guide_categories' => [
+                // 블아 '택틱' 카테고리는 명칭과 달리 규제 일지 연재가 점거 중이라 '정보'만 사용
+                'bluearchive' => ['정보'],
+                'nikke' => ['솔로레이드', '정보', '협동작전'],
+                'trickcal' => ['공략'],
+                'browndust2' => ['브라운정보'],
+            ],
         ],
 
         // 게임 공식 트위터(X). nitter RSS 로 접근(X 본 사이트는 로그인 벽). accounts = 게임슬러그 → 계정.
