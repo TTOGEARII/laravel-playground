@@ -103,6 +103,8 @@ class CharacterService
             'user_alias' => $data['user_alias'] ?? null,
             'example_dialogue' => $data['example_dialogue'] ?? null,
             'world_setting' => $data['world_setting'] ?? null,
+            'relationships' => $data['relationships'] ?? null,
+            'user_persona' => $data['user_persona'] ?? null,
             'speech_style' => $data['speech_style'] ?? null,
             'genre' => $data['genre'],
             'target' => $data['target'],

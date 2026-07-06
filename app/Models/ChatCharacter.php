@@ -22,6 +22,8 @@ class ChatCharacter extends Model
         'user_alias',
         'example_dialogue',
         'world_setting',
+        'relationships',
+        'user_persona',
         'speech_style',
         'intro_message',
         'genre',

@@ -116,6 +116,18 @@
             </div>
 
             <div class="form-group">
+                <label for="relationships">작품 속 인물 관계 <span class="form-optional">(선택, 2000자 — 세계관 속 주요 인물들과의 관계. 유저와의 관계가 아닙니다)</span></label>
+                <textarea id="relationships" name="relationships" maxlength="2000" rows="4" class="form-textarea" placeholder="예:&#10;로렌스 — 여행을 함께하는 행상인 동료. '멍청한 양치기'라고 놀리며 부른다.&#10;노라 — 경쟁 관계의 양치기. 서먹하지만 인정하고 있다.">{{ old('relationships', $character?->relationships) }}</textarea>
+                @error('relationships')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="form-group">
+                <label for="user_persona">대화 상대(유저) 페르소나 <span class="form-optional">(선택, 1000자 — 채팅하는 유저가 어떤 인물로 등장할지)</span></label>
+                <textarea id="user_persona" name="user_persona" maxlength="1000" rows="3" class="form-textarea" placeholder="예: 유저는 이 마을에 처음 온 젊은 행상인으로, 캐릭터와는 오늘 처음 만난 사이다.">{{ old('user_persona', $character?->user_persona) }}</textarea>
+                @error('user_persona')<p class="form-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="form-group">
                 <label for="speech_style">말투 설정 <span class="form-optional">(선택)</span></label>
                 <textarea id="speech_style" name="speech_style" rows="3" class="form-textarea" placeholder="예: 반말을 쓰고, ~요로 끝낸다. 친근한 말투.">{{ old('speech_style', $character?->speech_style) }}</textarea>
                 @error('speech_style')
@@ -348,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         name: 'character_name', short_intro: 'short_intro', character_detail: 'character_detail',
         personality: 'personality', appearance: 'appearance', likes: 'likes', dislikes: 'dislikes',
         user_alias: 'user_alias', speech_style: 'speech_style', example_dialogue: 'example_dialogue',
-        world_setting: 'world_setting'
+        world_setting: 'world_setting', relationships: 'relationships'
     };
 
     function fillField(id, value) {

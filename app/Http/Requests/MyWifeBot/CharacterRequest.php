@@ -34,6 +34,8 @@ class CharacterRequest extends FormRequest
             'user_alias' => ['nullable', 'string', 'max:50'],
             'example_dialogue' => ['nullable', 'string', 'max:2000'],
             'world_setting' => ['nullable', 'string', 'max:2000'],
+            'relationships' => ['nullable', 'string', 'max:2000'],
+            'user_persona' => ['nullable', 'string', 'max:1000'],
             'speech_style' => ['nullable', 'string'],
             'intro_message' => ['nullable', 'string', 'max:1000'],
             'genre' => ['required', Rule::enum(Genre::class)],

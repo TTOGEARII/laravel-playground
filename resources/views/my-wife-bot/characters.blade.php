@@ -54,6 +54,13 @@
                     </div>
                     <h2 class="character-name">{{ $char['name'] }}</h2>
                     <p class="character-description">{{ $char['description'] }}</p>
+                    @if(!empty($char['has_more']))
+                        <button type="button" class="character-more-button"
+                                data-name="{{ $char['name'] }}"
+                                data-image="{{ $char['image'] }}"
+                                data-intro="{{ $char['short_intro'] }}"
+                                data-detail="{{ $char['detail_full'] }}">더보기</button>
+                    @endif
                     <div class="character-actions">
                         <a href="{{ route('my-wife-bot.chat', $char['id']) }}" class="character-button">
                             대화하기
@@ -74,6 +81,25 @@
             @endforeach
         </section>
         @endif
+    </div>
+
+    {{-- 캐릭터 상세 모달 — 카드에서 잘린 설명 전문과 일러스트를 보여준다 --}}
+    <div class="character-modal" id="character-modal" hidden>
+        <div class="character-modal-backdrop" data-modal-close></div>
+        <div class="character-modal-panel" role="dialog" aria-modal="true" aria-labelledby="character-modal-name">
+            <button type="button" class="character-modal-close" data-modal-close aria-label="닫기">&times;</button>
+            <div class="character-modal-body">
+                <div class="character-modal-illust">
+                    <img id="character-modal-image" src="" alt="" hidden />
+                    <div id="character-modal-placeholder" class="character-image-placeholder" hidden>🖼</div>
+                </div>
+                <div class="character-modal-text">
+                    <h2 id="character-modal-name"></h2>
+                    <p id="character-modal-intro" class="character-modal-intro"></p>
+                    <p id="character-modal-detail" class="character-modal-detail"></p>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection
 
@@ -262,8 +288,72 @@
     color: var(--text-secondary);
     font-size: 0.9rem;
     line-height: 1.6;
-    margin-bottom: 20px;
+    margin-bottom: 8px;
     flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.character-more-button {
+    background: none;
+    border: none;
+    color: var(--accent-2);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-bottom: 12px;
+}
+.character-more-button:hover { text-decoration: underline; }
+
+/* 캐릭터 상세 모달 */
+.character-modal { position: fixed; inset: 0; z-index: 100; }
+.character-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+}
+.character-modal-panel {
+    position: relative;
+    max-width: 720px;
+    width: calc(100% - 32px);
+    max-height: calc(100vh - 80px);
+    margin: 40px auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 28px;
+    overflow-y: auto;
+}
+.character-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.character-modal-close:hover { color: var(--text-primary); }
+.character-modal-body { display: flex; gap: 24px; }
+.character-modal-illust { flex: 0 0 260px; }
+.character-modal-illust img {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    display: block;
+}
+.character-modal-text { flex: 1; min-width: 0; }
+.character-modal-text h2 { font-size: 1.375rem; margin-bottom: 8px; color: var(--text-primary); }
+.character-modal-intro { color: var(--text-primary); font-size: 0.95rem; margin-bottom: 14px; font-weight: 500; }
+.character-modal-detail { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap; }
+@media (max-width: 640px) {
+    .character-modal-body { flex-direction: column; }
+    .character-modal-illust { flex: none; max-width: 320px; margin: 0 auto; }
 }
 .character-button {
     display: inline-flex;
@@ -283,4 +373,49 @@
     box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+// 캐릭터 상세 모달 — 더보기 클릭 시 전체 설명·일러스트 표시 (백드롭/ESC/× 로 닫기)
+(function () {
+    var modal = document.getElementById('character-modal');
+    if (!modal) return;
+
+    var img = document.getElementById('character-modal-image');
+    var placeholder = document.getElementById('character-modal-placeholder');
+
+    function openModal(btn) {
+        document.getElementById('character-modal-name').textContent = btn.dataset.name || '';
+        document.getElementById('character-modal-intro').textContent = btn.dataset.intro || '';
+        document.getElementById('character-modal-detail').textContent = btn.dataset.detail || '';
+        if (btn.dataset.image) {
+            img.src = btn.dataset.image;
+            img.alt = btn.dataset.name || '';
+            img.hidden = false;
+            placeholder.hidden = true;
+        } else {
+            img.hidden = true;
+            placeholder.hidden = false;
+        }
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.character-more-button').forEach(function (btn) {
+        btn.addEventListener('click', function () { openModal(btn); });
+    });
+    modal.querySelectorAll('[data-modal-close]').forEach(function (el) {
+        el.addEventListener('click', closeModal);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+    });
+})();
+</script>
 @endpush

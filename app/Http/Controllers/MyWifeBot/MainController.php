@@ -51,6 +51,10 @@ class MainController extends Controller
             'id' => (string) $c->id,
             'name' => $c->name,
             'description' => $c->short_intro.($c->character_detail ? ' '.\Str::limit($c->character_detail, 80) : ''),
+            // 더보기 모달용 전체 내용 — 카드에서는 잘리고, 모달에서 일러스트와 함께 전문을 본다
+            'short_intro' => $c->short_intro,
+            'detail_full' => $c->character_detail ?? '',
+            'has_more' => filled($c->character_detail) && mb_strlen($c->character_detail) > 80,
             'image' => $c->image_url ?? '',
             'accent' => $c->accent ?? 'accent-violet',
         ];

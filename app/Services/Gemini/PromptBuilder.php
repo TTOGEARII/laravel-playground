@@ -44,6 +44,10 @@ class PromptBuilder
             $lines[] = "말투: {$character->speech_style}";
         }
 
+        if (filled($character->user_persona)) {
+            $lines[] = '인사를 건넬 상대(유저) 설정: '.Str::limit($character->user_persona, 300);
+        }
+
         return self::appendJsonInstruction($lines, '{"intro": "여기에 첫 인사 한 문장만 넣으세요"}');
     }
 
@@ -79,6 +83,16 @@ class PromptBuilder
 
         if (filled($character->world_setting)) {
             $lines[] = "[세계관/배경]\n".Str::limit($character->world_setting, 800);
+        }
+
+        if (filled($character->relationships)) {
+            $lines[] = "[작품 속 인물 관계] — 아래 인물들을 대화에서 자연스럽게 언급하거나 회상할 수 있습니다. 유저와의 관계가 아닙니다.\n"
+                .Str::limit($character->relationships, 800);
+        }
+
+        if (filled($character->user_persona)) {
+            $lines[] = "[대화 상대(유저) 설정] — 지금 당신과 대화하는 상대는 이런 인물입니다. 이 설정에 맞춰 대하세요.\n"
+                .Str::limit($character->user_persona, 500);
         }
 
         if (filled($character->character_detail)) {
@@ -174,6 +188,7 @@ class PromptBuilder
             '이 정보를 분석해, 작품을 대표하는 캐릭터 한 명을 AI 채팅봇으로 만들기 위한 "페르소나"를 한국어로 가공해 작성하세요.',
             '정보에 없는 항목은 작품의 분위기에 맞게 자연스럽게 추론해 채우되, 원작 설정과 모순되지 않게 하세요.',
             'example_dialogue에는 그 캐릭터의 말투가 잘 드러나는 짧은 대화 2~3개를 직접 창작해 넣으세요. "유저:"와 "캐릭터:" 형식으로, 줄바꿈으로 구분합니다.',
+            'relationships에는 작품 세계관 속 주요 인물들과의 관계를 "인물명 — 관계 (부르는 호칭)" 형식으로 줄바꿈 구분해 2~5개 작성하세요. 원작에 등장하는 인물만 사용합니다.',
             "genre는 반드시 다음 값 중 하나만 사용: {$genres}",
             "target은 반드시 다음 값 중 하나만 사용: {$targets}",
             'short_intro는 50자 이내로 작성하세요.',
@@ -182,7 +197,7 @@ class PromptBuilder
             Str::limit($source, 4000),
         ];
 
-        $example = '{"name":"캐릭터 이름","short_intro":"한 줄 소개","character_detail":"상세 설정","personality":"성격","appearance":"외모","likes":"좋아하는 것","dislikes":"싫어하는 것","user_alias":"유저를 부르는 호칭","speech_style":"말투 특징","example_dialogue":"유저: 안녕\\n캐릭터: ...","world_setting":"세계관/배경 설정","genre":"'.($genreValues[0] ?? 'romance').'","target":"'.($targetValues[0] ?? 'all').'"}';
+        $example = '{"name":"캐릭터 이름","short_intro":"한 줄 소개","character_detail":"상세 설정","personality":"성격","appearance":"외모","likes":"좋아하는 것","dislikes":"싫어하는 것","user_alias":"유저를 부르는 호칭","speech_style":"말투 특징","example_dialogue":"유저: 안녕\\n캐릭터: ...","world_setting":"세계관/배경 설정","relationships":"인물명 — 관계 (호칭)\\n인물명 — 관계","genre":"'.($genreValues[0] ?? 'romance').'","target":"'.($targetValues[0] ?? 'all').'"}';
 
         return self::appendJsonInstruction($lines, $example);
     }
