@@ -197,7 +197,7 @@ class CrawlSyncService
         // 이름이 충분히 변별적인 '피규어' 카테고리에만 적용한다.
         $scale = self::extractScale($dto->title);
         if ($product === null && $makerCode === null && $ipId !== null && $categoryId !== null
-            && $dto->categoryCode === self::FUZZY_CATEGORY && count($tokens) >= self::FUZZY_MIN_SHARED) {
+            && $dto->categoryCode === self::FUZZY_CATEGORY && $scale !== null && count($tokens) >= self::FUZZY_MIN_SHARED) {
             $product = $this->fuzzyMatchProduct($ipId, (int) $categoryId, $tokens, $scale);
         }
 
@@ -314,6 +314,7 @@ class CrawlSyncService
                 ->where('ok_product_cate_id', $cateId)
                 ->whereNull('ok_product_maker_code')
                 ->get(['ok_product_id', 'ok_product_match_sig', 'ok_product_title'])
+                ->filter(fn ($p) => self::looksLikeScaleFigure((string) $p->ok_product_title))
                 ->map(fn ($p) => [
                     'id' => (int) $p->ok_product_id,
                     'scale' => self::extractScale((string) $p->ok_product_title),
@@ -341,15 +342,13 @@ class CrawlSyncService
     }
 
     /**
-     * 스케일 호환: 둘 다 있으면 같아야 하고, 하나만 있으면 OK, 둘 다 없으면 매칭 안 함(스케일없는 굿즈 오병합 방지).
+     * 스케일 일치: 둘 다 스케일(1/N)이 있고 같아야 한다.
+     * (제조사/프라이즈 라인명이 정규화에서 제거돼, 스케일 없는 상품끼리는 넨도/프라이즈/케이스 등을
+     *  구분할 수 없어 과병합된다. 그래서 이름 유사 매칭은 '같은 스케일의 스케일 피규어'로만 제한한다.)
      */
     public static function scalesCompatible(?string $a, ?string $b): bool
     {
-        if ($a !== null && $b !== null) {
-            return $a === $b;
-        }
-
-        return $a !== null || $b !== null;
+        return $a !== null && $b !== null && $a === $b;
     }
 
     /**

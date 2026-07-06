@@ -232,6 +232,9 @@ class OtakuShopRematchCommand extends Command
             ->orderBy('ok_product_cate_id')
             ->select(['ok_product_id', 'ok_product_ip_id', 'ok_product_cate_id', 'ok_product_match_sig', 'ok_product_title'])
             ->chunk(2000, function ($rows) use (&$groups) {
+                // 스케일 없는 상품(넨도/프라이즈/케이스 등)은 제조사·라인명이 제거돼 구분이 안 돼 과병합되므로,
+                // 이름 유사 매칭은 스케일 피규어(1/N)에만 적용한다.
+                $rows = $rows->filter(fn ($p) => CrawlSyncService::looksLikeScaleFigure((string) $p->ok_product_title));
                 $byBucket = $rows->groupBy(fn ($p) => $p->ok_product_ip_id.':'.$p->ok_product_cate_id);
                 foreach ($byBucket as $bucket) {
                     foreach ($this->clusterBySimilarity($bucket) as $cluster) {
