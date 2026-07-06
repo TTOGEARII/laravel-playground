@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\OtakuShop\Api\ProductController as OtakuShopProductController;
+use App\Http\Controllers\SubcultureGameInfo\Api\CharacterController as SubcultureCharacterController;
 use App\Http\Controllers\SubcultureGameInfo\Api\CodeController as SubcultureCodeController;
+use App\Http\Controllers\SubcultureGameInfo\Api\RaidController as SubcultureRaidController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,9 +32,15 @@ Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->grou
 });
 
 // SubcultureGameInfo (BASE = /api/subculture-game-info)
-//   GET /api/subculture-game-info/codes  ?game, community(0/1), expired(0/1)
-Route::prefix('subculture-game-info')->controller(SubcultureCodeController::class)->group(function () {
-    Route::get('codes', 'index');
+//   GET /api/subculture-game-info/codes        ?game, community(0/1), expired(0/1)
+//   GET /api/subculture-game-info/raids        ?game, status(active|upcoming|ended)
+//   GET /api/subculture-game-info/raids/{raid} 보스 정보 + 추천 편성 + 공략글
+//   GET /api/subculture-game-info/characters   ?game (+meta.growth_schema)
+Route::prefix('subculture-game-info')->group(function () {
+    Route::get('codes', [SubcultureCodeController::class, 'index']);
+    Route::get('raids', [SubcultureRaidController::class, 'index']);
+    Route::get('raids/{raid}', [SubcultureRaidController::class, 'show'])->whereNumber('raid');
+    Route::get('characters', [SubcultureCharacterController::class, 'index']);
 });
 
 /*
