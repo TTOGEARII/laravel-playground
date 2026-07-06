@@ -36,7 +36,7 @@ class RaidQueryService
     {
         $raid->load([
             'game:id,slug,name,icon,color',
-            'parties.members.character:id,external_key,name,rarity,traits,image_url',
+            'parties.members.character:id,external_key,name,rarity,traits,image_url,image_path',
             'guidePosts' => fn ($q) => $q->orderByDesc('posted_at'),
         ]);
 
@@ -59,7 +59,7 @@ class RaidQueryService
                         'name' => $member->character->name,
                         'rarity' => $member->character->rarity,
                         'traits' => $member->character->traits,
-                        'image_url' => $member->character->image_url,
+                        'image_url' => $member->character->display_image_url,
                     ],
                 ])->values()->all(),
             ])->values()->all(),
@@ -91,7 +91,7 @@ class RaidQueryService
                 'name' => $c->name,
                 'rarity' => $c->rarity,
                 'traits' => $c->traits,
-                'image_url' => $c->image_url,
+                'image_url' => $c->display_image_url,
             ]);
     }
 

@@ -41,7 +41,8 @@ export async function crawlCharacters(page, base) {
                 manufacturer: n.manufacturer ?? null,
                 weapon: n.weaponType ?? null,
             },
-            image_url: null,
+            // 레츠도로 자체 아이콘 CDN — nameCode 가 그대로 파일명(128×128 webp, 봇/Referer 차단 없음)
+            image_url: `https://img.letsdoro.com/si/${n.nameCode}.webp`,
             source_url: `${base}/soloraid`,
         }));
 }

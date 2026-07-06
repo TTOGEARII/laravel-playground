@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Log;
  */
 class CharacterSyncService
 {
+    public function __construct(private CharacterImageCacheService $imageCache) {}
+
     /**
      * @param  array<int, array>  $items  사이드카 JSON items
      * @return array{created: int, updated: int, deactivated: int, skipped: int}
@@ -49,6 +51,10 @@ class CharacterSyncService
             );
 
             $character->wasRecentlyCreated ? $stats['created']++ : ($character->wasChanged() ? $stats['updated']++ : null);
+
+            // 이미지 로컬 캐시(멱등) — 원본 URL 이 바뀌었으면 재다운로드
+            $character->setRelation('game', $game);
+            $this->imageCache->cache($character, force: $character->wasChanged('image_url'));
         }
 
         // 미등장 캐릭터 소프트 비활성 (수집량 급감 시 가드)

@@ -24,4 +24,10 @@
     <div id="subculture-raids-app"
          data-games='@json($games)'
          data-logged-in="{{ Auth::check() ? 1 : 0 }}"></div>
+
+    {{-- 캐릭터 이미지는 팬사이트 제공분을 로컬 캐시해 서빙 — 출처 고지 --}}
+    <p class="sgr-image-credit">
+        캐릭터 이미지 출처: 몰루로그 · 레츠도로 · Triple Lab · BD2DB —
+        각 게임 이미지의 저작권은 원저작사에 있습니다.
+    </p>
 @endsection

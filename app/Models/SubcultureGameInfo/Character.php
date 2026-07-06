@@ -3,8 +3,10 @@
 namespace App\Models\SubcultureGameInfo;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * 게임별 캐릭터 마스터. (게임, external_key)가 동일성 키.
@@ -21,6 +23,7 @@ class Character extends Model
         'rarity',
         'traits',
         'image_url',
+        'image_path',
         'source',
         'source_url',
         'active_flg',
@@ -37,6 +40,14 @@ class Character extends Model
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class, 'subculture_game_id');
+    }
+
+    /** 화면 노출용 이미지 URL — 로컬 캐시가 있으면 캐시, 없으면 원본(외부) 폴백. */
+    protected function displayImageUrl(): Attribute
+    {
+        return Attribute::get(fn () => $this->image_path
+            ? Storage::disk('public')->url($this->image_path)
+            : $this->image_url);
     }
 
     /** 노출 대상(활성) 캐릭터만. */

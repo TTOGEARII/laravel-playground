@@ -649,3 +649,11 @@
     color: #34d399;
     padding: 8px 0;
 }
+
+/* 캐릭터 이미지 출처 고지 */
+.sgr-image-credit {
+    margin-top: 24px;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #9ca3af);
+    text-align: center;
+}
