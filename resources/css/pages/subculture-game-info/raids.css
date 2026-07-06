@@ -1,0 +1,651 @@
+/* 서브컬쳐 게임 레이드 정보 페이지 (Vue: pages/subculture-raids) */
+
+.sgr-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ---------------------------------- 상단 뷰 전환 */
+.sgr-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sgr-nav-tab {
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sgr-nav-tab:hover {
+    color: var(--text-primary);
+    border-color: rgba(129, 140, 248, 0.7);
+}
+
+.sgr-nav-tab.is-active {
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.3), rgba(129, 140, 248, 0.1));
+    border-color: rgba(129, 140, 248, 0.9);
+    color: var(--text-primary);
+}
+
+.sgr-guest-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+/* ---------------------------------- 게임 섹션/탭 공용 */
+.sgr-game-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sgr-game-head {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.sgr-game-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.sgr-game-icon {
+    font-size: 1.4rem;
+}
+
+.sgr-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sgr-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sgr-tab:hover {
+    color: var(--text-primary);
+    border-color: rgba(129, 140, 248, 0.7);
+}
+
+.sgr-tab.is-active {
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.3), rgba(129, 140, 248, 0.1));
+    border-color: rgba(129, 140, 248, 0.9);
+    color: var(--text-primary);
+}
+
+.sgr-empty {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    padding: 8px 0;
+}
+
+.sgr-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(129, 140, 248, 0.85);
+    border-radius: 999px;
+    padding: 2px 8px;
+    vertical-align: middle;
+}
+
+/* ---------------------------------- 레이드 카드 */
+.sgr-raid-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.sgr-raid-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sgr-raid-card:hover {
+    border-color: rgba(129, 140, 248, 0.9);
+    transform: translateY(-2px);
+}
+
+.sgr-raid-card.is-ended {
+    opacity: 0.6;
+}
+
+.sgr-raid-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sgr-status-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.sgr-status-badge.is-active {
+    background: rgba(52, 211, 153, 0.2);
+    color: #34d399;
+}
+
+.sgr-status-badge.is-upcoming {
+    background: rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
+}
+
+.sgr-status-badge.is-ended {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+.sgr-type-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(129, 140, 248, 0.18);
+    color: #a5b4fc;
+}
+
+.sgr-raid-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.sgr-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.sgr-tag {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.sgr-tag.is-manual {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.5);
+}
+
+.sgr-raid-period,
+.sgr-raid-counts {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.sgr-countdown {
+    color: #34d399;
+}
+
+/* ---------------------------------- 레이드 상세 */
+.sgr-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sgr-back {
+    align-self: flex-start;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.sgr-back:hover {
+    color: var(--text-primary);
+}
+
+.sgr-detail-head {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.sgr-detail-head .sgr-game-icon {
+    font-size: 2rem;
+}
+
+.sgr-detail-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+
+.sgr-source-link {
+    color: #a5b4fc;
+    text-decoration: none;
+    margin-left: 6px;
+}
+
+.sgr-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sgr-section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sgr-legend {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.sgr-legend-owned {
+    color: #818cf8;
+}
+
+.sgr-legend-missing {
+    color: #475569;
+}
+
+/* ---------------------------------- 편성 카드 */
+.sgr-party-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sgr-party {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.sgr-party-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sgr-party-title {
+    color: var(--text-primary);
+    font-size: 0.92rem;
+}
+
+.sgr-party-note {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.sgr-member-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sgr-member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 72px;
+}
+
+.sgr-member img,
+.sgr-member-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 2px solid rgba(129, 140, 248, 0.8);
+    background: var(--bg-card);
+}
+
+.sgr-member-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* 미보유: 흑백 + 점선 테두리 */
+.sgr-member.is-missing img,
+.sgr-member.is-missing .sgr-member-placeholder {
+    filter: grayscale(1);
+    opacity: 0.55;
+    border: 2px dashed rgba(148, 163, 184, 0.6);
+}
+
+.sgr-member-name {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.2;
+    word-break: keep-all;
+}
+
+.sgr-member.is-missing .sgr-member-name {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.sgr-member-slot {
+    font-size: 0.6rem;
+    color: #a5b4fc;
+}
+
+/* ---------------------------------- 공략글 피드 */
+.sgr-guide-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sgr-guide-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    text-decoration: none;
+    transition: border-color 0.2s ease;
+}
+
+.sgr-guide-item:hover {
+    border-color: rgba(129, 140, 248, 0.9);
+}
+
+.sgr-guide-source {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.sgr-guide-source.is-dc {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.sgr-guide-source.is-arca {
+    background: rgba(244, 114, 182, 0.2);
+    color: #f472b6;
+}
+
+.sgr-guide-title {
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.sgr-guide-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ---------------------------------- 내 캐릭터 */
+.sgr-my {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sgr-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sgr-search {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    min-width: 200px;
+}
+
+.sgr-owned-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.sgr-owned-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.sgr-toolbar-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.sgr-btn {
+    padding: 7px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sgr-btn:hover {
+    color: var(--text-primary);
+    border-color: rgba(129, 140, 248, 0.7);
+}
+
+.sgr-btn.is-primary {
+    background: rgba(129, 140, 248, 0.85);
+    border-color: transparent;
+    color: #fff;
+}
+
+.sgr-char-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+}
+
+.sgr-char {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    overflow: hidden;
+    opacity: 0.6;
+    transition: all 0.15s ease;
+}
+
+.sgr-char.is-owned {
+    opacity: 1;
+    border-color: rgba(129, 140, 248, 0.8);
+}
+
+.sgr-char.is-editing {
+    border-color: #34d399;
+}
+
+.sgr-char-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.sgr-char-body img {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.sgr-char:not(.is-owned) .sgr-char-body img {
+    filter: grayscale(1);
+}
+
+.sgr-char-name {
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.2;
+    word-break: keep-all;
+}
+
+.sgr-char-rarity {
+    font-size: 0.62rem;
+    color: #fbbf24;
+}
+
+.sgr-char-growth-btn {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    background: rgba(129, 140, 248, 0.12);
+    color: #a5b4fc;
+    font-size: 0.68rem;
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+/* 성장도 입력 패널 */
+.sgr-growth {
+    position: sticky;
+    bottom: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(129, 140, 248, 0.8);
+    background: var(--bg-card);
+    padding: 14px 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.sgr-growth-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.sgr-growth-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.sgr-growth-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.sgr-growth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sgr-growth-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.sgr-growth-field select,
+.sgr-growth-field input {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    width: 110px;
+}
+
+.sgr-growth-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.sgr-message {
+    position: sticky;
+    bottom: 0;
+    font-size: 0.85rem;
+    color: #34d399;
+    padding: 8px 0;
+}

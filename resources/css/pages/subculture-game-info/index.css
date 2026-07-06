@@ -321,3 +321,17 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* 레이드 정보 페이지 이동 링크(헤더) */
+.sgi-raids-link {
+    display: inline-block;
+    margin-top: 6px;
+    color: #a5b4fc;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.sgi-raids-link:hover {
+    text-decoration: underline;
+}
