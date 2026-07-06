@@ -120,7 +120,7 @@ class CrawlSyncService
      *
      * @param  array<int, CrawledProductDto>  $crawledProducts
      * @param  array<string, int>  $shopIds  shop_code => ok_shop_id
-     * @return array<string, array{key: string, makerCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
+     * @return array<string, array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
      */
     private function groupByProduct(array $crawledProducts, array $shopIds): array
     {
@@ -136,20 +136,61 @@ class CrawlSyncService
             // 같은 코드가 나와 동일상품으로 정확히 묶인다. 없으면 기존 제목 정규화 키로 폴백.
             // 단, 부속품(전용 케이스 등) 제목에는 본체 품번이 그대로 들어가므로 라인넘버형 품번은
             // 버린다(sanitizeMakerCode) — 본체와 같은 키로 병합돼 가격비교가 오염되는 것을 방지.
+            // 또 넨도 번호 등 품번은 제조사가 다르면 번호가 겹칠 수 있어(예: 넨도 No.3057 미쿠 vs 니케 라피)
+            // IP(작품) 코드를 키에 함께 넣어, 서로 다른 작품이 같은 번들로 묶이지 않게 한다.
             $makerCode = self::sanitizeMakerCode(
                 $dto->makerCode ?? $this->normalizer->extractMakerCode($dto->title),
                 $dto->title,
             );
+            $ipCode = $makerCode !== null ? $this->normalizer->extractIpCode($dto->title) : null;
             $key = $makerCode !== null
-                ? 'mkr_'.md5($makerCode)
+                ? 'mkr_'.md5($makerCode.'|'.($ipCode ?? ''))
                 : $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
 
-            $bundles[$key] ??= ['key' => $key, 'makerCode' => $makerCode, 'dto' => $dto, 'offers' => []];
+            $bundles[$key] ??= ['key' => $key, 'makerCode' => $makerCode, 'ipCode' => $ipCode, 'dto' => $dto, 'offers' => []];
 
             $existing = $bundles[$key]['offers'][$shopId] ?? null;
             if ($existing === null || $this->preferOffer($dto, $existing)) {
                 $bundles[$key]['offers'][$shopId] = $dto;
             }
+        }
+
+        return $this->absorbIplessMakerBundles($bundles);
+    }
+
+    /**
+     * 2차 패스: 제목에서 IP를 못 뽑은(null) 품번 번들을, 같은 품번의 IP付 번들이
+     * "정확히 1개"일 때만 그쪽으로 흡수한다. 제목에 작품명이 없는 쇼핑몰 표기가
+     * 같은 상품인데도 분리 적재되는 회귀를 막되, IP付 번들이 2개 이상이면
+     * 어느 작품인지 판단할 수 없으므로 흡수하지 않는다(과병합 방지).
+     *
+     * @param  array<string, array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>  $bundles
+     * @return array<string, array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}>
+     */
+    private function absorbIplessMakerBundles(array $bundles): array
+    {
+        $ipBundleKeysByMaker = [];
+        foreach ($bundles as $key => $bundle) {
+            if ($bundle['makerCode'] !== null && $bundle['ipCode'] !== null) {
+                $ipBundleKeysByMaker[$bundle['makerCode']][] = $key;
+            }
+        }
+
+        foreach ($bundles as $key => $bundle) {
+            if ($bundle['makerCode'] === null || $bundle['ipCode'] !== null) {
+                continue;
+            }
+            $targets = $ipBundleKeysByMaker[$bundle['makerCode']] ?? [];
+            if (count($targets) !== 1) {
+                continue;
+            }
+            foreach ($bundle['offers'] as $shopId => $dto) {
+                $existing = $bundles[$targets[0]]['offers'][$shopId] ?? null;
+                if ($existing === null || $this->preferOffer($dto, $existing)) {
+                    $bundles[$targets[0]]['offers'][$shopId] = $dto;
+                }
+            }
+            unset($bundles[$key]);
         }
 
         return $bundles;
@@ -178,7 +219,7 @@ class CrawlSyncService
      *     (키를 식별자로 쓰면 사전 변경 시 동일 상품이 대량 재생성되고, 옛 오퍼가 '사라짐=품절'로 오인된다.)
      *  2) 정규화 키 매칭 — 쇼핑몰 간 동일상품 묶기(신규 listing용).
      *
-     * @param  array{key: string, makerCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
+     * @param  array{key: string, makerCode: ?string, ipCode: ?string, dto: CrawledProductDto, offers: array<int, CrawledProductDto>}  $bundle
      * @param  array<string, int>  $categoryByCode
      */
     private function findOrCreateProduct(array $bundle, array $categoryByCode, array $ipIdByCode, array &$stats): OtakuProduct
@@ -195,6 +236,19 @@ class CrawlSyncService
 
         $product = $this->resolveProductByExistingOffers($bundle['offers'])
             ?? OtakuProduct::where('ok_product_code', $bundle['key'])->first();
+
+        // IP 충돌 가드: 앵커/키로 찾은 기존 상품이라도 IP(작품)가 둘 다 있고 서로 다르면 재사용하지 않는다.
+        // 품번 번호는 제조사가 다르면 겹칠 수 있어(넨도 No.3057 미쿠 vs 니케 라피), 같은 품번이라도 다른 작품이면
+        // 별도 상품으로 만든다(키가 IP 포함이라 새 키로 생성해도 유니크 충돌 없음). 단 이번 키를 이미 가진
+        // 다른 상품(같은 IP로 앞서 분리 생성된 상품)이 있으면 그쪽을 재사용해 유니크 충돌을 막는다.
+        if ($product !== null && self::ipConflicts($product->ok_product_ip_id, $ipId)) {
+            $keyOwner = OtakuProduct::where('ok_product_code', $bundle['key'])
+                ->where('ok_product_id', '!=', $product->ok_product_id)
+                ->first();
+            $product = ($keyOwner !== null && ! self::ipConflicts($keyOwner->ok_product_ip_id, $ipId))
+                ? $keyOwner
+                : null;
+        }
 
         // 정확 키로 못 묶었고 고유값(maker code)도 없으면, 같은 ip+카테고리 안에서
         // 이름 토큰이 포함관계인 기존 상품을 찾아 묶는다(보수적 이름 유사 매칭).
@@ -233,13 +287,15 @@ class CrawlSyncService
             // 그 키(maker code 등)를 이미 다른 상품이 점유 중이면, 같은 실물 상품이 두 행으로
             // 갈라진 것이므로 덮어쓰기(유니크 키 충돌, SQLSTATE 23000) 대신 병합한다.
             // 키를 가진 쪽을 canonical 로 두고 현재 상품을 그쪽으로 합친다.
+            // 단 두 상품의 IP(작품)가 둘 다 있고 서로 다르면 다른 상품이므로 병합하지 않고
+            // 현재 상품의 기존 키를 유지한다(다른 작품끼리 강제 병합 방지).
             $keyOwner = OtakuProduct::where('ok_product_code', $bundle['key'])
                 ->where('ok_product_id', '!=', $product->ok_product_id)
                 ->first();
-            if ($keyOwner !== null) {
+            if ($keyOwner !== null && ! self::ipConflicts($keyOwner->ok_product_ip_id, $product->ok_product_ip_id)) {
                 $this->mergeProducts($keyOwner, [$product]);
                 $product = $keyOwner;
-            } else {
+            } elseif ($keyOwner === null) {
                 $product->ok_product_code = $bundle['key'];
             }
         }
@@ -267,6 +323,12 @@ class CrawlSyncService
         $stats['products_matched']++;
 
         return $product;
+    }
+
+    /** 두 IP id가 둘 다 있고 서로 다르면 true — 다른 작품 = 다른 상품(병합/재사용 금지). */
+    private static function ipConflicts(int|string|null $a, int|string|null $b): bool
+    {
+        return $a !== null && $b !== null && (int) $a !== (int) $b;
     }
 
     /** @var array<string, array<int, array{id:int, tokens:array<int,string>}>> (ip:cate) 버킷 후보 캐시 */
@@ -415,11 +477,58 @@ class CrawlSyncService
         if ($shared < self::FUZZY_MIN_SHARED) {
             return false;
         }
+        // 의상 변형 가드: 공유로 소화되지 못한 고유 토큰에 변형 키워드(수영복/교복 등)가 남아 있으면
+        // 기본판 vs 의상 변형판이므로 부분집합(포함관계)이라도 병합하지 않는다.
+        // ({아리스} ⊆ {아리스, 수영복} 같은 케이스 차단. 양쪽 다 있는 키워드는 shared로 소화돼 통과.)
+        if (self::hasVariantKeyword($uniqA) || self::hasVariantKeyword($uniqB)) {
+            return false;
+        }
         if ($uniqA === [] || $uniqB === []) {
             return true;  // 부분집합(한쪽 완전 포함)
         }
 
         return self::uniquesReconcilable($uniqA, $uniqB);
+    }
+
+    /**
+     * 고유 토큰 목록에 의상/버전 변형 키워드가 포함돼 있는지.
+     *
+     * @param  array<int, string>  $uniques
+     */
+    private static function hasVariantKeyword(array $uniques): bool
+    {
+        foreach ($uniques as $token) {
+            if (self::containsVariantKeyword($token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** 토큰에 변형 키워드가 부분 문자열로라도 들어 있는지("수영복ver" 같은 결합 토큰 대응). */
+    private static function containsVariantKeyword(string $token): bool
+    {
+        foreach (self::variantKeywords() as $keyword) {
+            if (mb_strpos($token, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 의상/버전 변형 키워드 목록(config). static 매칭 로직에서 쓰므로 config 헬퍼로 읽는다.
+     *
+     * @return array<int, string>
+     */
+    private static function variantKeywords(): array
+    {
+        return array_values(array_filter(
+            (array) config('otaku-crawler.product_match.variant_keywords', []),
+            fn ($keyword) => is_string($keyword) && $keyword !== '',
+        ));
     }
 
     /**
@@ -521,6 +630,11 @@ class CrawlSyncService
         }
         if ($x !== '' && $y !== '' && (mb_strpos($x, $y) !== false || mb_strpos($y, $x) !== false)) {
             return true;
+        }
+        // 의상 변형 키워드는 접두 완화(2자 공통) 대상에서 제외한다 — '수영복' vs '수영부'처럼
+        // 접두만 같은 서로 다른 의상이 '같은 단어의 변형'으로 짝지어지는 오결합을 막는다.
+        if (self::containsVariantKeyword($x) || self::containsVariantKeyword($y)) {
+            return false;
         }
         $n = min(mb_strlen($x), mb_strlen($y));
         $prefix = 0;

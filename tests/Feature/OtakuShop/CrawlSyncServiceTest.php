@@ -189,6 +189,57 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(2, OtakuOffer::count());
     }
 
+    public function test_same_maker_number_different_ip_not_merged(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 제조사가 달라 넨도 번호(No.3057)가 겹치는 전혀 다른 두 상품(미쿠 vs 니케 라피) —
+        // 품번만 같고 IP(작품)가 다르면 병합하면 안 된다(실제 운영 사례).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[예약상품/26년 10월~11월 입고예정][굿스마일컴퍼니][보컬로이드] 넨도로이드 No.3057 캐릭터 보컬 시리즈 01: 하츠네 미쿠 안경×카페 Ver.', 70000, categoryCode: 'figure'),
+            $this->dto('ttabbaemall', 'B1', '[예약상품/27년 03월~04월 입고예정][굿스마일아츠상하이][승리의 여신 니케] 넨도로이드 No.3057 라피: 레드 후드 Ver.', 72000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '품번이 같아도 다른 작품이면 별도 상품이어야 함');
+
+        // 두 상품 모두 서로 다른 IP로 분류돼 있어야 한다.
+        $ipIds = OtakuProduct::pluck('ok_product_ip_id');
+        $this->assertCount(2, $ipIds->filter()->unique());
+    }
+
+    public function test_same_maker_number_same_ip_absorbs_title_without_ip(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 한쪽 제목에 작품명이 없어 IP가 안 뽑혀도, 같은 품번의 IP付 번들이 하나뿐이면
+        // 그쪽으로 흡수돼 동일 상품으로 유지된다(품번 키에 IP를 넣은 데 따른 분리 회귀 방지).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '넨도로이드 No.1955 니시키기 치사토', 65000, categoryCode: 'figure'),
+            $this->dto('ttabbaemall', 'B1', '[리코리스 리코일] 넨도로이드 넘버1955 니시키기 치사토 (재판)', 63000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '같은 IP·같은 품번은 여전히 한 상품으로 묶여야 함');
+        $this->assertSame(2, OtakuOffer::count());
+        $this->assertSame('nendo_1955', OtakuProduct::first()->ok_product_maker_code);
+    }
+
+    public function test_outfit_variant_not_merged_with_base_figure(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 같은 IP·같은 1/7 스케일에서 {캐릭터명...} ⊆ {캐릭터명..., 수영복} 부분집합이어도
+        // 의상 변형 키워드가 한쪽에만 있으면 기본판 vs 변형판이므로 병합하지 않는다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 아스나 메모리얼 로비 1/7 피규어', 250000, categoryCode: 'figure'),
+            $this->dto('ttabbaemall', 'B1', '블루 아카이브 아스나 메모리얼 로비 수영복 Ver. 1/7 피규어', 260000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '의상 변형판은 기본판과 별도 상품이어야 함');
+    }
+
     public function test_different_character_not_merged_by_containment(): void
     {
         $service = $this->app->make(CrawlSyncService::class);
