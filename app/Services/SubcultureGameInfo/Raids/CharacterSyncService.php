@@ -37,18 +37,24 @@ class CharacterSyncService
             }
             $seenKeys[] = $dto->externalKey;
 
-            $character = Character::updateOrCreate(
+            $character = Character::firstOrNew(
                 ['subculture_game_id' => $game->id, 'external_key' => $dto->externalKey],
-                [
-                    'name' => $dto->name,
-                    'rarity' => $dto->rarity,
-                    'traits' => $dto->traits,
-                    'image_url' => $dto->imageUrl,
-                    'source' => $source,
-                    'source_url' => $dto->sourceUrl,
-                    'active_flg' => true,
-                ],
             );
+            $character->fill([
+                'name' => $dto->name,
+                'rarity' => $dto->rarity,
+                'image_url' => $dto->imageUrl,
+                'source' => $source,
+                'source_url' => $dto->sourceUrl,
+                'active_flg' => true,
+            ]);
+            // MySQL JSON 컬럼은 저장 시 키 순서를 정규화하는데, 배열 캐스트의 dirty 판정은
+            // 순서까지 보는 엄격 비교(===)라 순서만 다른 동일 traits 를 매번 변경으로 오판한다.
+            // 값이 실제로 다를 때만 대입해 불필요한 UPDATE·갱신 통계 부풀림을 막는다.
+            if ($character->traits != $dto->traits) {
+                $character->traits = $dto->traits;
+            }
+            $character->save();
 
             $character->wasRecentlyCreated ? $stats['created']++ : ($character->wasChanged() ? $stats['updated']++ : null);
 

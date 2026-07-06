@@ -63,6 +63,10 @@ class CharacterImageCacheService
 
         $slug = $character->game?->slug ?? 'unknown';
         $safeKey = preg_replace('/[^A-Za-z0-9._-]/', '-', $character->external_key);
+        if ($safeKey !== $character->external_key) {
+            // 한글 키(예: 트릭컬 kr:네르(빡침)) 등은 치환만 하면 서로 충돌하므로 원본 키 해시로 유일성 보장
+            $safeKey .= '-'.substr(sha1($character->external_key), 0, 8);
+        }
         $path = self::BASE_DIR."/{$slug}/{$safeKey}.{$extension}";
 
         Storage::disk(self::DISK)->put($path, $response->body());
