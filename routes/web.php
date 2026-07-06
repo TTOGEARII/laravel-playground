@@ -56,7 +56,8 @@ Route::prefix('my-wife-bot')->group(base_path('routes/my-wife-bot.php'));
 Route::prefix('subculture-game-info')->group(base_path('routes/subculture-game-info.php'));
 
 // MyWifeBot 채팅 API — 세션 인증이 필요(로그인 사용자 대화 저장/이어가기)하므로 web 그룹에 둔다.
-Route::prefix('api/my-wife-bot')->controller(MyWifeBotChatController::class)->group(function () {
+// 매 호출이 Gemini API 과금으로 이어지므로 남용 방지 쓰로틀을 건다(다른 POST 라우트와 동일 정책).
+Route::prefix('api/my-wife-bot')->middleware('throttle:30,1')->controller(MyWifeBotChatController::class)->group(function () {
     Route::post('chat/init', 'init');
     Route::post('chat/send', 'send');
     Route::post('chat/suggest', 'suggest');

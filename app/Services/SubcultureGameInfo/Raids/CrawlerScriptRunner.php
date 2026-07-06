@@ -28,7 +28,7 @@ class CrawlerScriptRunner
 
         $env = array_filter([
             'PLAYWRIGHT_BROWSERS_PATH' => $cfg['browsers_path'] ?? null,
-            'SGI_PLAYWRIGHT_WS' => env('SGI_PLAYWRIGHT_WS'),
+            'SGI_PLAYWRIGHT_WS' => $cfg['playwright_ws'] ?? null,
             'SGI_CRAWLER_UA' => config('subculture-game-info.http.user_agent'),
         ], fn ($v) => $v !== null && $v !== '');
 

@@ -50,7 +50,7 @@ class MainController extends Controller
         return [
             'id' => (string) $c->id,
             'name' => $c->name,
-            'description' => $c->short_intro . ($c->character_detail ? ' ' . \Str::limit($c->character_detail, 80) : ''),
+            'description' => $c->short_intro.($c->character_detail ? ' '.\Str::limit($c->character_detail, 80) : ''),
             'image' => $c->image_url ?? '',
             'accent' => $c->accent ?? 'accent-violet',
         ];

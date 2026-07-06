@@ -67,6 +67,9 @@ class CharacterService
             $imagePath = $this->helper->saveImage($imageFile, self::IMAGE_DIR, 'char_');
         }
 
+        // 인사말 자동 생성이 수정 전 페르소나를 참조하지 않도록, 새 속성을 먼저 반영한다.
+        $character->fill($this->personaAttributes($data));
+
         $intro = isset($data['intro_message']) && (string) $data['intro_message'] !== ''
             ? (string) $data['intro_message']
             : null;
@@ -75,13 +78,10 @@ class CharacterService
             $intro = $this->chatService->generateGreeting($character);
         }
 
-        $character->update(array_merge(
-            $this->personaAttributes($data),
-            [
-                'intro_message' => $intro,
-                'image_path' => $imagePath,
-            ]
-        ));
+        $character->fill([
+            'intro_message' => $intro,
+            'image_path' => $imagePath,
+        ])->save();
     }
 
     /**

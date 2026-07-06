@@ -284,6 +284,9 @@ return [
             // 심어두므로(.env 보다 우선) 전용 키로 명시하고 러너가 프로세스에 직접 주입한다.
             // 설치: PLAYWRIGHT_BROWSERS_PATH=<이 경로> npx playwright install chromium
             'browsers_path' => env('SGI_PLAYWRIGHT_BROWSERS_PATH', storage_path('app/playwright')),
+            // 원격 Playwright 브라우저 WS 엔드포인트(선택). config:cache 환경에서도 살아있도록
+            // 러너에서 env() 직접 호출 대신 반드시 이 키를 거친다.
+            'playwright_ws' => env('SGI_PLAYWRIGHT_WS'),
             'timeout' => (int) env('SGI_CRAWLER_TIMEOUT', 300), // Playwright 렌더링 대기 감안(초)
             'sources' => [
                 'bluearchive' => ['source' => 'mollulog', 'base' => 'https://mollulog.net'],
