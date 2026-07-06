@@ -340,5 +340,22 @@ return [
                 'browndust2' => ['길드 레이드', '악마성', '레이드'],
             ],
         ],
+
+        // 대체 캐릭터 추출 — 공략글 본문을 가져와(Gemini) "A가 없으면 B로 대체" 관계를 뽑는다.
+        // body_selectors 는 소스별 본문 영역 CSS 셀렉터(더쿠/루리웹은 조사 후 추가 예정).
+        'substitutes' => [
+            'body_selectors' => [
+                'dc' => '.write_div',
+                'arca' => '.article-content',
+            ],
+            // Gemini 에 전달하는 합산 본문 최대 길이(프롬프트 비용·컨텍스트 상한)
+            'max_body_chars' => (int) env('SGI_SUB_MAX_BODY_CHARS', 20000),
+            // 상위 캐릭터 1명당 저장하는 대체 캐릭터 수 상한
+            'max_substitutes_per_character' => (int) env('SGI_SUB_MAX_PER_CHARACTER', 4),
+            // 레이드당 본문을 가져올 공략글 수 상한(최신순) — DC/아카 대량 요청·Gemini 비용 방지
+            'max_posts_per_raid' => (int) env('SGI_SUB_MAX_POSTS_PER_RAID', 6),
+            // 본문 요청 간 딜레이(초) — 커뮤니티 차단 방지(다른 크롤러의 crawl_delay 와 동일 원칙)
+            'fetch_delay_seconds' => (float) env('SGI_SUB_FETCH_DELAY', 1.0),
+        ],
     ],
 ];

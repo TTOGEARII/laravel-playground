@@ -52,6 +52,12 @@ class Raid extends Model
         return $this->hasMany(GuidePost::class, 'subculture_raid_id');
     }
 
+    /** 대체 캐릭터 관계(우선순위 순). */
+    public function substitutes(): HasMany
+    {
+        return $this->hasMany(RaidSubstitute::class, 'raid_id')->orderBy('sort');
+    }
+
     /**
      * 진행 상태: upcoming(시작 전) / active(진행 중) / ended(종료).
      * 일정 정보가 없으면 active 로 취급해 목록에서 숨기지 않는다.

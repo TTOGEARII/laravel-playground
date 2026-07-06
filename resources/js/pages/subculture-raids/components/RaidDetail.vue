@@ -23,16 +23,37 @@
 
     <!-- 추천 편성 -->
     <section class="sgr-section">
-      <h3 class="sgr-section-title">추천 편성 <span class="sgr-count">{{ raid.parties.length }}</span></h3>
+      <h3 class="sgr-section-title">
+        추천 편성 <span class="sgr-count">{{ raid.parties.length }}</span>
+        <button
+          v-if="raid.parties.length > 0"
+          type="button"
+          class="sgr-compose-toggle"
+          :class="{ 'is-on': composeMode }"
+          :aria-pressed="composeMode"
+          @click="composeMode = !composeMode"
+        >
+          🧩 내 풀로 조합
+        </button>
+      </h3>
       <p v-if="raid.parties.length === 0" class="sgr-empty">
         수집된 추천 편성이 없습니다. 아래 커뮤니티 공략글을 참고하세요.
       </p>
       <div class="sgr-party-list">
-        <PartyCard v-for="party in raid.parties" :key="party.id" :party="party" :pool="pool" />
+        <PartyCard
+          v-for="party in raid.parties"
+          :key="party.id"
+          :party="party"
+          :pool="pool"
+          :compose-mode="composeMode"
+        />
       </div>
       <p v-if="raid.parties.length > 0" class="sgr-legend">
         <span class="sgr-legend-owned">■</span> 보유 ·
         <span class="sgr-legend-missing">■</span> 미보유 (내 캐릭터에서 보유 등록 시 반영)
+        <template v-if="composeMode">
+          · <span class="sgr-legend-sub">■</span> 대체 투입 — 미보유 슬롯을 내가 보유한 대체 캐릭터로 치환해 표시
+        </template>
       </p>
     </section>
 
@@ -56,7 +77,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import PartyCard from './PartyCard.vue';
 
 const props = defineProps({
@@ -65,6 +86,9 @@ const props = defineProps({
 });
 
 defineEmits(['back']);
+
+// "내 풀로 조합" 토글 — 편성 카드에서 미보유 슬롯을 보유 대체 캐릭터로 치환해 보여준다
+const composeMode = ref(false);
 
 const statusLabel = computed(() => ({ active: '진행 중', upcoming: '예정', ended: '종료' }[props.raid.status]));
 

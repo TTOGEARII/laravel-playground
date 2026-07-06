@@ -6,6 +6,7 @@ use App\Models\SubcultureGameInfo\Character;
 use App\Models\SubcultureGameInfo\Game;
 use App\Models\SubcultureGameInfo\GuidePost;
 use App\Models\SubcultureGameInfo\Raid;
+use App\Models\SubcultureGameInfo\RaidSubstitute;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -85,6 +86,38 @@ class RaidApiTest extends TestCase
         $this->assertSame('1위 1편성', $res->json('data.parties.0.title'));
         $this->assertSame('미카', $res->json('data.parties.0.members.0.character.name'));
         $this->assertSame('비나 루나틱 공략', $res->json('data.guide_posts.0.title'));
+    }
+
+    public function test_레이드_상세는_멤버별_대체_캐릭터를_포함한다(): void
+    {
+        $game = $this->game();
+        $raid = $this->raid($game);
+        $mika = $this->character($game);
+        $saki = $this->character($game, '10098', '사키');
+        $hoshino = $this->character($game, '10004', '호시노');
+
+        $party = $raid->parties()->create(['title' => '1위 1편성', 'sort' => 0, 'source' => 'mollulog']);
+        $party->members()->create(['subculture_character_id' => $mika->id, 'slot_type' => 'striker', 'sort' => 0]);
+        RaidSubstitute::create([
+            'raid_id' => $raid->id, 'character_id' => $mika->id, 'substitute_character_id' => $saki->id,
+            'note' => '전용무기 2성 기준', 'source' => 'dc', 'source_url' => 'https://gall.dcinside.com/y', 'sort' => 1,
+        ]);
+        RaidSubstitute::create([
+            'raid_id' => $raid->id, 'character_id' => $mika->id, 'substitute_character_id' => $hoshino->id,
+            'source' => 'manual', 'sort' => 0,
+        ]);
+
+        $res = $this->getJson("/api/subculture-game-info/raids/{$raid->id}")->assertOk();
+
+        $this->assertSame(2, $res->json('data.substitutes_count'));
+        $subs = $res->json('data.parties.0.members.0.substitutes');
+        $this->assertCount(2, $subs);
+        // sort 순 정렬: manual(0) → dc(1)
+        $this->assertSame('호시노', $subs[0]['character']['name']);
+        $this->assertSame('manual', $subs[0]['source']);
+        $this->assertSame('사키', $subs[1]['character']['name']);
+        $this->assertSame('전용무기 2성 기준', $subs[1]['note']);
+        $this->assertSame('https://gall.dcinside.com/y', $subs[1]['source_url']);
     }
 
     public function test_캐릭터_목록은_활성만_반환하고_성장도_스키마를_포함한다(): void

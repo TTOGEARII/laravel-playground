@@ -37,7 +37,10 @@
               · {{ remaining(raid.ends_at) }} 남음
             </strong>
           </p>
-          <p class="sgr-raid-counts">추천 편성 {{ raid.parties_count }} · 공략글 {{ raid.guide_posts_count }}</p>
+          <p class="sgr-raid-counts">
+            추천 편성 {{ raid.parties_count }} · 공략글 {{ raid.guide_posts_count }}
+            <span v-if="raid.substitutes_count > 0" class="sgr-sub-count-badge">대체정보 {{ raid.substitutes_count }}</span>
+          </p>
         </button>
       </div>
     </section>

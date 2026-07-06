@@ -20,7 +20,7 @@ class RaidQueryService
     {
         $raids = Raid::query()
             ->with('game:id,slug,name,icon,color')
-            ->withCount(['parties', 'guidePosts'])
+            ->withCount(['parties', 'guidePosts', 'substitutes'])
             ->when($gameSlug, fn ($q) => $q->whereHas('game', fn ($g) => $g->where('slug', $gameSlug)))
             ->orderByRaw('starts_at IS NULL') // 일정 미상은 뒤로
             ->orderByDesc('starts_at')
@@ -38,7 +38,11 @@ class RaidQueryService
             'game:id,slug,name,icon,color',
             'parties.members.character:id,external_key,name,rarity,traits,image_url,image_path',
             'guidePosts' => fn ($q) => $q->orderByDesc('posted_at'),
+            'substitutes.substituteCharacter:id,external_key,name,rarity,traits,image_url,image_path',
         ]);
+
+        // 멤버별 대체 캐릭터 매칭용 인덱스(상위 캐릭터 id → 대체 관계들). N+1 없이 한 번에 로드해 컬렉션에서 매칭.
+        $substitutesByCharacter = $raid->substitutes->groupBy('character_id');
 
         return array_merge($this->raidSummary($raid), [
             'note' => $raid->note,
@@ -61,6 +65,24 @@ class RaidQueryService
                         'traits' => $member->character->traits,
                         'image_url' => $member->character->display_image_url,
                     ],
+                    // 미보유 시 프론트가 내 풀에서 대체 후보를 찾을 수 있게 멤버별 대체 캐릭터를 붙인다
+                    'substitutes' => $member->character === null
+                        ? []
+                        : ($substitutesByCharacter->get($member->character->id) ?? collect())
+                            ->filter(fn ($sub) => $sub->substituteCharacter !== null)
+                            ->map(fn ($sub) => [
+                                'character' => [
+                                    'id' => $sub->substituteCharacter->id,
+                                    'external_key' => $sub->substituteCharacter->external_key,
+                                    'name' => $sub->substituteCharacter->name,
+                                    'rarity' => $sub->substituteCharacter->rarity,
+                                    'traits' => $sub->substituteCharacter->traits,
+                                    'image_url' => $sub->substituteCharacter->display_image_url,
+                                ],
+                                'note' => $sub->note,
+                                'source' => $sub->source,
+                                'source_url' => $sub->source_url,
+                            ])->values()->all(),
                 ])->values()->all(),
             ])->values()->all(),
             'guide_posts' => $raid->guidePosts->map(fn ($post) => [
@@ -116,6 +138,7 @@ class RaidQueryService
             'source_url' => $raid->source_url,
             'parties_count' => $raid->parties_count ?? $raid->parties->count(),
             'guide_posts_count' => $raid->guide_posts_count ?? $raid->guidePosts->count(),
+            'substitutes_count' => $raid->substitutes_count ?? $raid->substitutes->count(),
         ];
     }
 }

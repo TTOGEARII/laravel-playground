@@ -81,3 +81,10 @@ Schedule::command('subculture:collect-guides')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(15)
     ->runInBackground();
+
+// 공략글 수집(08시) 이후 본문에서 대체 캐릭터 관계 추출(Gemini 호출 비용이 있어 하루 1회).
+Schedule::command('subculture:extract-substitutes')
+    ->dailyAt('09:30')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();

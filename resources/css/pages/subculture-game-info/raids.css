@@ -386,6 +386,207 @@
     color: #a5b4fc;
 }
 
+/* ---------------------------------- 내 풀로 조합 (대체 캐릭터) */
+.sgr-compose-toggle {
+    margin-left: auto;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sgr-compose-toggle:hover {
+    color: var(--text-primary);
+    border-color: rgba(129, 140, 248, 0.7);
+}
+
+.sgr-compose-toggle.is-on {
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.35), rgba(129, 140, 248, 0.12));
+    border-color: rgba(129, 140, 248, 0.9);
+    color: var(--text-primary);
+}
+
+.sgr-member {
+    position: relative;
+}
+
+.sgr-member-figure {
+    position: relative;
+    display: inline-flex;
+}
+
+/* 대체 투입 슬롯: 앰버 테두리로 구분 */
+.sgr-member.is-substituted img,
+.sgr-member.is-substituted .sgr-member-placeholder {
+    border: 2px solid rgba(251, 191, 36, 0.85);
+}
+
+.sgr-member.is-substituted .sgr-member-name {
+    color: #fbbf24;
+}
+
+/* 슬롯 좌상단 상태 플래그 (대체/미보유) */
+.sgr-member-flag {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    z-index: 1;
+}
+
+.sgr-member-flag.is-sub {
+    background: rgba(251, 191, 36, 0.9);
+    color: #1e1b4b;
+}
+
+.sgr-member-flag.is-vacant {
+    background: rgba(148, 163, 184, 0.85);
+    color: #0f172a;
+}
+
+/* 대체/공석 캡션 ("미카 대신", note, 후보 이름) */
+.sgr-member-caption {
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.25;
+    word-break: keep-all;
+}
+
+.sgr-member-caption.is-sub {
+    color: #fbbf24;
+}
+
+/* 대체 후보 인디케이터 (↻ N) */
+.sgr-sub-indicator {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(129, 140, 248, 0.6);
+    background: var(--bg-card);
+    color: #a5b4fc;
+    font-size: 0.62rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 2;
+    transition: all 0.15s ease;
+}
+
+.sgr-sub-indicator:hover,
+.sgr-sub-indicator.is-open {
+    background: rgba(129, 140, 248, 0.85);
+    border-color: transparent;
+    color: #fff;
+}
+
+/* 대체 후보 팝오버 */
+.sgr-sub-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    max-width: 78vw;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(129, 140, 248, 0.7);
+    background: var(--bg-card);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+    text-align: left;
+    cursor: default;
+}
+
+.sgr-sub-popover-title {
+    margin: 0 0 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.sgr-sub-popover-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sgr-sub-popover-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    font-size: 0.72rem;
+}
+
+.sgr-sub-cand-name {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.sgr-sub-owned-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+.sgr-sub-owned-badge.is-owned {
+    background: rgba(52, 211, 153, 0.2);
+    color: #34d399;
+}
+
+.sgr-sub-cand-note {
+    flex-basis: 100%;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.sgr-sub-cand-source {
+    color: #a5b4fc;
+    text-decoration: none;
+}
+
+/* 조합 모드 파티 요약 */
+.sgr-compose-summary {
+    margin: 10px 0 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-top: 1px dashed var(--border-color);
+    padding-top: 8px;
+}
+
+/* 목록 카드 "대체정보 N" 뱃지 */
+.sgr-sub-count-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(251, 191, 36, 0.16);
+    color: #fbbf24;
+    margin-left: 2px;
+}
+
+.sgr-legend-sub {
+    color: #fbbf24;
+}
+
 /* ---------------------------------- 공략글 피드 */
 .sgr-guide-list {
     list-style: none;
