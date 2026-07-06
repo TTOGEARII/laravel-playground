@@ -31,6 +31,35 @@ class MollulogRanksClient
         '탄력장갑' => 'elastic',
     ];
 
+    /**
+     * 난이도별 점수 상수 — 몰루로그 오픈소스(app/domain/raid-score.ts)와 동일 값.
+     * 클리어 점수 = 난이도 기본점 + 보스 HP점(제한시간 버킷별) + 시간점수(남은 초 × 초당점수)라
+     * 난이도별 점수 구간이 겹치지 않는다. ranks API 의 score {gte, lt} 필터가 이 구간으로 동작한다.
+     * 서비스 노출 난이도는 인세인/토먼트/루나틱 3종만(그 이하는 편성 참고 가치가 낮음).
+     */
+    private const DIFFICULTY_ORDER = ['insane', 'torment', 'lunatic'];
+
+    private const DIFFICULTY_BASE_SCORE = [
+        'insane' => 6_800_000,
+        'torment' => 12_200_000,
+        'lunatic' => 17_710_000,
+    ];
+
+    private const DIFFICULTY_HP_SCORE = [
+        'insane' => [180 => 12_449_600, 240 => 14_216_000, 270 => 14_941_016],
+        'torment' => [180 => 18_876_000, 240 => 19_508_000, 270 => 20_302_000],
+        'lunatic' => [180 => 25_525_000, 240 => 26_315_000, 270 => 26_954_000],
+    ];
+
+    /** 보스별 제한시간 버킷(초). 목록에 없으면 240. 레거시 uid 변형 포함. */
+    private const BOSS_TIME_BUCKET = [
+        'binah' => 180,
+        'kaiten' => 180,
+        'kaiten-fx-mk0' => 180,
+        'yesod' => 270,
+        'drumbarka' => 270,
+    ];
+
     public function __construct(private MollulogRankDecoder $decoder) {}
 
     public function source(): string
@@ -44,7 +73,7 @@ class MollulogRanksClient
      * @param  list<string>  $excludeKeys  subculture_characters.external_key(= 몰루로그 uid) 배열
      * @return array{mode: string, total_count: int, parties: list<array>, source_url: ?string}|null 실패 시 null
      */
-    public function findParties(Raid $raid, array $excludeKeys, int $page): ?array
+    public function findParties(Raid $raid, array $excludeKeys, int $page, ?string $difficulty = null): ?array
     {
         $config = config('subculture-game-info.raids.alternative_parties');
 
@@ -64,7 +93,8 @@ class MollulogRanksClient
         }
 
         $defenseType = $this->resolveDefenseType($raid, $schedule);
-        $decoded = $this->fetchRanks($raidType, (int) $jpSeason, $defenseType, $excludeKeys, $page, $config);
+        $scoreRange = $this->scoreRangeFor($difficulty, (string) data_get($schedule, 'raidBoss.uid'));
+        $decoded = $this->fetchRanks($raidType, (int) $jpSeason, $defenseType, $excludeKeys, $page, $scoreRange, $config);
         if ($decoded === null) {
             return null;
         }
@@ -115,7 +145,7 @@ class MollulogRanksClient
     {
         $config = config('subculture-game-info.raids.alternative_parties');
         $query = sprintf(
-            'query { raidSchedules(region: "gl", raidType: "%s") { nodes { uid seasonIndex startAt endAt raidBoss { name } defenseTypeSets { difficulty defenseTypes } jpSchedule { seasonIndex } } } }',
+            'query { raidSchedules(region: "gl", raidType: "%s") { nodes { uid seasonIndex startAt endAt raidBoss { uid name } defenseTypeSets { difficulty defenseTypes } jpSchedule { seasonIndex } } } }',
             $raidType,
         );
 
@@ -157,18 +187,43 @@ class MollulogRanksClient
         return (string) data_get($schedule, 'defenseTypeSets.0.defenseTypes.0', 'light');
     }
 
-    /** ranks API 호출 + protobuf 디코딩(1시간 캐시 — 키에 정렬·정규화한 제외 목록 포함). */
-    private function fetchRanks(string $raidType, int $season, string $defenseType, array $excludeKeys, int $page, array $config): ?array
+    /**
+     * 난이도 → ranks API score 범위. 난이도 미지정이면 null(전체).
+     * 구간 = [기본점+HP점, 다음 난이도 하한). 루나틱은 상한 없음.
+     *
+     * @return array{gte: int, lt?: int}|null
+     */
+    private function scoreRangeFor(?string $difficulty, string $bossUid): ?array
+    {
+        if ($difficulty === null || ! isset(self::DIFFICULTY_BASE_SCORE[$difficulty])) {
+            return null;
+        }
+
+        $bucket = self::BOSS_TIME_BUCKET[$bossUid] ?? 240;
+        $floor = fn (string $d): int => self::DIFFICULTY_BASE_SCORE[$d] + self::DIFFICULTY_HP_SCORE[$d][$bucket];
+
+        $range = ['gte' => $floor($difficulty)];
+        $next = self::DIFFICULTY_ORDER[array_search($difficulty, self::DIFFICULTY_ORDER, true) + 1] ?? null;
+        if ($next !== null) {
+            $range['lt'] = $floor($next);
+        }
+
+        return $range;
+    }
+
+    /** ranks API 호출 + protobuf 디코딩(1시간 캐시 — 키에 정렬·정규화한 제외 목록·난이도 범위 포함). */
+    private function fetchRanks(string $raidType, int $season, string $defenseType, array $excludeKeys, int $page, ?array $scoreRange, array $config): ?array
     {
         $perPage = $config['per_page'];
         // 상한은 Form Request 가 1차로 막지만, 다른 경로(커맨드 등)에서 호출돼도 안전하게 재강제
         $exclude = collect($excludeKeys)->map(fn ($key) => (string) $key)->unique()->sort()->take(500)->values();
         $cacheKey = sprintf(
-            'sgi:alt-party:mollulog:ranks:%s:%d:%s:%d:%d:%s',
+            'sgi:alt-party:mollulog:ranks:%s:%d:%s:%d:%d:%s:%s',
             $raidType, $season, $defenseType, $page, $perPage, md5($exclude->implode(',')),
+            $scoreRange === null ? 'all' : implode('-', $scoreRange),
         );
 
-        return Cache::remember($cacheKey, $config['mollulog']['ranks_cache_ttl'], function () use ($raidType, $season, $defenseType, $exclude, $page, $perPage, $config): ?array {
+        return Cache::remember($cacheKey, $config['mollulog']['ranks_cache_ttl'], function () use ($raidType, $season, $defenseType, $exclude, $page, $perPage, $scoreRange, $config): ?array {
             $url = $config['mollulog']['ranks_endpoint'].'?'.http_build_query([
                 'raidType' => $raidType,
                 'season' => $season,
@@ -180,6 +235,9 @@ class MollulogRanksClient
                 'includeStudents' => [],
                 'excludeStudents' => $exclude->map(fn (string $uid) => ['uid' => $uid, 'tiers' => []])->values()->all(),
             ];
+            if ($scoreRange !== null) {
+                $body['score'] = $scoreRange;
+            }
 
             try {
                 $response = Http::timeout($config['timeout'])

@@ -109,6 +109,14 @@ class AlternativePartyApiTest extends TestCase
         $this->postJson($this->url($raid), ['exclude' => [], 'page' => 'abc'])->assertUnprocessable();
     }
 
+    public function test_난이도는_인세인_토먼트_루나틱만_허용한다(): void
+    {
+        $raid = $this->raid();
+
+        $this->postJson($this->url($raid), ['exclude' => [], 'difficulty' => 'extreme'])->assertUnprocessable();
+        $this->postJson($this->url($raid), ['exclude' => [], 'difficulty' => '루나틱'])->assertUnprocessable();
+    }
+
     public function test_없는_레이드는_404(): void
     {
         $this->postJson('/api/subculture-game-info/raids/999999/alternative-parties', ['exclude' => []])

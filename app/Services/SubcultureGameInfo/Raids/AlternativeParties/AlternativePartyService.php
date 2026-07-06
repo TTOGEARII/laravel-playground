@@ -21,8 +21,9 @@ class AlternativePartyService
 
     /**
      * @param  list<string>  $excludeKeys  미보유 캐릭터 external_key 배열
+     * @param  ?string  $difficulty  블아 전용 난이도(insane|torment|lunatic), null=전체
      */
-    public function findParties(Raid $raid, array $excludeKeys, int $page = 1): array
+    public function findParties(Raid $raid, array $excludeKeys, int $page = 1, ?string $difficulty = null): array
     {
         $raid->loadMissing('game');
 
@@ -37,7 +38,7 @@ class AlternativePartyService
         }
 
         try {
-            $result = $client->findParties($raid, $excludeKeys, max(1, $page));
+            $result = $client->findParties($raid, $excludeKeys, max(1, $page), $difficulty);
         } catch (\Throwable $e) {
             Log::warning('[SGI-ALT] 실전 편성 조회 실패', ['raid_id' => $raid->id, 'error' => $e->getMessage()]);
             $result = null;
@@ -51,6 +52,7 @@ class AlternativePartyService
                 'total_count' => 0,
                 'parties' => [],
                 'has_more' => false,
+                'difficulty' => $difficulty,
                 'source' => $client->source(),
                 'source_url' => null,
             ];
@@ -62,6 +64,7 @@ class AlternativePartyService
             'total_count' => $result['total_count'],
             'parties' => $this->joinCharacters($raid, $result['parties']),
             'has_more' => (bool) ($result['has_more'] ?? false),
+            'difficulty' => $difficulty,
             'source' => $client->source(),
             'source_url' => $result['source_url'],
         ];

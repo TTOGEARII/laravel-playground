@@ -21,7 +21,15 @@ class AlternativePartyRequest extends FormRequest
             'exclude' => ['nullable', 'array', 'max:500'],
             'exclude.*' => ['string', 'max:40'],
             'page' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            // 블아 전용 난이도 필터(인세인/토먼트/루나틱) — 그 외 게임은 무시된다
+            'difficulty' => ['nullable', 'string', 'in:insane,torment,lunatic'],
         ];
+    }
+
+    /** 난이도 필터(블아 전용). 미지정이면 null(전체). */
+    public function difficulty(): ?string
+    {
+        return $this->validated('difficulty');
     }
 
     /** @return list<string> 중복 제거한 제외 캐릭터 external_key 목록 */

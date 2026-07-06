@@ -932,3 +932,28 @@
     gap: 12px;
     margin-top: 12px;
 }
+
+/* 실전 편성 난이도 필터 (블아) */
+.sgr-alt-difficulties {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.sgr-alt-diff {
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.sgr-alt-diff:hover { color: var(--text-primary); }
+.sgr-alt-diff.is-active {
+    background: rgba(139, 92, 246, 0.18);
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #c4b5fd;
+    font-weight: 600;
+}

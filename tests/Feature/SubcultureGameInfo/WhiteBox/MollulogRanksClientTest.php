@@ -47,14 +47,14 @@ class MollulogRanksClientTest extends TestCase
             [
                 'uid' => 'gl_total_assault_82', 'seasonIndex' => 82,
                 'startAt' => '2026-05-05T02:00:00Z', 'endAt' => '2026-05-11T19:00:00Z',
-                'raidBoss' => ['name' => '호버크래프트'],
+                'raidBoss' => ['uid' => 'hovercraft', 'name' => '호버크래프트'],
                 'defenseTypeSets' => [['difficulty' => 'lunatic', 'defenseTypes' => ['heavy']]],
                 'jpSchedule' => ['seasonIndex' => 85],
             ],
             [
                 'uid' => 'gl_total_assault_83', 'seasonIndex' => 83,
                 'startAt' => '2026-06-30T02:00:00Z', 'endAt' => '2026-07-06T19:00:00Z',
-                'raidBoss' => ['name' => '비나'],
+                'raidBoss' => ['uid' => 'binah', 'name' => '비나'],
                 'defenseTypeSets' => [['difficulty' => 'lunatic', 'defenseTypes' => ['heavy']]],
                 'jpSchedule' => ['seasonIndex' => 86],
             ],
@@ -113,6 +113,49 @@ class MollulogRanksClientTest extends TestCase
         $this->assertSame(['level' => 90, 'tier' => 5, 'weapon_tier' => 3, 'is_assist' => false], $first['members'][0]['meta']);
         $this->assertNull($result['parties'][0]['members'][1]['name']); // 마스터에 없는 학생은 이름 없음
         $this->assertSame('24366위', $result['parties'][3]['title']); // 단일 웨이브는 편성 번호 생략
+    }
+
+    public function test_난이도_지정_시_점수_범위를_담아_요청한다(): void
+    {
+        Http::fake([
+            'api.baql.net/*' => Http::response($this->graphqlResponse()),
+            'ranks.baql.net/*' => Http::response($this->ranksBinary(), 200, ['Content-Type' => 'application/x-protobuf']),
+        ]);
+
+        // 비나(binah) = 180초 버킷. 인세인 구간 = [기본점+HP점, 토먼트 하한)
+        app(AlternativePartyService::class)->findParties($this->raid(), [], 1, 'insane');
+
+        Http::assertSent(function (Request $request) {
+            if (! str_contains($request->url(), 'ranks.baql.net')) {
+                return false;
+            }
+            $body = json_decode($request->body(), true);
+
+            return ($body['score'] ?? null) === [
+                'gte' => 6_800_000 + 12_449_600,   // 인세인 하한
+                'lt' => 12_200_000 + 18_876_000,   // 토먼트 하한
+            ];
+        });
+    }
+
+    public function test_루나틱은_상한_없이_하한만_담는다(): void
+    {
+        Http::fake([
+            'api.baql.net/*' => Http::response($this->graphqlResponse()),
+            'ranks.baql.net/*' => Http::response($this->ranksBinary(), 200, ['Content-Type' => 'application/x-protobuf']),
+        ]);
+
+        $result = app(AlternativePartyService::class)->findParties($this->raid(), [], 1, 'lunatic');
+
+        $this->assertSame('lunatic', $result['difficulty']);
+        Http::assertSent(function (Request $request) {
+            if (! str_contains($request->url(), 'ranks.baql.net')) {
+                return false;
+            }
+            $body = json_decode($request->body(), true);
+
+            return ($body['score'] ?? null) === ['gte' => 17_710_000 + 25_525_000];
+        });
     }
 
     public function test_외부에는_시즌당_한_번만_요청하고_이후는_캐시를_쓴다(): void

@@ -10,6 +10,18 @@
     </p>
 
     <template v-else>
+      <!-- 난이도 필터 (블아 총력전/대결전 전용) -->
+      <div v-if="isBlueArchive" class="sgr-alt-difficulties" role="tablist" aria-label="난이도">
+        <button
+          v-for="d in DIFFICULTIES"
+          :key="d.value"
+          type="button"
+          class="sgr-alt-diff"
+          :class="{ 'is-active': difficulty === d.value }"
+          @click="selectDifficulty(d.value)"
+        >{{ d.label }}</button>
+      </div>
+
       <p v-if="result && result.mode === 'squad'" class="sgr-alt-notice">
         전체 편성이 모두 가능한 랭커가 적어 부대 단위로 보여드려요.
       </p>
@@ -75,6 +87,23 @@ const loading = ref(false);
 const error = ref('');
 const unsupported = ref(false);
 
+// 블아 전용 난이도 필터 — 편성 참고 가치가 있는 상위 3개 난이도만 노출
+const DIFFICULTIES = [
+  { value: 'insane', label: '인세인' },
+  { value: 'torment', label: '토먼트' },
+  { value: 'lunatic', label: '루나틱' },
+];
+const isBlueArchive = computed(() => props.raid.game?.slug === 'bluearchive');
+const difficulty = ref('insane');
+
+function selectDifficulty(value) {
+  if (difficulty.value === value) return;
+  difficulty.value = value;
+  parties.value = [];
+  result.value = null;
+  load(1);
+}
+
 // 동일 조건(레이드+보유 상태) 재호출 방지용 세션 캐시
 const sessionCache = new Map();
 
@@ -112,10 +141,11 @@ async function load(nextPage = 1) {
     }
     if (ownedCount.value === 0) return; // 안내 문구만 표시
 
-    const cacheKey = `${props.raid.id}:${nextPage}:${Object.keys(props.pool).filter((k) => props.pool[k]?.owned).sort().join(',')}`;
+    const diff = isBlueArchive.value ? difficulty.value : null;
+    const cacheKey = `${props.raid.id}:${nextPage}:${diff ?? 'all'}:${Object.keys(props.pool).filter((k) => props.pool[k]?.owned).sort().join(',')}`;
     let data = sessionCache.get(cacheKey);
     if (!data) {
-      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), nextPage);
+      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), nextPage, diff);
       sessionCache.set(cacheKey, data);
     }
 

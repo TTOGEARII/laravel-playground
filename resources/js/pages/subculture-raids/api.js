@@ -22,10 +22,15 @@ export const raidApi = {
      * @param {number} raidId
      * @param {string[]} exclude 미보유 캐릭터 external_key 배열 (max 500)
      * @param {number} page
+     * @param {?string} difficulty 블아 전용 난이도(insane|torment|lunatic), null=전체
      */
-    async getAlternativeParties(raidId, exclude, page = 1) {
-        const { data } = await axios.post(`${API_BASE}/raids/${raidId}/alternative-parties`, { exclude, page });
-        return data.data; // { supported, mode, total_count, parties, source, source_url }
+    async getAlternativeParties(raidId, exclude, page = 1, difficulty = null) {
+        const { data } = await axios.post(`${API_BASE}/raids/${raidId}/alternative-parties`, {
+            exclude,
+            page,
+            ...(difficulty ? { difficulty } : {}),
+        });
+        return data.data; // { supported, mode, total_count, parties, has_more, difficulty, source, source_url }
     },
 };
 
