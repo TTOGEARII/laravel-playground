@@ -154,11 +154,13 @@ class OtakuShopRematchCommand extends Command
             foreach ($products as $product) {
                 $title = (string) $product->ok_product_title;
 
-                $maker = $normalizer->extractMakerCode($title);
+                // 부속품(전용 케이스 등) 제목의 라인넘버형 품번은 본체 품번이라 버린다(sanitizeMakerCode).
+                // → 아래 elseif 에서 기존 비-JAN 코드도 함께 제거돼 makerCodeGroups 병합 대상에서 빠진다(소급).
+                $maker = CrawlSyncService::sanitizeMakerCode($normalizer->extractMakerCode($title), $title);
                 if ($maker !== null) {
                     $product->ok_product_maker_code = $maker;  // 개선된 정규식으로 새로 뽑히면 갱신
                 } elseif ($product->ok_product_maker_code !== null && ! str_starts_with($product->ok_product_maker_code, 'jan_')) {
-                    // 제목에서 더는 안 뽑히는 비-JAN 코드는 오탐(예: 바 "츠" 매칭) → 제거.
+                    // 제목에서 더는 안 뽑히는(또는 부속품이라 버려진) 비-JAN 코드는 오탐 → 제거.
                     // JAN은 상세 크롤에서 오므로 제목에 없어도 유지한다.
                     $product->ok_product_maker_code = null;
                 }

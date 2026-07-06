@@ -78,6 +78,36 @@ class OtakuShopRematchTest extends TestCase
         $this->assertSame(2, OtakuOffer::count());
     }
 
+    public function test_rematch_drops_line_number_code_from_accessory_and_keeps_products_separate(): void
+    {
+        // 실제 운영 사례(소급 대상): 과거 크롤이 부속품(전용 케이스) 제목에서 본체 품번을 뽑아 저장해,
+        // 재매칭 시 본체와 같은 품번 그룹으로 병합되던 케이스.
+        $this->product('p1', '[입고완료][굿스마일컴퍼니][리코리스 리코일] 넨도로이드 No.1955 니시키기 치사토 (재판)', 'nendo_1955', $this->shopA, 'A1', 74000);
+        $this->product('p2', '판도라 넨도로이드 No.1955 리코리스 리코일 니시키기 치사토 피규어 전용 아크릴 케이스', 'nendo_1955', $this->shopB, 'B1', 19000);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        // 부속품의 라인넘버형 품번이 null 로 재계산돼 품번 병합 대상에서 빠진다 → 두 상품 분리 유지.
+        $this->assertSame(2, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+
+        $accessory = OtakuProduct::where('ok_product_title', 'like', '%케이스%')->first();
+        $this->assertNull($accessory->ok_product_maker_code);
+
+        $body = OtakuProduct::where('ok_product_title', 'not like', '%케이스%')->first();
+        $this->assertSame('nendo_1955', $body->ok_product_maker_code);
+    }
+
+    public function test_rematch_keeps_jan_code_on_accessory(): void
+    {
+        // 상세 크롤로 저장된 부속품 자체 JAN(제목엔 없음)은 소급 재분류에서도 유지된다.
+        $this->product('p1', '니시키기 치사토 피규어 전용 아크릴 케이스', 'jan_4580590189997', $this->shopA, 'A1', 19000);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame('jan_4580590189997', OtakuProduct::first()->ok_product_maker_code);
+    }
+
     public function test_dry_run_does_not_merge(): void
     {
         $this->product('p1', '블루 아카이브 넨도로이드 2611 아스나', 'nendo_2611', $this->shopA, 'A1', 70000);

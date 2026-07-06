@@ -221,6 +221,58 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(3, OtakuOffer::count());
     }
 
+    public function test_accessory_case_is_not_merged_with_figure_body_by_maker_code(): void
+    {
+        $this->seedShops();
+        $service = $this->app->make(CrawlSyncService::class);
+
+        // 실제 운영 사례: 부속품(전용 케이스) 제목에 본체 품번(넨도로이드 No.1955)이 그대로 들어 있어
+        // 품번 매칭으로 본체와 병합돼 가격비교가 오염됐던 케이스 → 두 상품으로 분리 유지돼야 한다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[입고완료][굿스마일컴퍼니][리코리스 리코일] 넨도로이드 No.1955 니시키기 치사토 (재판)', 74000),
+            $this->dto('ttabbaemall', 'B1', '판도라 넨도로이드 No.1955 리코리스 리코일 니시키기 치사토 피규어 전용 아크릴 케이스', 19000),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '부속품 케이스는 본체와 다른 상품으로 남아야 함');
+        $this->assertSame(2, OtakuOffer::count());
+
+        // 라인넘버형 품번(nendo_1955)은 본체만 가진다(부속품 쪽은 버려짐).
+        $codes = OtakuProduct::pluck('ok_product_maker_code', 'ok_product_title')->all();
+        $this->assertSame('nendo_1955', $codes['[입고완료][굿스마일컴퍼니][리코리스 리코일] 넨도로이드 No.1955 니시키기 치사토 (재판)']);
+        $this->assertNull($codes['판도라 넨도로이드 No.1955 리코리스 리코일 니시키기 치사토 피규어 전용 아크릴 케이스']);
+    }
+
+    public function test_accessory_with_same_jan_still_matches_across_shops(): void
+    {
+        $this->seedShops();
+        $service = $this->app->make(CrawlSyncService::class);
+
+        // JAN 바코드는 부속품 '자체'의 고유값이므로 버리지 않는다 → 쇼핑몰 간 동일 부속품 매칭은 유지.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '넨도로이드 No.1955 니시키기 치사토 피규어 전용 아크릴 케이스', 19000, makerCode: 'jan_4580590189997'),
+            $this->dto('ttabbaemall', 'B1', '니시키기 치사토 넨도로이드 전용 케이스', 18000, makerCode: 'jan_4580590189997'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count());
+        $this->assertSame(2, OtakuOffer::count());
+        $this->assertSame('jan_4580590189997', OtakuProduct::first()->ok_product_maker_code);
+    }
+
+    public function test_accessory_detection_and_maker_code_sanitizing_rules(): void
+    {
+        // 부속품 판별(공용 헬퍼): 케이스/아크릴 등 키워드가 있으면 부속품.
+        $this->assertTrue(CrawlSyncService::looksLikeAccessory('넨도로이드 No.1955 니시키기 치사토 피규어 전용 아크릴 케이스'));
+        $this->assertTrue(CrawlSyncService::looksLikeAccessory('1/7 스케일 피규어 LED 디스플레이 케이스'));
+        $this->assertFalse(CrawlSyncService::looksLikeAccessory('[입고완료] 리코리스 리코일 넨도로이드 No.1955 니시키기 치사토 (재판)'));
+
+        // 품번 정제: 부속품 제목의 라인넘버형 품번은 본체 품번이므로 버리고, JAN은 부속품 자체 고유값이라 유지.
+        $this->assertNull(CrawlSyncService::sanitizeMakerCode('nendo_1955', '넨도로이드 No.1955 치사토 전용 아크릴 케이스'));
+        $this->assertSame('jan_4580590189997', CrawlSyncService::sanitizeMakerCode('jan_4580590189997', '넨도로이드 No.1955 치사토 전용 아크릴 케이스'));
+        // 본체 제목이면 라인넘버형 품번도 그대로 유지.
+        $this->assertSame('nendo_1955', CrawlSyncService::sanitizeMakerCode('nendo_1955', '리코리스 리코일 넨도로이드 No.1955 니시키기 치사토'));
+        $this->assertNull(CrawlSyncService::sanitizeMakerCode(null, '아무 제목'));
+    }
+
     public function test_goods_category_is_not_fuzzy_merged_even_when_containment(): void
     {
         $service = $this->app->make(CrawlSyncService::class);

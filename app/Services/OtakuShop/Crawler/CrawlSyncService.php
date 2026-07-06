@@ -134,7 +134,12 @@ class CrawlSyncService
 
             // 고유값(품번/JAN)이 있으면 그것을 매칭 키로 우선 사용한다. 제목 표기가 쇼핑몰마다 달라도
             // 같은 코드가 나와 동일상품으로 정확히 묶인다. 없으면 기존 제목 정규화 키로 폴백.
-            $makerCode = $dto->makerCode ?? $this->normalizer->extractMakerCode($dto->title);
+            // 단, 부속품(전용 케이스 등) 제목에는 본체 품번이 그대로 들어가므로 라인넘버형 품번은
+            // 버린다(sanitizeMakerCode) — 본체와 같은 키로 병합돼 가격비교가 오염되는 것을 방지.
+            $makerCode = self::sanitizeMakerCode(
+                $dto->makerCode ?? $this->normalizer->extractMakerCode($dto->title),
+                $dto->title,
+            );
             $key = $makerCode !== null
                 ? 'mkr_'.md5($makerCode)
                 : $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
@@ -347,7 +352,41 @@ class CrawlSyncService
             return false;
         }
 
-        return ! preg_match('/(케이스|디스플레이|아크릴|태피스트리|쿠션|포스터|스탠드|받침)/iu', $title);
+        return ! self::looksLikeAccessory($title);
+    }
+
+    /**
+     * 부속품(본체 전용 케이스/스탠드/태피스트리 등) 제목인지 — 본체와의 오병합을 막는 공용 판별.
+     * 부속품 제목에는 본체 품번·스케일이 그대로 들어가는 경우가 많아, 품번 매칭·퍼지 매칭 양쪽에서
+     * 이 판별로 걸러야 한다. 키워드는 config(accessory_keywords)로 관리한다.
+     */
+    public static function looksLikeAccessory(string $title): bool
+    {
+        $keywords = (array) config('otaku-crawler.product_match.accessory_keywords', [
+            '케이스', '디스플레이', '아크릴', '태피스트리', '쿠션', '포스터', '스탠드', '받침', '진열',
+        ]);
+
+        foreach ($keywords as $keyword) {
+            if (is_string($keyword) && $keyword !== '' && mb_stripos($title, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 부속품 제목이면 라인넘버형 품번(nendo_/figma_ 등)을 버린다(null).
+     * 부속품 제목의 라인넘버는 '본체'의 품번이라(예: "넨도로이드 No.1955 … 전용 아크릴 케이스")
+     * 그대로 쓰면 본체와 같은 상품으로 병합된다. 반면 jan_ 바코드는 부속품 자체의 고유값이므로 유지.
+     */
+    public static function sanitizeMakerCode(?string $makerCode, string $title): ?string
+    {
+        if ($makerCode === null || str_starts_with($makerCode, 'jan_')) {
+            return $makerCode;
+        }
+
+        return self::looksLikeAccessory($title) ? null : $makerCode;
     }
 
     /**
