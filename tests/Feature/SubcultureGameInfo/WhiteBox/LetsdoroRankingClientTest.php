@@ -86,12 +86,13 @@ class LetsdoroRankingClientTest extends TestCase
 
         $this->assertSame('partial', $result['mode']);
         $this->assertCount(2, $result['groups']);
-        // 부대가 군데군데 빠지지 않고 랭커의 전체 클리어가 그대로 나온다
-        $this->assertSame(['1위 1부대', '1위 2부대'], array_column($result['groups'][0], 'title'));
-        $this->assertSame(['2위 1부대'], array_column($result['groups'][1], 'title'));
+        // 깨끗한 부대 수 동률(1) → 미보유 멤버가 없는 2위가 먼저
+        $this->assertSame(['2위 1부대'], array_column($result['groups'][0], 'title'));
+        // 부대가 군데군데 빠지지 않고 1위 랭커의 전체 클리어(오염 2부대 포함)가 그대로 나온다
+        $this->assertSame(['1위 1부대', '1위 2부대'], array_column($result['groups'][1], 'title'));
         // 오염된 2부대의 미보유 니케에는 is_excluded 표시
-        $this->assertFalse($result['groups'][0][0]['members'][0]['is_excluded']);
-        $this->assertTrue($result['groups'][0][1]['members'][0]['is_excluded']);
+        $this->assertFalse($result['groups'][1][0]['members'][0]['is_excluded']);
+        $this->assertTrue($result['groups'][1][1]['members'][0]['is_excluded']);
     }
 
     public function test_부분_매칭은_깨끗한_부대가_많은_랭커를_우선한다(): void
@@ -101,15 +102,33 @@ class LetsdoroRankingClientTest extends TestCase
             $this->ranker(1, [$this->squad(1, 100, ['1007']), $this->squad(2, 90, ['5155'])]),
             // 2위: 깨끗한 부대 2개 → 매칭률이 높아 먼저 나와야 한다
             $this->ranker(2, [$this->squad(1, 80, ['1010']), $this->squad(2, 70, ['1012'])]),
-            // 3위: 전 부대 오염 → 참고 가치 없음, 제외
+            // 3위: 전 부대 오염 → 버리지 않고 맨 뒤(사용자가 대체 지정으로 채울 수 있게)
             $this->ranker(3, [$this->squad(1, 60, ['5155'])]),
         ];
 
         $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], [], 3);
 
         $this->assertSame('partial', $result['mode']);
-        $this->assertCount(2, $result['groups']); // 3위는 제외
+        $this->assertCount(3, $result['groups']); // 전 부대 오염 랭커도 포함(빈 화면 방지)
         $this->assertSame('2위 1부대', $result['groups'][0][0]['title']); // 매칭률 우선
+        $this->assertSame('1위 1부대', $result['groups'][1][0]['title']);
+        $this->assertSame('3위 1부대', $result['groups'][2][0]['title']); // 전 부대 오염은 맨 뒤
+        $this->assertTrue($result['groups'][2][0]['members'][0]['is_excluded']);
+    }
+
+    public function test_부분_매칭은_깨끗한_부대_수가_같으면_미보유가_적은_랭커를_우선한다(): void
+    {
+        $rankings = [
+            // 1위: 깨끗한 부대 0 + 미보유 2명
+            $this->ranker(1, [$this->squad(1, 100, ['5155', '5137'])]),
+            // 2위: 깨끗한 부대 0 + 미보유 1명 → 채울 구멍이 적어 먼저
+            $this->ranker(2, [$this->squad(1, 90, ['5155', '1007'])]),
+        ];
+
+        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155', '5137'], [], 3);
+
+        $this->assertSame('partial', $result['mode']);
+        $this->assertSame('2위 1부대', $result['groups'][0][0]['title']);
         $this->assertSame('1위 1부대', $result['groups'][1][0]['title']);
     }
 

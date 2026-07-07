@@ -60,9 +60,12 @@ class AlternativePartyApiTest extends TestCase
         $this->assertTrue($res->json('data.supported'));
         $this->assertSame('letsdoro', $res->json('data.source'));
         $this->assertSame('partial', $res->json('data.mode')); // 깨끗한 랭커 1명 < 3 → 부분 매칭
-        $this->assertSame(1, $res->json('data.total_count')); // 1위는 전 부대 오염이라 제외, 2위만
+        $this->assertSame(2, $res->json('data.total_count')); // 전 부대 오염 1위도 포함(대체 지정으로 채울 목표)
+        // 깨끗한 2위가 먼저, 오염 1위는 뒤에 is_excluded 표시로
         $this->assertSame('D', $res->json('data.parties.0.members.0.name'));
         $this->assertFalse($res->json('data.parties.0.members.0.is_excluded'));
+        $this->assertSame('나유타', $res->json('data.parties.1.members.0.name'));
+        $this->assertTrue($res->json('data.parties.1.members.0.is_excluded'));
     }
 
     public function test_미지원_게임은_supported_false_를_200_으로_돌려준다(): void

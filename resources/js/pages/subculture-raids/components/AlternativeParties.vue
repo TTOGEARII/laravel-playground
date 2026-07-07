@@ -42,25 +42,74 @@
             <span v-if="party.score" class="sgr-alt-score">{{ Number(party.score).toLocaleString() }}</span>
           </div>
           <div class="sgr-alt-members">
-            <div
-              v-for="(m, j) in party.members"
-              :key="j"
-              class="sgr-alt-member"
-              :class="{ 'is-unowned': m.is_excluded }"
-              :title="m.is_excluded ? `${m.name} — 미보유` : undefined"
-            >
-              <img v-if="m.image_url" :src="m.image_url" :alt="m.name" loading="lazy" />
-              <span v-else class="sgr-member-placeholder">{{ (m.name || '?').slice(0, 2) }}</span>
-              <span class="sgr-alt-member-name">{{ m.name }}</span>
-              <span v-if="m.is_excluded" class="sgr-alt-caption">미보유</span>
-              <span v-else-if="m.meta?.is_assist" class="sgr-alt-assist">조력</span>
-              <span v-else-if="memberCaption(m)" class="sgr-alt-caption">{{ memberCaption(m) }}</span>
-            </div>
+            <template v-for="(m, j) in party.members" :key="j">
+              <!-- 미보유 + 내가 지정한 대체가 있으면 대체 캐릭터로 표시 -->
+              <div
+                v-if="m.is_excluded && substituteFor(m)"
+                class="sgr-alt-member is-user-sub"
+                :title="`${m.name} 대신 ${substituteFor(m).name} (클릭해서 변경)`"
+                @click="openPicker(m)"
+              >
+                <button type="button" class="sgr-alt-sub-clear" title="대체 해제" @click.stop="clearSubstitute(m)">×</button>
+                <img v-if="substituteFor(m).image_url" :src="substituteFor(m).image_url" :alt="substituteFor(m).name" loading="lazy" />
+                <span v-else class="sgr-member-placeholder">{{ (substituteFor(m).name || '?').slice(0, 2) }}</span>
+                <span class="sgr-alt-member-name">{{ substituteFor(m).name }}</span>
+                <span class="sgr-alt-caption sgr-alt-sub-caption">{{ m.name }} 대신</span>
+              </div>
+              <!-- 미보유(대체 미지정): 클릭하면 내 보유에서 대체 지정 -->
+              <div
+                v-else
+                class="sgr-alt-member"
+                :class="{ 'is-unowned': m.is_excluded, 'is-clickable': m.is_excluded }"
+                :title="m.is_excluded ? `${m.name} — 미보유 (클릭해서 대체 지정)` : undefined"
+                @click="m.is_excluded && openPicker(m)"
+              >
+                <img v-if="m.image_url" :src="m.image_url" :alt="m.name" loading="lazy" />
+                <span v-else class="sgr-member-placeholder">{{ (m.name || '?').slice(0, 2) }}</span>
+                <span class="sgr-alt-member-name">{{ m.name }}</span>
+                <span v-if="m.is_excluded" class="sgr-alt-caption">미보유 · 대체+</span>
+                <span v-else-if="m.meta?.is_assist" class="sgr-alt-assist">조력</span>
+                <span v-else-if="memberCaption(m)" class="sgr-alt-caption">{{ memberCaption(m) }}</span>
+              </div>
+            </template>
           </div>
         </article>
       </div>
 
       <p v-if="loading" class="sgr-empty">실전 편성을 불러오는 중…</p>
+
+      <!-- 대체 캐릭터 지정 피커 -->
+      <div v-if="picker" class="sgr-subpicker-backdrop" @click.self="closePicker">
+        <div class="sgr-subpicker" role="dialog" aria-modal="true">
+          <div class="sgr-subpicker-head">
+            <strong>{{ picker.name }}</strong> 대신 쓸 내 캐릭터
+            <button type="button" class="sgr-subpicker-close" aria-label="닫기" @click="closePicker">×</button>
+          </div>
+          <input
+            v-model="pickerQuery"
+            type="search"
+            class="sgr-subpicker-search"
+            placeholder="보유 캐릭터 검색"
+          />
+          <p v-if="ownedCandidates.length === 0" class="sgr-empty">
+            {{ pickerQuery ? '검색 결과가 없어요.' : '내 캐릭터 탭에서 보유 캐릭터를 먼저 체크해 주세요.' }}
+          </p>
+          <div class="sgr-subpicker-grid">
+            <button
+              v-for="c in ownedCandidates"
+              :key="c.external_key"
+              type="button"
+              class="sgr-subpicker-item"
+              :class="{ 'is-current': userSubs[picker.external_key] === c.external_key }"
+              @click="pickSubstitute(c)"
+            >
+              <img v-if="c.image_url" :src="c.image_url" :alt="c.name" loading="lazy" />
+              <span v-else class="sgr-member-placeholder">{{ c.name.slice(0, 2) }}</span>
+              <span class="sgr-subpicker-name">{{ c.name }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="sgr-alt-foot">
         <button
@@ -89,7 +138,10 @@ const props = defineProps({
   raid: { type: Object, required: true },
   pool: { type: Object, default: () => ({}) },
   include: { type: Array, default: () => [] }, // 반드시 포함할 external_key (핵심 캐릭터 카드에서 지정)
+  userSubs: { type: Object, default: () => ({}) }, // 내 대체 매핑 { 미보유 key: 보유 key }
 });
+
+const emit = defineEmits(['set-substitute', 'clear-substitute']);
 
 const characters = ref(null); // 게임 전체 활성 캐릭터 (미보유 계산용)
 const result = ref(null);
@@ -137,6 +189,48 @@ function memberCaption(m) {
   const weapon = m.meta?.weapon_tier;
   if (!tier) return '';
   return `★${tier}${weapon ? ` · 전${weapon}` : ''}`;
+}
+
+// ── 미보유 대체 지정 ──────────────────────────────────────────────
+const picker = ref(null); // 대체를 지정할 미보유 멤버 { external_key, name }
+const pickerQuery = ref('');
+
+/** 멤버에 내가 지정한 대체 캐릭터(전체 캐릭터 목록에서 해석). 없으면 null */
+function substituteFor(m) {
+  const key = props.userSubs[m.external_key];
+  if (!key) return null;
+  return (characters.value ?? []).find((c) => c.external_key === key) ?? null;
+}
+
+/** 피커 후보: 내 보유 캐릭터(검색어 필터, 이름순) */
+const ownedCandidates = computed(() => {
+  const q = pickerQuery.value.trim().toLowerCase();
+  return (characters.value ?? [])
+    .filter((c) => props.pool[c.external_key]?.owned === true && c.external_key !== picker.value?.external_key)
+    .filter((c) => !q || c.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+});
+
+function openPicker(member) {
+  picker.value = { external_key: member.external_key, name: member.name };
+  pickerQuery.value = '';
+}
+
+function closePicker() {
+  picker.value = null;
+}
+
+function pickSubstitute(character) {
+  emit('set-substitute', {
+    gameSlug: props.raid.game.slug,
+    characterKey: picker.value.external_key,
+    substituteKey: character.external_key,
+  });
+  closePicker();
+}
+
+function clearSubstitute(member) {
+  emit('clear-substitute', { gameSlug: props.raid.game.slug, characterKey: member.external_key });
 }
 
 /** 미보유 external_key 목록 (API 상한 500개) */

@@ -77,7 +77,14 @@
         :required="requiredKeys"
         @toggle="toggleRequired"
       />
-      <AlternativeParties :raid="raid" :pool="pool" :include="requiredKeys" />
+      <AlternativeParties
+        :raid="raid"
+        :pool="pool"
+        :include="requiredKeys"
+        :user-subs="userSubs"
+        @set-substitute="$emit('set-substitute', $event)"
+        @clear-substitute="$emit('clear-substitute', $event)"
+      />
     </section>
 
     <!-- 커뮤니티 공략글 -->
@@ -108,9 +115,10 @@ import PartyCard from './PartyCard.vue';
 const props = defineProps({
   raid: { type: Object, required: true },
   pool: { type: Object, default: () => ({}) },
+  userSubs: { type: Object, default: () => ({}) }, // 내 대체 매핑 { 미보유 key: 보유 key }
 });
 
-defineEmits(['back']);
+defineEmits(['back', 'set-substitute', 'clear-substitute']);
 
 // 실전 편성(원본 랭킹 프록시)이 있는 게임 = 블아·니케
 const hasAltParties = computed(() => ['bluearchive', 'nikke'].includes(props.raid.game?.slug));

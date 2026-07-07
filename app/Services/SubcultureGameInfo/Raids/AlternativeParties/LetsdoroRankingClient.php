@@ -118,20 +118,24 @@ class LetsdoroRankingClient
             return ['mode' => 'ranker', 'groups' => $groups];
         }
 
-        // 2차: 부분 매칭 — 미보유가 적은 랭커부터, 부대를 빼지 않고 전체 클리어(1~5부대)를 보여준다.
-        // 미보유 니케가 든 부대도 그대로 두고 멤버에 is_excluded 만 표시한다(프론트에서 흐리게).
+        // 2차: 부분 매칭 — 내 풀과 잘 맞는 랭커부터, 부대를 빼지 않고 전체 클리어(1~5부대)를 보여준다.
+        // 미보유 니케가 든 부대도 그대로 두고 멤버에 is_excluded 만 표시한다(프론트에서 흐리게,
+        // 사용자가 직접 대체 캐릭터를 지정해 채울 수 있다). 전 부대 오염 랭커도 버리지 않는다 —
+        // 보유가 적은 사용자에게 빈 화면 대신 "대체로 채울 목표"를 주는 편이 낫다.
         // 스쿼드를 개별 발췌하면 "1위 1·3부대"처럼 구성이 군데군데 끊겨 참고 가치가 떨어진다.
         $groups = collect($rankings)
             ->filter(fn (array $ranker) => collect($ranker['squads'] ?? [])->isNotEmpty() && $rankerHasIncludes($ranker))
             ->map(fn (array $ranker) => [
                 'clean_count' => collect($ranker['squads'])->filter($squadClean)->count(),
+                'excluded_count' => collect($ranker['squads'])
+                    ->flatMap(fn (array $squad) => $squad['nikkes'] ?? [])
+                    ->filter(fn (array $nikke) => $exclude->has((string) ($nikke['nikkeId'] ?? '')))
+                    ->count(),
                 'ranker' => $ranker,
             ])
-            // 전 부대가 미보유 포함인 랭커는 참고 가치가 없어 제외
-            ->filter(fn (array $row) => $row['clean_count'] > 0)
-            // 깨끗한 부대가 많은 랭커 우선, 같으면 상위 랭크 우선
-            ->sort(fn (array $a, array $b) => [$b['clean_count'], $a['ranker']['rank'] ?? 0]
-                <=> [$a['clean_count'], $b['ranker']['rank'] ?? 0])
+            // 깨끗한 부대 많은 순 → 미보유 멤버 적은 순 → 상위 랭크 순
+            ->sort(fn (array $a, array $b) => [$b['clean_count'], $a['excluded_count'], $a['ranker']['rank'] ?? 0]
+                <=> [$a['clean_count'], $b['excluded_count'], $b['ranker']['rank'] ?? 0])
             ->map(fn (array $row) => collect($row['ranker']['squads'])
                 ->map(fn (array $squad) => $this->toParty($row['ranker'], $squad, $exclude))
                 ->values()

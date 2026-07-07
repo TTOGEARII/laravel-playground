@@ -4,6 +4,7 @@ use App\Http\Controllers\SubcultureGameInfo\MainController;
 use App\Http\Controllers\SubcultureGameInfo\RaidPageController;
 use App\Http\Controllers\SubcultureGameInfo\RedemptionController;
 use App\Http\Controllers\SubcultureGameInfo\UserCharacterController;
+use App\Http\Controllers\SubcultureGameInfo\UserSubstituteController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MainController::class, 'index'])->name('subculture-game-info.index');
@@ -33,4 +34,11 @@ Route::middleware('auth')->controller(UserCharacterController::class)->prefix('m
     Route::delete('{character}', 'destroy')
         ->whereNumber('character')
         ->name('subculture-game-info.my-characters.destroy');
+});
+
+// 내 대체 캐릭터 매핑 (미보유 → 내 보유, 로그인 전용). 비로그인은 localStorage 사용.
+Route::middleware('auth')->controller(UserSubstituteController::class)->prefix('my-substitutes')->group(function () {
+    Route::get('/', 'index')->name('subculture-game-info.my-substitutes.index');
+    Route::put('/', 'update')->name('subculture-game-info.my-substitutes.update');
+    Route::delete('/', 'destroy')->name('subculture-game-info.my-substitutes.destroy');
 });

@@ -941,6 +941,119 @@
     text-decoration: line-through;
     opacity: 0.7;
 }
+.sgr-alt-member.is-clickable { cursor: pointer; }
+.sgr-alt-member.is-clickable:hover img,
+.sgr-alt-member.is-clickable:hover .sgr-member-placeholder {
+    border-color: var(--ds-primary);
+    opacity: 0.8;
+}
+
+/* 내가 지정한 대체 캐릭터: 코랄 점선 테두리 + '{원캐} 대신' 캡션 */
+.sgr-alt-member.is-user-sub { position: relative; cursor: pointer; }
+.sgr-alt-member.is-user-sub img,
+.sgr-alt-member.is-user-sub .sgr-member-placeholder {
+    border: 2px dashed rgba(243, 114, 127, 0.75);
+}
+.sgr-alt-sub-caption { color: var(--ds-text-accent); }
+.sgr-alt-sub-clear {
+    position: absolute;
+    top: -6px;
+    right: 2px;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--ds-round-circle);
+    border: none;
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+}
+.sgr-alt-sub-clear:hover { background: var(--ds-negative); color: #fff; }
+
+/* 대체 지정 피커(모달) */
+.sgr-subpicker-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    padding: var(--ds-space-md);
+}
+.sgr-subpicker {
+    width: min(560px, 100%);
+    max-height: 72vh;
+    overflow: auto;
+    background: var(--ds-surface-card);
+    border-radius: var(--ds-round-xl);
+    box-shadow: var(--ds-shadow-heavy);
+    padding: var(--ds-space-lg);
+}
+.sgr-subpicker-head {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-xs);
+    font-size: var(--ds-fs-body);
+    color: var(--text-primary);
+    margin-bottom: var(--ds-space-sm);
+}
+.sgr-subpicker-head strong { color: var(--ds-text-accent); }
+.sgr-subpicker-close {
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--ds-round-circle);
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+}
+.sgr-subpicker-close:hover { color: var(--text-primary); }
+.sgr-subpicker-search {
+    width: 100%;
+    padding: 9px 14px;
+    margin-bottom: var(--ds-space-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-full);
+    background: var(--ds-surface-2);
+    color: var(--text-primary);
+    font-size: var(--ds-fs-base);
+}
+.sgr-subpicker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: var(--ds-space-xs);
+}
+.sgr-subpicker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--ds-space-xs);
+    border: 1px solid transparent;
+    border-radius: var(--ds-round-lg);
+    background: transparent;
+    cursor: pointer;
+}
+.sgr-subpicker-item:hover { background: var(--ds-surface-2); }
+.sgr-subpicker-item.is-current { border-color: var(--ds-primary); }
+.sgr-subpicker-item img {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+.sgr-subpicker-name {
+    font-size: 0.7rem;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.2;
+    word-break: keep-all;
+}
 .sgr-alt-caption { font-size: 0.68rem; color: var(--text-secondary); }
 .sgr-alt-assist {
     font-size: 0.66rem;

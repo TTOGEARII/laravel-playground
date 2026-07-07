@@ -18,7 +18,10 @@
       v-if="view === 'detail' && detail"
       :raid="detail"
       :pool="poolFor(detail.game.slug)"
+      :user-subs="userSubsFor(detail.game.slug)"
       @back="showDashboard"
+      @set-substitute="onSetSubstitute"
+      @clear-substitute="onClearSubstitute"
     />
 
     <!-- 레이드 대시보드 -->
@@ -43,7 +46,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
-import { createPoolStore, raidApi } from './api';
+import { createPoolStore, createSubstituteStore, raidApi } from './api';
 import RaidDashboard from './components/RaidDashboard.vue';
 import RaidDetail from './components/RaidDetail.vue';
 import MyCharacters from './components/MyCharacters.vue';
@@ -54,6 +57,7 @@ const props = defineProps({
 });
 
 const store = createPoolStore(props.loggedIn);
+const subStore = createSubstituteStore(props.loggedIn);
 
 const view = ref('dashboard');
 const raids = ref([]);
@@ -61,9 +65,15 @@ const loadingRaids = ref(false);
 const detail = ref(null);
 // 게임별 내 풀({ external_key: { owned, growth } }) — 편성 보유 매칭 하이라이트용
 const pools = reactive({});
+// 게임별 내 대체 매핑({ 미보유 external_key: 보유 external_key }) — 내 풀 조합 표시용
+const userSubs = reactive({});
 
 function poolFor(gameSlug) {
   return pools[gameSlug] ?? {};
+}
+
+function userSubsFor(gameSlug) {
+  return userSubs[gameSlug] ?? {};
 }
 
 async function loadRaids() {
@@ -82,8 +92,30 @@ async function loadPool(gameSlug) {
   try {
     const res = await raidApi.getCharacters(gameSlug);
     pools[gameSlug] = await store.load(gameSlug, res.data);
+    userSubs[gameSlug] = await subStore.load(gameSlug);
   } catch (e) {
     console.error('내 풀 로드 실패', e);
+  }
+}
+
+/** 미보유 캐릭터에 대체 지정(멱등) — 저장 후 로컬 맵 갱신 */
+async function onSetSubstitute({ gameSlug, characterKey, substituteKey }) {
+  try {
+    await subStore.set(gameSlug, characterKey, substituteKey);
+    userSubs[gameSlug] = { ...(userSubs[gameSlug] ?? {}), [characterKey]: substituteKey };
+  } catch (e) {
+    console.error('대체 지정 실패', e);
+  }
+}
+
+async function onClearSubstitute({ gameSlug, characterKey }) {
+  try {
+    await subStore.remove(gameSlug, characterKey);
+    const next = { ...(userSubs[gameSlug] ?? {}) };
+    delete next[characterKey];
+    userSubs[gameSlug] = next;
+  } catch (e) {
+    console.error('대체 해제 실패', e);
   }
 }
 

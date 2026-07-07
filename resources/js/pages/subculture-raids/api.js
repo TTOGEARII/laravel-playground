@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const API_BASE = '/api/subculture-game-info';
 const POOL_BASE = '/subculture-game-info/my-characters';
+const SUBS_BASE = '/subculture-game-info/my-substitutes';
 
 /** 공개 API (레이드/캐릭터 조회) */
 export const raidApi = {
@@ -82,6 +83,62 @@ function serverPoolStore() {
         async importData(payload) {
             const { data } = await axios.post(`${POOL_BASE}/import`, payload);
             return data.data;
+        },
+    };
+}
+
+/**
+ * 내 대체 캐릭터 매핑 저장소 어댑터 — 내 풀 조합에서 미보유 캐릭터에 지정한 대체.
+ * 로그인 = 서버(세션 인증), 게스트 = localStorage. 맵은 { [미보유 external_key]: 보유 external_key }.
+ */
+export function createSubstituteStore(loggedIn) {
+    return loggedIn ? serverSubstituteStore() : localSubstituteStore();
+}
+
+function serverSubstituteStore() {
+    return {
+        async load(gameSlug) {
+            const { data } = await axios.get(SUBS_BASE, { params: { game: gameSlug } });
+            return data.data ?? {};
+        },
+        async set(gameSlug, characterKey, substituteKey) {
+            await axios.put(SUBS_BASE, { game: gameSlug, character_key: characterKey, substitute_key: substituteKey });
+        },
+        async remove(gameSlug, characterKey) {
+            await axios.delete(SUBS_BASE, { data: { game: gameSlug, character_key: characterKey } });
+        },
+    };
+}
+
+function localSubstituteStore() {
+    const storageKey = (gameSlug) => `sgi:my-substitutes:${gameSlug}`;
+
+    const read = (gameSlug) => {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(storageKey(gameSlug)) ?? 'null');
+            return parsed?.substitutes && typeof parsed.substitutes === 'object' ? parsed.substitutes : {};
+        } catch {
+            return {};
+        }
+    };
+
+    const write = (gameSlug, substitutes) => {
+        localStorage.setItem(storageKey(gameSlug), JSON.stringify({ version: 1, game: gameSlug, substitutes }));
+    };
+
+    return {
+        async load(gameSlug) {
+            return read(gameSlug);
+        },
+        async set(gameSlug, characterKey, substituteKey) {
+            const map = read(gameSlug);
+            map[characterKey] = substituteKey;
+            write(gameSlug, map);
+        },
+        async remove(gameSlug, characterKey) {
+            const map = read(gameSlug);
+            delete map[characterKey];
+            write(gameSlug, map);
         },
     };
 }
