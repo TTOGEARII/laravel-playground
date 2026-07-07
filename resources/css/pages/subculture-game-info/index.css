@@ -29,12 +29,12 @@
 
 .sgi-tab:hover {
     color: var(--text-primary);
-    border-color: rgba(30, 215, 96, 0.7);
+    border-color: rgba(243, 114, 127, 0.7);
 }
 
 .sgi-tab.is-active {
-    background: linear-gradient(135deg, rgba(30, 215, 96, 0.3), rgba(30, 215, 96, 0.1));
-    border-color: rgba(30, 215, 96, 0.9);
+    background: linear-gradient(135deg, rgba(243, 114, 127, 0.3), rgba(243, 114, 127, 0.1));
+    border-color: rgba(243, 114, 127, 0.9);
     color: var(--text-primary);
 }
 
@@ -76,7 +76,7 @@
     font-size: 0.8rem;
     font-weight: 600;
     color: #fff;
-    background: rgba(30, 215, 96, 0.85);
+    background: rgba(243, 114, 127, 0.85);
     border-radius: 999px;
     min-width: 22px;
     height: 22px;
@@ -109,7 +109,7 @@
 }
 
 .sgi-code-card.sgi-status-active {
-    border-color: rgba(34, 197, 94, 0.55);
+    border-color: rgba(243, 114, 127, 0.55);
 }
 
 .sgi-code-card.sgi-status-expired {
@@ -145,12 +145,12 @@
 }
 
 .sgi-copy:hover {
-    border-color: rgba(30, 215, 96, 0.9);
-    background: rgba(30, 215, 96, 0.2);
+    border-color: rgba(243, 114, 127, 0.9);
+    background: rgba(243, 114, 127, 0.2);
 }
 
 .sgi-copy.is-copied {
-    border-color: rgba(34, 197, 94, 0.8);
+    border-color: rgba(243, 114, 127, 0.8);
     color: #bbf7d0;
 }
 
@@ -172,15 +172,15 @@
 }
 
 .sgi-badge-status {
-    background: rgba(30, 215, 96, 0.15);
-    color: #1ed760;
-    border-color: rgba(30, 215, 96, 0.6);
+    background: rgba(243, 114, 127, 0.15);
+    color: #f3727f;
+    border-color: rgba(243, 114, 127, 0.6);
 }
 
 .sgi-status-active .sgi-badge-status {
-    background: rgba(34, 197, 94, 0.15);
+    background: rgba(243, 114, 127, 0.15);
     color: #bbf7d0;
-    border-color: rgba(34, 197, 94, 0.7);
+    border-color: rgba(243, 114, 127, 0.7);
 }
 
 .sgi-rewards {
@@ -190,9 +190,9 @@
 }
 
 .sgi-badge-verified {
-    background: rgba(34, 197, 94, 0.15);
+    background: rgba(243, 114, 127, 0.15);
     color: #bbf7d0;
-    border-color: rgba(34, 197, 94, 0.6);
+    border-color: rgba(243, 114, 127, 0.6);
 }
 
 .sgi-badge-expiry {
@@ -202,7 +202,7 @@
 }
 
 .sgi-code-card.sgi-verified {
-    border-color: rgba(34, 197, 94, 0.45);
+    border-color: rgba(243, 114, 127, 0.45);
 }
 
 .sgi-code-actions {
@@ -222,12 +222,12 @@
     font-weight: 600;
     text-decoration: none;
     color: #fff;
-    background: linear-gradient(135deg, #1ed760, #1ed760);
+    background: linear-gradient(135deg, #f3727f, #f3727f);
     transition: all 0.2s ease;
 }
 
 .sgi-redeem-btn:hover {
-    background: linear-gradient(135deg, #1ed760, #1ed760);
+    background: linear-gradient(135deg, #f3727f, #f3727f);
 }
 
 .sgi-redeem-note {
@@ -258,7 +258,7 @@
 }
 
 .sgi-redeemed-toggle:hover {
-    border-color: rgba(34, 197, 94, 0.7);
+    border-color: rgba(243, 114, 127, 0.7);
     color: #bbf7d0;
 }
 
@@ -268,8 +268,8 @@
 }
 
 .sgi-redeemed-toggle[aria-pressed="true"] {
-    background: rgba(34, 197, 94, 0.18);
-    border-color: rgba(34, 197, 94, 0.8);
+    background: rgba(243, 114, 127, 0.18);
+    border-color: rgba(243, 114, 127, 0.8);
     color: #bbf7d0;
 }
 
@@ -289,7 +289,7 @@
 
 .sgi-code-card.is-redeemed .sgi-code-text {
     text-decoration: line-through;
-    text-decoration-color: rgba(34, 197, 94, 0.7);
+    text-decoration-color: rgba(243, 114, 127, 0.7);
 }
 
 /* 커뮤니티(보조) 섹션 */
@@ -326,7 +326,7 @@
 .sgi-raids-link {
     display: inline-block;
     margin-top: 6px;
-    color: #1ed760;
+    color: #f3727f;
     font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none;

@@ -110,8 +110,8 @@
 .inquiry-field input:focus,
 .inquiry-field select:focus,
 .inquiry-field textarea:focus {
-    border-color: var(--accent-1, #1ed760);
-    box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.18);
+    border-color: var(--accent-1, #f3727f);
+    box-shadow: 0 0 0 3px rgba(243, 114, 127, 0.18);
 }
 
 .inquiry-field .has-error {
@@ -129,7 +129,7 @@
     font-size: 0.95rem;
     font-weight: 600;
     color: #fff;
-    background: linear-gradient(135deg, var(--accent-1, #1ed760), var(--accent-2, #ec4899));
+    background: linear-gradient(135deg, var(--accent-1, #f3727f), var(--accent-2, #ec4899));
     border: none;
     border-radius: 12px;
     cursor: pointer;
@@ -138,7 +138,7 @@
 
 .inquiry-submit:hover {
     transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(30, 215, 96, 0.3);
+    box-shadow: 0 10px 24px rgba(243, 114, 127, 0.3);
 }
 
 .inquiry-submit:active {

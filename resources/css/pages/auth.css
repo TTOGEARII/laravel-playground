@@ -76,7 +76,7 @@
 .auth-field input:focus {
   outline: none;
   border-color: var(--accent-1);
-  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.2);
+  box-shadow: 0 0 0 3px rgba(243, 114, 127, 0.2);
 }
 
 .auth-field--row {

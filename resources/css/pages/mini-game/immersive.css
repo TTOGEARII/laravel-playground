@@ -33,8 +33,8 @@
     cursor: pointer; text-align: center; text-decoration: none;
     transition: transform .12s, border-color .12s, background .12s;
 }
-.game-menu-btn:hover { transform: translateY(-2px); border-color: #1ed760; }
-.game-menu-btn--primary { background: #1ed760; border-color: #1ed760; color: #fff; }
+.game-menu-btn:hover { transform: translateY(-2px); border-color: #f3727f; }
+.game-menu-btn--primary { background: #f3727f; border-color: #f3727f; color: #fff; }
 .game-menu-btn--danger { border-color: #7f1d1d; color: #fca5a5; }
 .game-menu-btn--danger:hover { border-color: #ef4444; background: #3b1414; }
 

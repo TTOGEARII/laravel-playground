@@ -83,7 +83,7 @@
 }
 
 .legal-body a {
-    color: var(--accent-1, #1ed760);
+    color: var(--accent-1, #f3727f);
     text-decoration: none;
     transition: opacity 0.2s ease;
 }

@@ -81,8 +81,8 @@ body {
 .header-badge {
     display: inline-block;
     padding: 8px 16px;
-    background: linear-gradient(135deg, rgba(30, 215, 96, 0.2), rgba(30, 215, 96, 0.2));
-    border: 1px solid rgba(30, 215, 96, 0.3);
+    background: linear-gradient(135deg, rgba(243, 114, 127, 0.2), rgba(243, 114, 127, 0.2));
+    border: 1px solid rgba(243, 114, 127, 0.3);
     border-radius: 50px;
     font-size: 0.875rem;
     font-weight: 500;
@@ -155,7 +155,7 @@ body {
     border-color: rgba(255, 255, 255, 0.15);
     box-shadow: 
         0 20px 40px rgba(0, 0, 0, 0.3),
-        0 0 60px rgba(30, 215, 96, 0.1);
+        0 0 60px rgba(243, 114, 127, 0.1);
 }
 
 .game-card:hover::before {
@@ -185,17 +185,17 @@ body {
     justify-content: center;
     font-size: 2rem;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, rgba(30, 215, 96, 0.2), rgba(30, 215, 96, 0.1));
-    border: 1px solid rgba(30, 215, 96, 0.2);
+    background: linear-gradient(135deg, rgba(243, 114, 127, 0.2), rgba(243, 114, 127, 0.1));
+    border: 1px solid rgba(243, 114, 127, 0.2);
 }
 
 .accent-indigo .card-icon { 
-    background: linear-gradient(135deg, rgba(30, 215, 96, 0.2), rgba(30, 215, 96, 0.05));
-    border-color: rgba(30, 215, 96, 0.3);
+    background: linear-gradient(135deg, rgba(243, 114, 127, 0.2), rgba(243, 114, 127, 0.05));
+    border-color: rgba(243, 114, 127, 0.3);
 }
 .accent-violet .card-icon { 
-    background: linear-gradient(135deg, rgba(30, 215, 96, 0.2), rgba(30, 215, 96, 0.05));
-    border-color: rgba(30, 215, 96, 0.3);
+    background: linear-gradient(135deg, rgba(243, 114, 127, 0.2), rgba(243, 114, 127, 0.05));
+    border-color: rgba(243, 114, 127, 0.3);
 }
 .accent-pink .card-icon { 
     background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05));
@@ -257,7 +257,7 @@ body {
 
 .card-button:hover {
     transform: scale(1.02);
-    box-shadow: 0 8px 20px rgba(30, 215, 96, 0.3);
+    box-shadow: 0 8px 20px rgba(243, 114, 127, 0.3);
 }
 
 .card-button:disabled {
@@ -290,8 +290,8 @@ body {
 }
 
 .status-badge.coming-soon {
-    background: rgba(30, 215, 96, 0.2);
-    border-color: rgba(30, 215, 96, 0.3);
+    background: rgba(243, 114, 127, 0.2);
+    border-color: rgba(243, 114, 127, 0.3);
     color: var(--accent-2);
 }
 
