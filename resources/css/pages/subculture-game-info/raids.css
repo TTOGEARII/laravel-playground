@@ -957,3 +957,14 @@
     color: #c4b5fd;
     font-weight: 600;
 }
+
+/* 대체 후보 출전 횟수(몰루로그 통계) */
+.sgr-sub-cand-usage {
+    font-size: 0.7rem;
+    padding: 1px 7px;
+    border-radius: 6px;
+    background: rgba(96, 165, 250, 0.12);
+    color: #93c5fd;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    white-space: nowrap;
+}

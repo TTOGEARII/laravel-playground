@@ -376,6 +376,7 @@ return [
             'mollulog' => [
                 'graphql_endpoint' => 'https://api.baql.net/graphql',
                 'ranks_endpoint' => 'https://ranks.baql.net/v1/ranks',
+                'stats_endpoint' => 'https://ranks.baql.net/v1/stats', // 학생별 출전 통계(protobuf)
                 'schedule_cache_ttl' => 86400, // 시즌 매핑(GraphQL) — 일정은 거의 안 바뀌므로 1일
                 'ranks_cache_ttl' => 3600,     // 랭킹(protobuf) — CloudFront 엣지 캐시(24h)와 별개로 우리 쪽 1시간
             ],

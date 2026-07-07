@@ -77,4 +77,59 @@ class MollulogRankDecoderTest extends TestCase
 
         (new MollulogRankDecoder)->decode('<html><body>Service Unavailable</body></html>');
     }
+
+    public function test_출전_통계를_학생별_합산으로_디코딩한다(): void
+    {
+        // StudentStatisticsResponse{ students: [ {uid:"10059", stats:[{tier5 count3 assist1},{tier5+전무2 count7}]}, {uid:"20041", stats:[{tier3 count2}]} ] }
+        $binary = $this->statsMessage([
+            ['10059', [[5, null, 3, 1], [5, 2, 7, 0]]],
+            ['20041', [[3, null, 2, 0]]],
+        ]);
+
+        $usage = (new MollulogRankDecoder)->decodeStats($binary);
+
+        $this->assertSame(['count' => 10, 'assist_count' => 1], $usage['10059']); // 성급·전무별 세부는 합산
+        $this->assertSame(['count' => 2, 'assist_count' => 0], $usage['20041']);
+    }
+
+    /** stats protobuf 바이너리를 손으로 조립한다. @param list<array{0:string,1:list<array{0:int,1:?int,2:int,3:int}>}> $students */
+    private function statsMessage(array $students): string
+    {
+        $binary = '';
+        foreach ($students as [$uid, $tiers]) {
+            $student = $this->lengthDelimited(1, $uid);
+            foreach ($tiers as [$tier, $weaponTier, $count, $assist]) {
+                $stat = $this->varintField(1, $tier)
+                    .($weaponTier !== null ? $this->varintField(2, $weaponTier) : '')
+                    .$this->varintField(3, $count)
+                    .$this->varintField(4, $assist);
+                $student .= $this->lengthDelimited(2, $stat);
+            }
+            $binary .= $this->lengthDelimited(1, $student);
+        }
+
+        return $binary;
+    }
+
+    private function varintField(int $field, int $value): string
+    {
+        return $this->varintBytes($field << 3).$this->varintBytes($value);
+    }
+
+    private function lengthDelimited(int $field, string $payload): string
+    {
+        return $this->varintBytes(($field << 3) | 2).$this->varintBytes(strlen($payload)).$payload;
+    }
+
+    private function varintBytes(int $n): string
+    {
+        $out = '';
+        do {
+            $byte = $n & 0x7F;
+            $n >>= 7;
+            $out .= chr($n > 0 ? $byte | 0x80 : $byte);
+        } while ($n > 0);
+
+        return $out;
+    }
 }

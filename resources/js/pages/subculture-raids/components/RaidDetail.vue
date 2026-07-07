@@ -46,6 +46,7 @@
           :party="party"
           :pool="pool"
           :compose-mode="composeMode"
+          :usage="usage"
         />
       </div>
       <p v-if="raid.parties.length > 0" class="sgr-legend">
@@ -80,7 +81,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { raidApi } from '../api';
 import AlternativeParties from './AlternativeParties.vue';
 import PartyCard from './PartyCard.vue';
 
@@ -93,6 +95,18 @@ defineEmits(['back']);
 
 // "내 풀로 조합" 토글 — 편성 카드에서 미보유 슬롯을 보유 대체 캐릭터로 치환해 보여준다
 const composeMode = ref(false);
+
+// 학생별 출전 횟수(블아 전용) — 대체 후보 팝오버에 실전 채용 빈도를 붙인다
+const usage = ref({});
+onMounted(async () => {
+  if (props.raid.game?.slug !== 'bluearchive' || props.raid.substitutes_count === 0) return;
+  try {
+    const res = await raidApi.getStudentUsage(props.raid.id);
+    if (res.supported && res.usage) usage.value = res.usage;
+  } catch (e) {
+    console.warn('출전 횟수 조회 실패 — 표시 생략', e);
+  }
+});
 
 const statusLabel = computed(() => ({ active: '진행 중', upcoming: '예정', ended: '종료' }[props.raid.status]));
 

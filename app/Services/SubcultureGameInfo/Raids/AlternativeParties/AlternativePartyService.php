@@ -71,6 +71,29 @@ class AlternativePartyService
     }
 
     /**
+     * 학생별 출전 횟수(블아 전용) — 대체 캐릭터 후보에 실전 채용 빈도를 붙이는 용도.
+     * 실패는 빈 usage 로 폴백(500 금지).
+     *
+     * @return array{supported: bool, usage?: array<string, array{count: int, assist_count: int}>}
+     */
+    public function studentUsage(Raid $raid): array
+    {
+        $raid->loadMissing('game');
+        if ($raid->game?->slug !== 'bluearchive') {
+            return ['supported' => false];
+        }
+
+        try {
+            $usage = $this->mollulog->studentUsage($raid);
+        } catch (\Throwable $e) {
+            Log::warning('[SGI-ALT] 출전 통계 조회 실패', ['raid_id' => $raid->id, 'error' => $e->getMessage()]);
+            $usage = null;
+        }
+
+        return ['supported' => true, 'usage' => $usage ?? []];
+    }
+
+    /**
      * 파티 멤버를 우리 캐릭터 마스터와 조인한다(일괄 조회로 N+1 방지).
      * 마스터에 없는 멤버는 원본 이름(fallback_name)만 노출한다.
      */

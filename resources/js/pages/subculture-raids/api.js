@@ -32,6 +32,15 @@ export const raidApi = {
         });
         return data.data; // { supported, mode, total_count, parties, has_more, difficulty, source, source_url }
     },
+    /**
+     * 학생별 출전 횟수(블아 전용) — 대체 캐릭터 후보의 실전 채용 빈도.
+     * @param {number} raidId
+     * @returns {Promise<{supported: boolean, usage?: Record<string, {count: number, assist_count: number}>}>}
+     */
+    async getStudentUsage(raidId) {
+        const { data } = await axios.get(`${API_BASE}/raids/${raidId}/student-usage`);
+        return data.data;
+    },
 };
 
 /**

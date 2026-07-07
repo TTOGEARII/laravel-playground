@@ -44,6 +44,10 @@ Route::prefix('subculture-game-info')->group(function () {
     Route::post('raids/{raid}/alternative-parties', [SubcultureRaidController::class, 'alternativeParties'])
         ->whereNumber('raid')
         ->middleware('throttle:30,1');
+    // 학생별 출전 횟수(블아 전용) — 대체 캐릭터 후보의 실전 채용 빈도
+    Route::get('raids/{raid}/student-usage', [SubcultureRaidController::class, 'studentUsage'])
+        ->whereNumber('raid')
+        ->middleware('throttle:30,1');
     Route::get('characters', [SubcultureCharacterController::class, 'index']);
 });
 

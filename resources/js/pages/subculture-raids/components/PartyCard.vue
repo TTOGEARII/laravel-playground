@@ -58,10 +58,13 @@
         <div v-if="openPopover === idx" class="sgr-sub-popover" @click.stop>
           <p class="sgr-sub-popover-title">{{ slot.member.character?.name ?? '미확인' }} 대체 후보</p>
           <ul class="sgr-sub-popover-list">
-            <li v-for="(sub, sIdx) in slot.substitutes" :key="sIdx" class="sgr-sub-popover-item">
+            <li v-for="(sub, sIdx) in sortedSubstitutes(slot.substitutes)" :key="sIdx" class="sgr-sub-popover-item">
               <span class="sgr-sub-cand-name">{{ sub.character?.name ?? '미확인' }}</span>
               <span class="sgr-sub-owned-badge" :class="{ 'is-owned': isOwnedKey(sub.character?.external_key) }">
                 {{ isOwnedKey(sub.character?.external_key) ? '보유' : '미보유' }}
+              </span>
+              <span v-if="usageCount(sub) !== null" class="sgr-sub-cand-usage" title="이 레이드 랭킹에서의 편성 횟수 (몰루로그 통계)">
+                출전 {{ usageCount(sub).toLocaleString() }}회
               </span>
               <span v-if="sub.note" class="sgr-sub-cand-note">{{ sub.note }}</span>
               <a
@@ -93,12 +96,24 @@ const props = defineProps({
   pool: { type: Object, default: () => ({}) },
   // "내 풀로 조합" 토글 상태 — 켜면 미보유 슬롯을 보유한 대체 캐릭터로 치환해 보여준다
   composeMode: { type: Boolean, default: false },
+  // 학생별 출전 횟수(블아 전용) — { external_key: { count, assist_count } }
+  usage: { type: Object, default: () => ({}) },
 });
 
 const openPopover = ref(null);
 
 function isOwnedKey(externalKey) {
   return externalKey ? props.pool[externalKey]?.owned === true : false;
+}
+
+/** 대체 후보의 이 레이드 출전 횟수(몰루로그 통계). 없으면 null. */
+function usageCount(sub) {
+  return props.usage[sub.character?.external_key]?.count ?? null;
+}
+
+/** 대체 후보를 실전 채용 빈도(출전 횟수) 내림차순으로 정렬해 보여준다. */
+function sortedSubstitutes(substitutes) {
+  return [...substitutes].sort((a, b) => (usageCount(b) ?? -1) - (usageCount(a) ?? -1));
 }
 
 /** 출처 링크는 http(s)만 허용 — 외부/수동 입력 값이 href 로 흐르는 경로라 스킴을 가드한다. */

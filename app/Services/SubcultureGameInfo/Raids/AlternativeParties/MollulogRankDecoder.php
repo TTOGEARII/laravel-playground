@@ -15,6 +15,12 @@ use RuntimeException;
  * message EmptySlot {}
  * message Student { string uid = 1; int32 level = 2; int32 tier = 3; int32 weapon_tier = 4; bool is_assist = 5; }
  *
+ * 학생별 출전 통계(v1/stats)도 같은 방식으로 파싱한다:
+ *
+ * message StudentStatisticsResponse { repeated StudentStatistics students = 1; }
+ * message StudentStatistics { string student_uid = 1; repeated TierStatistics statistics = 2; RaidInfo raid = 3; }
+ * message TierStatistics { int32 tier = 1; optional int32 weapon_tier = 2; int64 count = 3; int64 assist_count = 4; }
+ *
  * 스키마와 어긋난 바이너리는 RuntimeException 을 던진다(호출부에서 로그 + 폴백).
  */
 class MollulogRankDecoder
@@ -98,6 +104,46 @@ class MollulogRankDecoder
         }
 
         return $student;
+    }
+
+    /**
+     * v1/stats 응답: 학생 uid → 출전/조력 총횟수 맵.
+     * 성급·전무별 세부(TierStatistics)는 합산만 쓴다(화면 요구가 총횟수).
+     *
+     * @return array<string, array{count: int, assist_count: int}>
+     */
+    public function decodeStats(string $binary): array
+    {
+        $usage = [];
+
+        foreach ($this->fields($binary) as [$field, $wire, $value]) {
+            if ($field !== 1 || $wire !== 2) {
+                continue;
+            }
+
+            $uid = '';
+            $count = 0;
+            $assistCount = 0;
+            foreach ($this->fields((string) $value) as [$f, $w, $v]) {
+                if ($f === 1 && $w === 2) {
+                    $uid = (string) $v;
+                } elseif ($f === 2 && $w === 2) {
+                    foreach ($this->fields((string) $v) as [$tf, $tw, $tv]) {
+                        if ($tf === 3 && $tw === 0) {
+                            $count += (int) $tv;
+                        } elseif ($tf === 4 && $tw === 0) {
+                            $assistCount += (int) $tv;
+                        }
+                    }
+                }
+            }
+
+            if ($uid !== '') {
+                $usage[$uid] = ['count' => $count, 'assist_count' => $assistCount];
+            }
+        }
+
+        return $usage;
     }
 
     /**

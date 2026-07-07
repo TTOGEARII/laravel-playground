@@ -110,6 +110,54 @@ class MollulogRanksClient
     }
 
     /**
+     * 학생별 출전 통계(uid → 출전/조력 횟수) — ranks 와 같은 시즌 매핑을 거쳐 v1/stats 를 호출한다.
+     * 대체 캐릭터 후보에 "이 레이드에서 실제로 얼마나 쓰였는지"를 붙이는 용도.
+     *
+     * @return array<string, array{count: int, assist_count: int}>|null 실패/매핑 불가 시 null
+     */
+    public function studentUsage(Raid $raid): ?array
+    {
+        $config = config('subculture-game-info.raids.alternative_parties');
+
+        $raidType = self::RAID_TYPES[$raid->raid_type] ?? null;
+        if ($raidType === null) {
+            return null;
+        }
+
+        $schedule = $this->matchSchedule($raid, $raidType);
+        $jpSeason = data_get($schedule, 'jpSchedule.seasonIndex');
+        if ($schedule === null || $jpSeason === null) {
+            return null;
+        }
+
+        $defenseType = $this->resolveDefenseType($raid, $schedule);
+        $cacheKey = sprintf('sgi:alt-party:mollulog:stats:%s:%d:%s', $raidType, (int) $jpSeason, $defenseType);
+
+        return Cache::remember($cacheKey, $config['mollulog']['ranks_cache_ttl'], function () use ($raidType, $jpSeason, $defenseType, $config): ?array {
+            $url = $config['mollulog']['stats_endpoint'].'?'.http_build_query([
+                'raidType' => $raidType,
+                'season' => (int) $jpSeason,
+                'defenseType' => $defenseType,
+            ]);
+
+            try {
+                $response = Http::timeout($config['timeout'])->get($url);
+                if ($response->failed()) {
+                    Log::warning('[SGI-ALT] 몰루로그 stats 요청 실패', ['status' => $response->status(), 'season' => $jpSeason]);
+
+                    return null;
+                }
+
+                return $this->decoder->decodeStats($response->body());
+            } catch (\Throwable $e) {
+                Log::warning('[SGI-ALT] 몰루로그 stats 요청/파싱 실패', ['season' => $jpSeason, 'error' => $e->getMessage()]);
+
+                return null;
+            }
+        });
+    }
+
+    /**
      * baql GraphQL 에서 글로벌 시즌 일정을 받아 우리 Raid 와 매칭한다.
      * 1순위: external_key(total-assault-83) → uid(gl_total_assault_83) 일치.
      * 2순위: 기간 겹침(+보스명 일치 우선).

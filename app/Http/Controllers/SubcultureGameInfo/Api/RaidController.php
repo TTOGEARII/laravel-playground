@@ -56,4 +56,14 @@ class RaidController extends Controller
             ),
         ]);
     }
+
+    /**
+     * 학생별 출전 횟수(블아 전용) — 대체 캐릭터 후보의 실전 채용 빈도 표시용.
+     */
+    public function studentUsage(Raid $raid): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->alternativeParties->studentUsage($raid),
+        ]);
+    }
 }
