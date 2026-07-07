@@ -73,10 +73,10 @@ class LetsdoroRankingClientTest extends TestCase
         $this->assertSame(90, $result['groups'][0][0]['score']);
     }
 
-    public function test_1차_결과가_기준_미만이면_스쿼드_단위로_보강한다(): void
+    public function test_1차_결과가_기준_미만이면_부분_매칭으로_전체_클리어를_보여준다(): void
     {
         $rankings = [
-            // 1위: 2부대만 오염 → 랭커 단위 탈락, 1부대는 스쿼드 단위 생존
+            // 1위: 2부대만 오염 → 랭커 단위 탈락. partial 에선 부대를 빼지 않고 전부 노출
             $this->ranker(1, [$this->squad(1, 100, ['1007']), $this->squad(2, 90, ['5155'])]),
             // 2위: 전부 깨끗 → 유일한 깨끗한 랭커(1명 < 기준 3명)
             $this->ranker(2, [$this->squad(1, 80, ['1010'])]),
@@ -84,13 +84,33 @@ class LetsdoroRankingClientTest extends TestCase
 
         $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], [], 3);
 
-        $this->assertSame('squad', $result['mode']);
-        $this->assertCount(2, $result['groups']); // 1위 1부대 + 2위 1부대
-        $this->assertSame('1위 1부대', $result['groups'][0][0]['title']);
-        $this->assertSame('2위 1부대', $result['groups'][1][0]['title']);
-        // 오염된 1위 2부대는 없어야 한다
-        $titles = collect($result['groups'])->flatten(1)->pluck('title');
-        $this->assertNotContains('1위 2부대', $titles);
+        $this->assertSame('partial', $result['mode']);
+        $this->assertCount(2, $result['groups']);
+        // 부대가 군데군데 빠지지 않고 랭커의 전체 클리어가 그대로 나온다
+        $this->assertSame(['1위 1부대', '1위 2부대'], array_column($result['groups'][0], 'title'));
+        $this->assertSame(['2위 1부대'], array_column($result['groups'][1], 'title'));
+        // 오염된 2부대의 미보유 니케에는 is_excluded 표시
+        $this->assertFalse($result['groups'][0][0]['members'][0]['is_excluded']);
+        $this->assertTrue($result['groups'][0][1]['members'][0]['is_excluded']);
+    }
+
+    public function test_부분_매칭은_깨끗한_부대가_많은_랭커를_우선한다(): void
+    {
+        $rankings = [
+            // 1위: 깨끗한 부대 1개
+            $this->ranker(1, [$this->squad(1, 100, ['1007']), $this->squad(2, 90, ['5155'])]),
+            // 2위: 깨끗한 부대 2개 → 매칭률이 높아 먼저 나와야 한다
+            $this->ranker(2, [$this->squad(1, 80, ['1010']), $this->squad(2, 70, ['1012'])]),
+            // 3위: 전 부대 오염 → 참고 가치 없음, 제외
+            $this->ranker(3, [$this->squad(1, 60, ['5155'])]),
+        ];
+
+        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], [], 3);
+
+        $this->assertSame('partial', $result['mode']);
+        $this->assertCount(2, $result['groups']); // 3위는 제외
+        $this->assertSame('2위 1부대', $result['groups'][0][0]['title']); // 매칭률 우선
+        $this->assertSame('1위 1부대', $result['groups'][1][0]['title']);
     }
 
     public function test_제외_목록이_비면_전_랭커가_랭커_단위로_통과한다(): void

@@ -12,8 +12,11 @@ use Illuminate\Support\Facades\Log;
  * 원본 API 에 제외 필터가 없으므로 랭킹 전체를 받아 우리 쪽에서 거른다.
  *
  * 필터 2단계:
- *   1차(ranker) — 5개 스쿼드 전부가 제외 니케를 안 쓰는 랭커만.
- *   2차(squad)  — 1차 결과가 min_ranker_results 미만이면 제외 니케 없는 개별 스쿼드로 보강.
+ *   1차(ranker)  — 5개 스쿼드 전부가 제외 니케를 안 쓰는 랭커만.
+ *   2차(partial) — 1차 결과가 min_ranker_results 미만이면, 미보유가 적은 랭커의
+ *                  "전체 클리어(1~5부대)"를 부대를 빼지 않고 그대로 보여준다
+ *                  (미보유 니케는 멤버에 is_excluded 표시 → 프론트에서 흐리게).
+ *                  부대를 개별로 발췌하면 1·3부대만 남는 식으로 구성이 끊겨 참고 가치가 떨어진다.
  *
  * 실패(HTTP/시즌 매핑)는 로그 + null 폴백.
  * TODO: 프로덕션 IP 에서 Cloudflare 차단이 확인되면 Playwright 사이드카 폴백 추가.
@@ -107,7 +110,7 @@ class LetsdoroRankingClient
         if ($cleanRankers->count() >= $minRankerResults) {
             $groups = $cleanRankers
                 ->map(fn (array $ranker) => collect($ranker['squads'])
-                    ->map(fn (array $squad) => $this->toParty($ranker, $squad))
+                    ->map(fn (array $squad) => $this->toParty($ranker, $squad, $exclude))
                     ->values()
                     ->all())
                 ->all();
@@ -115,16 +118,28 @@ class LetsdoroRankingClient
             return ['mode' => 'ranker', 'groups' => $groups];
         }
 
-        // 2차: 스쿼드 단위 — 포함 조건을 만족하는 랭커의 스쿼드 중, 제외 니케 없는 것만 모아 보강
+        // 2차: 부분 매칭 — 미보유가 적은 랭커부터, 부대를 빼지 않고 전체 클리어(1~5부대)를 보여준다.
+        // 미보유 니케가 든 부대도 그대로 두고 멤버에 is_excluded 만 표시한다(프론트에서 흐리게).
+        // 스쿼드를 개별 발췌하면 "1위 1·3부대"처럼 구성이 군데군데 끊겨 참고 가치가 떨어진다.
         $groups = collect($rankings)
-            ->filter($rankerHasIncludes)
-            ->flatMap(fn (array $ranker) => collect($ranker['squads'] ?? [])
-                ->filter(fn (array $squad) => ! empty($squad['nikkes']) && $squadClean($squad))
-                ->map(fn (array $squad) => [$this->toParty($ranker, $squad)]))
+            ->filter(fn (array $ranker) => collect($ranker['squads'] ?? [])->isNotEmpty() && $rankerHasIncludes($ranker))
+            ->map(fn (array $ranker) => [
+                'clean_count' => collect($ranker['squads'])->filter($squadClean)->count(),
+                'ranker' => $ranker,
+            ])
+            // 전 부대가 미보유 포함인 랭커는 참고 가치가 없어 제외
+            ->filter(fn (array $row) => $row['clean_count'] > 0)
+            // 깨끗한 부대가 많은 랭커 우선, 같으면 상위 랭크 우선
+            ->sort(fn (array $a, array $b) => [$b['clean_count'], $a['ranker']['rank'] ?? 0]
+                <=> [$a['clean_count'], $b['ranker']['rank'] ?? 0])
+            ->map(fn (array $row) => collect($row['ranker']['squads'])
+                ->map(fn (array $squad) => $this->toParty($row['ranker'], $squad, $exclude))
+                ->values()
+                ->all())
             ->values()
             ->all();
 
-        return ['mode' => 'squad', 'groups' => $groups];
+        return ['mode' => 'partial', 'groups' => $groups];
     }
 
     /**
@@ -203,8 +218,13 @@ class LetsdoroRankingClient
         }
     }
 
-    /** 랭커의 스쿼드 하나를 공통 파티 형태로 변환. */
-    private function toParty(array $ranker, array $squad): array
+    /**
+     * 랭커의 스쿼드 하나를 공통 파티 형태로 변환.
+     * partial 모드에서 미보유 니케를 프론트가 흐리게 표시할 수 있게 멤버에 is_excluded 를 심는다.
+     *
+     * @param  \Illuminate\Support\Collection<string, int>  $exclude  제외 external_key flip 맵
+     */
+    private function toParty(array $ranker, array $squad, \Illuminate\Support\Collection $exclude): array
     {
         $rank = (int) ($ranker['rank'] ?? 0);
         $squadNumber = (int) ($squad['squadNumber'] ?? 0);
@@ -217,6 +237,7 @@ class LetsdoroRankingClient
                 ->map(fn (array $nikke) => [
                     'external_key' => (string) ($nikke['nikkeId'] ?? ''),
                     'fallback_name' => $nikke['nikkeName'] ?? null,
+                    'is_excluded' => $exclude->has((string) ($nikke['nikkeId'] ?? '')),
                     'meta' => [],
                 ])
                 ->values()

@@ -25,8 +25,9 @@
       <p v-if="includeNames.length" class="sgr-alt-notice sgr-alt-include">
         필수 포함: <b>{{ includeNames.join(', ') }}</b> — 이 캐릭터를 넣은 편성만 보여드려요.
       </p>
-      <p v-if="result && result.mode === 'squad'" class="sgr-alt-notice">
-        전체 편성이 모두 가능한 랭커가 적어 부대 단위로 보여드려요.
+      <p v-if="result && result.mode === 'partial'" class="sgr-alt-notice">
+        미보유 없이 풀클리어한 랭커가 적어, 미보유가 적은 랭커의 전체 편성(1~5부대)을 보여드려요.
+        미보유 니케는 흐리게 표시돼요.
       </p>
 
       <p v-if="error" class="sgr-empty">{{ error }}</p>
@@ -41,11 +42,18 @@
             <span v-if="party.score" class="sgr-alt-score">{{ Number(party.score).toLocaleString() }}</span>
           </div>
           <div class="sgr-alt-members">
-            <div v-for="(m, j) in party.members" :key="j" class="sgr-alt-member">
+            <div
+              v-for="(m, j) in party.members"
+              :key="j"
+              class="sgr-alt-member"
+              :class="{ 'is-unowned': m.is_excluded }"
+              :title="m.is_excluded ? `${m.name} — 미보유` : undefined"
+            >
               <img v-if="m.image_url" :src="m.image_url" :alt="m.name" loading="lazy" />
               <span v-else class="sgr-member-placeholder">{{ (m.name || '?').slice(0, 2) }}</span>
               <span class="sgr-alt-member-name">{{ m.name }}</span>
-              <span v-if="m.meta?.is_assist" class="sgr-alt-assist">조력</span>
+              <span v-if="m.is_excluded" class="sgr-alt-caption">미보유</span>
+              <span v-else-if="m.meta?.is_assist" class="sgr-alt-assist">조력</span>
               <span v-else-if="memberCaption(m)" class="sgr-alt-caption">{{ memberCaption(m) }}</span>
             </div>
           </div>

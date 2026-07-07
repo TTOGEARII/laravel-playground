@@ -178,6 +178,8 @@ class AlternativePartyService
                             'rarity' => $character?->rarity,
                             'traits' => $character?->traits,
                             'image_url' => $character?->display_image_url,
+                            // partial 모드(니케)에서 미보유 니케 흐림 표시용 — 없으면 false
+                            'is_excluded' => (bool) ($member['is_excluded'] ?? false),
                             'meta' => $member['meta'],
                         ];
                     })
