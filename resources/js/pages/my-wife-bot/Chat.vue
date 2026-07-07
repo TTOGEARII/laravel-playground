@@ -673,8 +673,12 @@ onBeforeUnmount(cancelTimer);
 }
 .mw-input {
   flex: 1;
-  min-height: 24px;
+  /* 한 줄일 때 전송 버튼(38px)과 같은 높이가 되도록 상하 패딩으로 텍스트를 세로 중앙에 둔다.
+     (24px 줄 + 위아래 7px = 38px) — 여러 줄로 늘어나면 flex-end 로 버튼이 하단에 고정된다. */
+  box-sizing: border-box;
+  min-height: 38px;
   max-height: 120px;
+  padding: 7px 0;
   background: none;
   border: none;
   color: var(--mw-text);
