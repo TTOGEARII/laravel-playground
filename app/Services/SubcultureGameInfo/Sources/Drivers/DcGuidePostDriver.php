@@ -23,13 +23,31 @@ class DcGuidePostDriver implements GuidePostDriver
 
     public function fetchPosts(string $gameSlug): array
     {
+        return $this->fetchList($gameSlug, ['exception_mode' => 'recommend']);
+    }
+
+    /**
+     * 갤러리 제목 검색(s_type=search_subject). 개념글에 안 올라오는 레이드 공략 보강용.
+     */
+    public function searchPosts(string $gameSlug, string $keyword): array
+    {
+        return $this->fetchList($gameSlug, ['s_type' => 'search_subject', 's_keyword' => $keyword]);
+    }
+
+    /**
+     * 갤러리 목록 페이지(개념글/검색 공용) 한 장을 파싱한다.
+     *
+     * @return GuidePostData[]
+     */
+    private function fetchList(string $gameSlug, array $query): array
+    {
         $cfg = config('subculture-game-info.drivers.dc');
         $gallery = $cfg['galleries'][$gameSlug] ?? null;
         if ($gallery === null) {
             return [];
         }
 
-        $html = $this->getHtml($cfg['base'], ['id' => $gallery, 'exception_mode' => 'recommend']);
+        $html = $this->getHtml($cfg['base'], ['id' => $gallery] + $query);
         if ($html === null) {
             return [];
         }

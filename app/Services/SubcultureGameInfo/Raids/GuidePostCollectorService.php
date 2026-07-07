@@ -42,42 +42,15 @@ class GuidePostCollectorService
         $cutoff = now()->subDays((int) $cfg['keep_days']);
 
         foreach ($this->drivers as $driver) {
+            // 1) 개념글/추천글·공략 카테고리 목록
             $posts = array_slice($driver->fetchPosts($game->slug), 0, (int) $cfg['max_posts_per_source']);
-            $stats['collected'] += count($posts);
+            $this->ingest($driver, $posts, $game, $raids, $keywords, $cfg, $cutoff, $stats);
 
-            foreach ($posts as $data) {
-                // 보관일을 이미 넘긴 옛글은 저장하지 않는다(저장 직후 정리되는 낭비 방지).
-                if ($data->postedAt !== null && $data->postedAt->lt($cutoff)) {
-                    continue;
-                }
-
-                [$raid, $matchedKeyword] = $this->matchRaid($raids, $keywords, $data->title);
-
-                // 개념글/추천글 대부분은 팬아트·유머 — 공략 키워드나 레이드 매칭이 없으면 버린다.
-                if ($raid === null && ! $this->looksLikeGuide($cfg['title_keywords'] ?? [], $data->title)) {
-                    continue;
-                }
-
-                $post = GuidePost::updateOrCreate(
-                    [
-                        'subculture_game_id' => $game->id,
-                        'source' => $driver->source()->value,
-                        'external_id' => $data->externalId,
-                    ],
-                    [
-                        'title' => $data->title,
-                        'url' => $data->url,
-                        'posted_at' => $data->postedAt,
-                        'views' => $data->views,
-                        'subculture_raid_id' => $raid?->id,
-                        'matched_keyword' => $matchedKeyword,
-                    ],
-                );
-
-                $post->wasRecentlyCreated ? $stats['created']++ : ($post->wasChanged() ? $stats['updated']++ : null);
-                if ($raid !== null) {
-                    $stats['matched']++;
-                }
+            // 2) 보스명 제목 검색("비나 공략" 식) — 개념글에 안 올라오는 레이드 공략을 보강한다.
+            foreach ($this->searchQueries($raids, $cfg) as $query) {
+                usleep(1_000_000); // 연속 요청 차단 방지 1초 간격
+                $posts = array_slice($driver->searchPosts($game->slug, $query), 0, (int) $cfg['max_posts_per_source']);
+                $this->ingest($driver, $posts, $game, $raids, $keywords, $cfg, $cutoff, $stats);
             }
         }
 
@@ -90,10 +63,98 @@ class GuidePostCollectorService
         return $stats;
     }
 
+    /**
+     * 수집된 글 목록을 공통 파이프라인(보관일 컷 → 레이드 매칭/공략 필터 → 저장)으로 처리한다.
+     *
+     * @param  \App\Services\SubcultureGameInfo\Sources\DTO\GuidePostData[]  $posts
+     * @param  Collection<int, Raid>  $raids
+     */
+    private function ingest(GuidePostDriver $driver, array $posts, Game $game, Collection $raids, array $keywords, array $cfg, \Carbon\CarbonInterface $cutoff, array &$stats): void
+    {
+        $stats['collected'] += count($posts);
+
+        foreach ($posts as $data) {
+            // 보관일을 이미 넘긴 옛글은 저장하지 않는다(저장 직후 정리되는 낭비 방지).
+            if ($data->postedAt !== null && $data->postedAt->lt($cutoff)) {
+                continue;
+            }
+
+            // 잡담·질문글 컷 — 검색 수집은 보스명+공략이 제목에 있어도 유머 글이 많다.
+            if ($this->looksLikeChatter($cfg['exclude_title_keywords'] ?? [], $data->title)) {
+                continue;
+            }
+
+            [$raid, $matchedKeyword] = $this->matchRaid($raids, $keywords, $data->title);
+
+            // 개념글/추천글 대부분은 팬아트·유머 — 공략 키워드나 레이드 매칭이 없으면 버린다.
+            if ($raid === null && ! $this->looksLikeGuide($cfg['title_keywords'] ?? [], $data->title)) {
+                continue;
+            }
+
+            $post = GuidePost::updateOrCreate(
+                [
+                    'subculture_game_id' => $game->id,
+                    'source' => $driver->source()->value,
+                    'external_id' => $data->externalId,
+                ],
+                [
+                    'title' => $data->title,
+                    'url' => $data->url,
+                    'posted_at' => $data->postedAt,
+                    'views' => $data->views,
+                    'subculture_raid_id' => $raid?->id,
+                    'matched_keyword' => $matchedKeyword,
+                ],
+            );
+
+            $post->wasRecentlyCreated ? $stats['created']++ : ($post->wasChanged() ? $stats['updated']++ : null);
+            if ($raid !== null) {
+                $stats['matched']++;
+            }
+        }
+    }
+
+    /**
+     * 검색어 목록: 최근 레이드 보스명 + 검색 접미사("공략").
+     * 같은 보스가 여러 회차면 중복 제거.
+     *
+     * @param  Collection<int, Raid>  $raids
+     * @return string[]
+     */
+    private function searchQueries(Collection $raids, array $cfg): array
+    {
+        $suffix = trim((string) ($cfg['search_suffix'] ?? '공략'));
+
+        return $raids
+            ->pluck('boss_name')
+            ->filter(fn (?string $name) => $name !== null && $name !== '')
+            ->unique()
+            ->map(fn (string $name) => trim($name.' '.$suffix))
+            ->values()
+            ->all();
+    }
+
     /** 제목에 공략 키워드가 하나라도 있으면 공략글로 본다. */
     private function looksLikeGuide(array $titleKeywords, string $title): bool
     {
         foreach ($titleKeywords as $keyword) {
+            if (mb_stripos($title, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** 잡담/질문글 판정 — 배제 표현 포함 또는 '?'로 끝나는 제목. */
+    private function looksLikeChatter(array $excludeKeywords, string $title): bool
+    {
+        $trimmed = rtrim(trim($title), '.,~ ');
+        if (str_ends_with($trimmed, '?')) {
+            return true;
+        }
+
+        foreach ($excludeKeywords as $keyword) {
             if (mb_stripos($title, $keyword) !== false) {
                 return true;
             }

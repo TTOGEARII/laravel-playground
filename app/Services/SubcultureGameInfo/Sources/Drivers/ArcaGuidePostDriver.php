@@ -56,6 +56,23 @@ class ArcaGuidePostDriver implements GuidePostDriver
     }
 
     /**
+     * 채널 제목 검색(target=title). 검색 결과 마크업이 일반 목록과 동일해 파서를 재사용한다.
+     */
+    public function searchPosts(string $gameSlug, string $keyword): array
+    {
+        $cfg = config('subculture-game-info.drivers.arca');
+        $channel = $cfg['channels'][$gameSlug] ?? null;
+        if ($channel === null) {
+            return [];
+        }
+
+        return $this->fetchList(
+            rtrim($cfg['base'], '/').'/'.$channel,
+            ['target' => 'title', 'keyword' => $keyword],
+        );
+    }
+
+    /**
      * 목록 페이지 한 장을 파싱해 글 메타를 돌려준다.
      *
      * @return GuidePostData[]
