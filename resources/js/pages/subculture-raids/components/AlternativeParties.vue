@@ -39,6 +39,11 @@
         <article v-for="(party, i) in parties" :key="i" class="sgr-party sgr-alt-party">
           <div class="sgr-party-head">
             <strong class="sgr-party-title">{{ party.title }}</strong>
+            <span
+              class="sgr-alt-match"
+              :class="matchInfo(party).cls"
+              :title="'상위 랭커보다 내 풀과 잘 맞는 편성을 먼저 보여드려요'"
+            >{{ matchInfo(party).label }}</span>
             <span v-if="party.score" class="sgr-alt-score">{{ Number(party.score).toLocaleString() }}</span>
           </div>
           <div class="sgr-alt-members">
@@ -224,6 +229,18 @@ function memberCaption(m) {
   const weapon = m.meta?.weapon_tier;
   if (!tier) return '';
   return `★${tier}${weapon ? ` · 전${weapon}` : ''}`;
+}
+
+/**
+ * 카드별 내 풀 매칭 뱃지 — "왜 상위 랭커보다 이 편성이 먼저 오는가"를 설명한다.
+ * 미보유여도 내가 대체를 지정했으면 채워진 것으로 계산.
+ */
+function matchInfo(party) {
+  const missing = (party.members ?? []).filter((m) => m.is_excluded);
+  if (missing.length === 0) return { label: '내 풀 완성', cls: 'is-full' };
+  const uncovered = missing.filter((m) => !props.userSubs[m.external_key]);
+  if (uncovered.length === 0) return { label: `대체로 완성 ${missing.length}`, cls: 'is-subbed' };
+  return { label: `미보유 ${uncovered.length}명`, cls: 'is-missing' };
 }
 
 // ── 미보유 대체 지정 ──────────────────────────────────────────────

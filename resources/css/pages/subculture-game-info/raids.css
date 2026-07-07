@@ -1023,6 +1023,32 @@
     color: var(--text-primary);
     font-size: var(--ds-fs-base);
 }
+/* 카드별 내 풀 매칭 뱃지 — 정렬 근거(왜 상위 랭커보다 먼저 오는지) 표시 */
+.sgr-alt-match {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: var(--ds-round-full);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-semibold);
+    white-space: nowrap;
+    cursor: default;
+}
+.sgr-alt-match.is-full {
+    background: rgba(243, 114, 127, 0.15);
+    color: var(--ds-text-accent);
+    border: 1px solid rgba(243, 114, 127, 0.5);
+}
+.sgr-alt-match.is-subbed {
+    background: rgba(83, 157, 245, 0.14);
+    color: var(--ds-text-blue);
+    border: 1px solid rgba(83, 157, 245, 0.45);
+}
+.sgr-alt-match.is-missing {
+    background: rgba(148, 163, 184, 0.14);
+    color: var(--text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
 /* 피커 내 Gemini 대체 추천 */
 .sgr-subpicker-ai { margin-bottom: var(--ds-space-sm); }
 .sgr-subpicker-ai-btn { width: 100%; }
