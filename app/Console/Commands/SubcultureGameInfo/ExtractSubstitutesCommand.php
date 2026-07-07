@@ -15,7 +15,7 @@ class ExtractSubstitutesCommand extends Command
         {--game= : 특정 게임 슬러그만 처리(bluearchive/nikke/trickcal/browndust2)}
         {--raid= : 특정 레이드 id 만 처리}';
 
-    protected $description = '레이드 공략글 본문에서 Gemini 로 대체 캐릭터 관계를 추출·저장 (진행 중·예정 레이드 대상)';
+    protected $description = '레이드 공략글 본문에서 Gemini 로 대체 캐릭터 관계를 추출·저장 (진행 중·예정 + 최근 종료 레이드 대상)';
 
     public function handle(CodeSyncService $codeSync, GuideBodyFetcher $fetcher, SubstituteExtractionService $extractor): int
     {
@@ -40,9 +40,11 @@ class ExtractSubstitutesCommand extends Command
                 continue;
             }
 
-            // ended 제외(active/upcoming): 종료일이 지난 레이드는 대상에서 뺀다
+            // 진행 중·예정 + 최근 종료(include_ended_days 이내) — 종료 직후에도
+            // 대체 정보는 다음 회차·미보유 사용자에게 유효하다
+            $endedWindow = now()->subDays((int) config('subculture-game-info.raids.substitutes.include_ended_days', 14));
             $raids = $game->raids()
-                ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()))
+                ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', $endedWindow))
                 ->when($this->option('raid'), fn ($q, $raidId) => $q->whereKey($raidId))
                 ->with(['guidePosts' => fn ($q) => $q->orderByDesc('posted_at')])
                 ->get();
@@ -56,12 +58,24 @@ class ExtractSubstitutesCommand extends Command
                 }
 
                 $this->info("[{$slug}] {$raid->name} — 공략글 본문 수집·추출 중...");
-                // 최신순 상한 + 요청 간 딜레이 — 커뮤니티 대량 요청(차단)·Gemini 비용 폭주 방지
+                // 상한 + 요청 간 딜레이 — 커뮤니티 대량 요청(차단)·Gemini 비용 폭주 방지
                 $maxPosts = (int) config('subculture-game-info.raids.substitutes.max_posts_per_raid', 6);
                 $delayMicros = (int) (config('subculture-game-info.raids.substitutes.fetch_delay_seconds', 1.0) * 1_000_000);
 
+                // 본문 상한이 빡빡하므로 점수 인증글보다 공략성 제목(공략/편성/대체 등)을 먼저 뽑는다
+                $guideKeywords = array_merge(
+                    (array) config('subculture-game-info.raids.guides.title_keywords', []),
+                    ['대체'],
+                );
+                $isGuideTitle = fn ($post): int => collect($guideKeywords)
+                    ->contains(fn (string $kw) => mb_stripos($post->title, $kw) !== false) ? 1 : 0;
+                $prioritized = $raid->guidePosts
+                    ->sort(fn ($a, $b) => [$isGuideTitle($b), $b->posted_at?->getTimestamp() ?? 0]
+                        <=> [$isGuideTitle($a), $a->posted_at?->getTimestamp() ?? 0])
+                    ->values();
+
                 $bodies = [];
-                foreach ($raid->guidePosts->take($maxPosts)->values() as $i => $post) {
+                foreach ($prioritized->take($maxPosts)->values() as $i => $post) {
                     if ($i > 0 && $delayMicros > 0) {
                         usleep($delayMicros);
                     }

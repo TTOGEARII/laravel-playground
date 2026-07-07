@@ -115,7 +115,7 @@ class GuidePostCollectorService
     }
 
     /**
-     * 검색어 목록: 최근 레이드 보스명 + 검색 접미사("공략").
+     * 검색어 목록: 최근 레이드 보스명 × 검색 접미사("공략", "대체").
      * 같은 보스가 여러 회차면 중복 제거.
      *
      * @param  Collection<int, Raid>  $raids
@@ -123,13 +123,16 @@ class GuidePostCollectorService
      */
     private function searchQueries(Collection $raids, array $cfg): array
     {
-        $suffix = trim((string) ($cfg['search_suffix'] ?? '공략'));
+        $suffixes = collect($cfg['search_suffixes'] ?? ['공략'])
+            ->map(fn ($suffix) => trim((string) $suffix))
+            ->filter();
 
         return $raids
             ->pluck('boss_name')
             ->filter(fn (?string $name) => $name !== null && $name !== '')
             ->unique()
-            ->map(fn (string $name) => trim($name.' '.$suffix))
+            ->crossJoin($suffixes)
+            ->map(fn (array $pair) => trim($pair[0].' '.$pair[1]))
             ->values()
             ->all();
     }
