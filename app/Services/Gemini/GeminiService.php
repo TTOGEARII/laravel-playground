@@ -56,25 +56,6 @@ class GeminiService
         return GeminiResponseParser::extractText($response);
     }
 
-    /**
-     * 텍스트 + 이미지 멀티모달 생성 — 공략 스크린샷(인포그래픽) 분석용.
-     * 별도 OCR 라이브러리 없이 Gemini 가 이미지 속 표·이름 라벨을 직접 읽는다.
-     *
-     * @param  array<int, array{mime_type: string, data: string}>  $images  base64 인코딩된 이미지 목록
-     */
-    public function generateWithImages(string $prompt, array $images, float $temperature = 0.8, bool $json = false, ?int $maxOutputTokens = null): ?string
-    {
-        $parts = [['text' => $prompt]];
-        foreach ($images as $image) {
-            $parts[] = ['inlineData' => ['mimeType' => $image['mime_type'], 'data' => $image['data']]];
-        }
-
-        $response = $this->call([['parts' => $parts]], $temperature, null, $json, $maxOutputTokens);
-        $text = GeminiResponseParser::extractText($response);
-
-        return $text ? trim($text) : null;
-    }
-
     private function call(array $contents, float $temperature, ?string $systemPrompt = null, bool $json = false, ?int $maxOutputTokens = null): array
     {
         $url = self::BASE_URL.'/models/'.$this->model.':generateContent?key='.$this->apiKey;

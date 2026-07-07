@@ -377,14 +377,6 @@ return [
             // 종료된 레이드도 이 일수 안이면 추출 대상에 포함 — 종료 직후에도 대체 정보는
             // 다음 회차·미보유 사용자에게 유효하다(0이면 진행 중·예정만)
             'include_ended_days' => (int) env('SGI_SUB_INCLUDE_ENDED_DAYS', 14),
-            // 스크린샷(인포그래픽) 폴백 — 본문 텍스트가 min_text_chars 미만이면 본문 이미지를
-            // 내려받아 Gemini 멀티모달로 분석한다(별도 OCR 라이브러리 불필요).
-            'image_fallback' => [
-                'min_text_chars' => (int) env('SGI_SUB_IMG_MIN_TEXT', 120), // 이보다 짧으면 이미지 분석 폴백
-                'max_images_per_post' => 2,   // 글 하나당 이미지 상한(첫 이미지가 보통 본문 핵심)
-                'max_images_per_raid' => (int) env('SGI_SUB_IMG_MAX', 4), // 레이드당 총 이미지 상한(Gemini 비용 가드)
-                'max_image_bytes' => 4 * 1024 * 1024, // 장당 4MB 초과는 스킵
-            ],
             // 본문 요청 간 딜레이(초) — 커뮤니티 차단 방지(다른 크롤러의 crawl_delay 와 동일 원칙)
             'fetch_delay_seconds' => (float) env('SGI_SUB_FETCH_DELAY', 1.0),
         ],

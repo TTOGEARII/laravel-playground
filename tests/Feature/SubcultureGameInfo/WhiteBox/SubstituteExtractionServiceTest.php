@@ -82,47 +82,6 @@ class SubstituteExtractionServiceTest extends TestCase
         ]);
     }
 
-    public function test_본문이_비어도_스크린샷이_있으면_멀티모달로_추출한다(): void
-    {
-        $mika = $this->character('1', '미카');
-        $saki = $this->character('2', '사키');
-        $this->fakeGemini([['primary' => '미카', 'substitutes' => ['사키']]]);
-
-        $stats = app(SubstituteExtractionService::class)->extractAndSync($this->raid, [[
-            'source' => 'arca',
-            'url' => 'https://arca.live/b/bluearchive/1',
-            'text' => '', // 인포그래픽 한 장짜리 글 — 본문 텍스트 없음
-            'images' => [['mime_type' => 'image/png', 'data' => base64_encode('fake-png')]],
-        ]]);
-
-        $this->assertSame(['relations' => 1, 'saved' => 1, 'dropped' => 0], $stats);
-        $this->assertDatabaseHas('subculture_raid_substitutes', [
-            'character_id' => $mika->id,
-            'substitute_character_id' => $saki->id,
-        ]);
-        // 요청에 이미지 파트(inlineData)가 실려 나갔는지 + 스크린샷 규칙이 프롬프트에 들어갔는지
-        Http::assertSent(function ($request) {
-            $parts = data_get($request->data(), 'contents.0.parts', []);
-            $hasImage = collect($parts)->contains(fn (array $part) => isset($part['inlineData']['mimeType']));
-            $hasRule = str_contains((string) data_get($parts, '0.text'), '공략 스크린샷');
-
-            return $hasImage && $hasRule;
-        });
-    }
-
-    public function test_본문과_이미지가_모두_비면_gemini_를_호출하지_않는다(): void
-    {
-        $this->character('1', '미카');
-        Http::fake();
-
-        $stats = app(SubstituteExtractionService::class)->extractAndSync($this->raid, [[
-            'source' => 'arca', 'url' => null, 'text' => '', 'images' => [],
-        ]]);
-
-        $this->assertSame(['relations' => 0, 'saved' => 0, 'dropped' => 0], $stats);
-        Http::assertNothingSent();
-    }
-
     public function test_캐릭터_목록에_없는_이름은_버린다(): void
     {
         $this->character('1', '미카');

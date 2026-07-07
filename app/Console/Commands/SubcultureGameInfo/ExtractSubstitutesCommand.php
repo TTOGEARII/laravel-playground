@@ -74,38 +74,15 @@ class ExtractSubstitutesCommand extends Command
                         <=> [$isGuideTitle($a), $a->posted_at?->getTimestamp() ?? 0])
                     ->values();
 
-                // 스크린샷 폴백: 본문이 빈약한 글(점수 인증·인포그래픽 한 장)은 본문 이미지를
-                // 내려받아 Gemini 멀티모달 분석에 넘긴다. 레이드당 총량 가드로 비용 폭주 방지.
-                $imgCfg = (array) config('subculture-game-info.raids.substitutes.image_fallback', []);
-                $minTextChars = (int) ($imgCfg['min_text_chars'] ?? 120);
-                $imageBudget = (int) ($imgCfg['max_images_per_raid'] ?? 4);
-
                 $bodies = [];
                 foreach ($prioritized->take($maxPosts)->values() as $i => $post) {
                     if ($i > 0 && $delayMicros > 0) {
                         usleep($delayMicros);
                     }
-                    $content = $fetcher->fetchContent($post);
-                    if ($content === null) {
-                        continue;
+                    $text = $fetcher->fetch($post);
+                    if ($text !== null) {
+                        $bodies[] = ['source' => $post->source, 'url' => $post->url, 'text' => $text];
                     }
-
-                    $text = (string) ($content['text'] ?? '');
-                    $images = [];
-                    if (mb_strlen(trim($text)) < $minTextChars && $content['image_urls'] !== [] && $imageBudget > 0) {
-                        $images = $fetcher->downloadImages(
-                            $content['image_urls'],
-                            $post->url,
-                            min((int) ($imgCfg['max_images_per_post'] ?? 2), $imageBudget),
-                            (int) ($imgCfg['max_image_bytes'] ?? 4 * 1024 * 1024),
-                        );
-                        $imageBudget -= count($images);
-                    }
-
-                    if (trim($text) === '' && $images === []) {
-                        continue;
-                    }
-                    $bodies[] = ['source' => $post->source, 'url' => $post->url, 'text' => $text, 'images' => $images];
                 }
 
                 // 본문을 하나도 못 가져오면(삭제된 글·셀렉터 깨짐 등) 기존 데이터를 지우지 않고 스킵
