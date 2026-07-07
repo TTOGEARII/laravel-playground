@@ -44,17 +44,14 @@
         <p class="sgr-legend">
           <span class="sgr-legend-owned">■</span> 보유 ·
           <span class="sgr-legend-missing">■</span> 미보유
-          <template v-if="composeMode"> · <span class="sgr-legend-sub">■</span> 내 대체 캐릭터로 채움</template>
         </p>
         <button
-          v-if="raid.parties.length > 0"
+          v-if="hasAltParties"
           type="button"
           class="sgr-compose-toggle"
-          :class="{ 'is-on': composeMode }"
-          :aria-pressed="composeMode"
-          @click="composeMode = !composeMode"
+          @click="activeTab = 'compose'"
         >
-          🧩 대체로 채우기
+          🧩 내 풀로 편성 짜기 →
         </button>
       </div>
       <p v-if="raid.parties.length === 0" class="sgr-empty">
@@ -66,7 +63,6 @@
           :key="party.id"
           :party="party"
           :pool="pool"
-          :compose-mode="composeMode"
           :usage="usage"
         />
       </div>
@@ -126,9 +122,6 @@ const tabs = computed(() => [
   { key: 'guides', label: '공략글', count: props.raid.guide_posts.length },
 ]);
 const activeTab = ref('parties');
-
-// "대체로 채우기" 토글 — 추천 편성 카드에서 미보유 슬롯을 보유 대체 캐릭터로 치환해 보여준다
-const composeMode = ref(false);
 
 // 학생별 출전 통계(블아 전용) — 대체 후보 팝오버 빈도 + 핵심 캐릭터 요약 카드
 const usage = ref({});
