@@ -87,7 +87,7 @@
     padding: 6px 12px;
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.6);
+    background: var(--ds-surface-card);
     color: var(--text-secondary);
     font-size: 0.8rem;
     cursor: pointer;
@@ -108,7 +108,7 @@
 .filter-select {
     width: 100%;
     box-sizing: border-box;
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     border-radius: 10px;
     border: 1px solid rgba(148, 163, 184, 0.35);
     padding: 8px 10px;
@@ -170,7 +170,7 @@
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     border-radius: 8px;
     border: 1px solid rgba(148, 163, 184, 0.35);
     padding: 6px 8px;
@@ -210,7 +210,7 @@
 
 .filter-reset-button:hover {
     border-color: rgba(248, 113, 113, 0.9);
-    color: #fecaca;
+    color: var(--ds-negative);
 }
 
 .filter-empty {
@@ -250,7 +250,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.35);
     padding: 8px 14px;
@@ -300,7 +300,7 @@
 }
 
 .sort-select select {
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.35);
     padding: 6px 10px;
@@ -315,7 +315,7 @@
     padding: 8px 14px;
     border-radius: 999px;
     border: 1px solid rgba(30, 215, 96, 0.8);
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     color: var(--text-primary);
     font-size: 0.8rem;
     cursor: pointer;
@@ -331,7 +331,7 @@
     height: 18px;
     border-radius: 999px;
     background: rgba(30, 215, 96, 0.9);
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.7rem;
     display: inline-flex;
     align-items: center;
@@ -347,7 +347,7 @@
     gap: 12px;
     padding: 12px 16px;
     border-radius: 14px;
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     border: 1px solid rgba(30, 215, 96, 0.6);
 }
 
@@ -382,7 +382,7 @@
 }
 
 .summary-text strong {
-    color: #f97316;
+    color: var(--ds-warning);
 }
 
 .summary-button {
@@ -390,7 +390,7 @@
     border-radius: 999px;
     border: none;
     background: linear-gradient(135deg, #1ed760, #1ed760);
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
@@ -415,7 +415,7 @@
     padding: 48px 16px;
     color: var(--text-secondary);
     font-size: 0.95rem;
-    background: rgba(15, 23, 42, 0.6);
+    background: var(--ds-surface-card);
     border-radius: 18px;
     border: 1px dashed rgba(148, 163, 184, 0.3);
 }
@@ -447,7 +447,7 @@
     gap: 16px;
     padding: 16px 18px;
     border-radius: 18px;
-    background: rgba(15, 23, 42, 0.95);
+    background: var(--ds-surface-card);
     border: 1px solid rgba(148, 163, 184, 0.4);
     transition: all 0.2s ease;
     min-width: 0;
@@ -455,7 +455,7 @@
 
 .product-card-row.is-featured {
     border-color: rgba(30, 215, 96, 0.9);
-    box-shadow: 0 18px 30px rgba(15, 23, 42, 0.8);
+    box-shadow: 0 18px 30px var(--ds-surface-card);
 }
 
 .product-card-row:hover {
@@ -543,19 +543,19 @@
 .badge-new {
     background: rgba(56, 189, 248, 0.15);
     border-color: rgba(56, 189, 248, 0.7);
-    color: #e0f2fe;
+    color: var(--text-secondary);
 }
 
 .badge-hot {
     background: rgba(248, 113, 113, 0.15);
     border-color: rgba(248, 113, 113, 0.9);
-    color: #fee2e2;
+    color: var(--ds-negative);
 }
 
 .badge-brand {
     background: rgba(30, 215, 96, 0.15);
     border-color: rgba(30, 215, 96, 0.7);
-    color: #e0e7ff;
+    color: var(--text-secondary);
 }
 
 .product-title {
@@ -582,7 +582,7 @@
     border-radius: 999px;
     font-size: 0.72rem;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.7);
+    background: var(--ds-surface-card);
     color: var(--text-secondary);
     line-height: 1.5;
 }
@@ -599,13 +599,13 @@
 
 .tag-ip:hover {
     background: rgba(30, 215, 96, 0.28);
-    color: #e0e7ff;
+    color: var(--text-secondary);
 }
 
 .tag-cat {
     border-color: rgba(56, 189, 248, 0.5);
     background: rgba(56, 189, 248, 0.12);
-    color: #bae6fd;
+    color: var(--text-secondary);
 }
 
 .product-meta-detail {
@@ -630,12 +630,12 @@
     gap: 8px;
     padding: 8px 10px;
     border-radius: 10px;
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     min-width: 0;
 }
 
 .shop-row.is-lowest {
-    background: rgba(15, 23, 42, 0.95);
+    background: var(--ds-surface-card);
     border: 1px solid rgba(34, 197, 94, 0.7);
 }
 
@@ -664,7 +664,7 @@
     border-radius: 999px;
     font-size: 0.7rem;
     background: rgba(34, 197, 94, 0.15);
-    color: #bbf7d0;
+    color: var(--ds-text-green);
     border: 1px solid rgba(34, 197, 94, 0.7);
 }
 
@@ -699,13 +699,13 @@
 
 /* 품절 오퍼: 행 전체를 흐리게 + '품절' 표기 */
 .shop-row.is-soldout {
-    background: rgba(15, 23, 42, 0.6);
+    background: var(--ds-surface-card);
     opacity: 0.7;
 }
 
 .shop-badge-soldout {
     background: rgba(148, 163, 184, 0.15);
-    color: #cbd5e1;
+    color: var(--text-secondary);
     border: 1px solid rgba(148, 163, 184, 0.5);
 }
 
@@ -750,7 +750,7 @@
 
 .compare-table-wrapper {
     margin-top: 8px;
-    background: rgba(15, 23, 42, 0.95);
+    background: var(--ds-surface-card);
     border-radius: 18px;
     border: 1px solid rgba(148, 163, 184, 0.4);
     padding: 16px 18px;
@@ -782,13 +782,13 @@
 }
 
 .compare-header {
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
 .compare-row:not(.compare-header) {
-    background: rgba(15, 23, 42, 0.8);
+    background: var(--ds-surface-card);
 }
 
 .compare-cell {
@@ -807,7 +807,7 @@
 }
 
 .compare-diff.positive {
-    color: #f97316;
+    color: var(--ds-warning);
 }
 
 .compare-diff.neutral {
@@ -841,7 +841,7 @@
     font-size: 0.85rem;
     text-decoration: none;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     color: var(--text-primary);
     transition: all 0.2s ease;
 }
@@ -854,7 +854,7 @@
 .product-pagination .pagination .active span {
     background: rgba(30, 215, 96, 0.4);
     border-color: rgba(30, 215, 96, 0.9);
-    color: #fff;
+    color: var(--text-primary);
 }
 
 .product-pagination .pagination .disabled span {
@@ -866,7 +866,7 @@
     padding: 8px 14px;
     border-radius: 8px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     color: var(--text-primary);
     font-size: 0.85rem;
     cursor: pointer;
@@ -932,7 +932,7 @@
     background:
         radial-gradient(circle at 15% 0%, rgba(30, 215, 96, 0.22), transparent 55%),
         radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.15), transparent 50%),
-        rgba(15, 23, 42, 0.85);
+        var(--ds-surface-card);
     border: 1px solid rgba(30, 215, 96, 0.3);
     text-align: center;
 }
@@ -961,7 +961,7 @@
     gap: 10px;
     max-width: 640px;
     margin: 0 auto;
-    background: rgba(2, 6, 23, 0.85);
+    background: var(--ds-canvas);
     border: 1px solid rgba(148, 163, 184, 0.4);
     border-radius: 999px;
     padding: 8px 8px 8px 18px;
@@ -1003,7 +1003,7 @@
     border-radius: 999px;
     border: none;
     background: linear-gradient(135deg, #1ed760, #1ed760);
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -1032,7 +1032,7 @@
     padding: 5px 12px;
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.7);
+    background: var(--ds-surface-card);
     color: var(--text-secondary);
     font-size: 0.78rem;
     cursor: pointer;
@@ -1041,7 +1041,7 @@
 
 .hero-tag:hover {
     border-color: rgba(30, 215, 96, 0.7);
-    color: #e0e7ff;
+    color: var(--text-secondary);
 }
 
 @media (max-width: 768px) {
@@ -1062,7 +1062,7 @@
     padding: 8px 14px;
     border-radius: 999px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     color: var(--text-secondary);
     font-size: 0.8rem;
     cursor: pointer;
@@ -1079,7 +1079,7 @@
 
 .compare-only-toggle.is-active {
     border-color: rgba(248, 113, 113, 0.8);
-    color: #fee2e2;
+    color: var(--ds-negative);
     background: rgba(248, 113, 113, 0.12);
 }
 
@@ -1100,7 +1100,7 @@
 .badge-upcoming {
     background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(30, 215, 96, 0.22));
     border-color: rgba(56, 189, 248, 0.85);
-    color: #bae6fd;
+    color: var(--text-secondary);
     font-weight: 700;
 }
 
@@ -1108,7 +1108,7 @@
 .product-card-row.is-upcoming {
     position: relative;
     border-color: rgba(56, 189, 248, 0.85);
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.07), rgba(15, 23, 42, 0.95));
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.07), var(--ds-surface-card));
 }
 .product-card-row.is-upcoming::before {
     content: '';
@@ -1146,7 +1146,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    background: rgba(15, 23, 42, 0.9);
+    background: var(--ds-surface-card);
     border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 10px;
     padding: 8px 10px;
@@ -1179,10 +1179,10 @@
     top: calc(100% + 6px);
     left: 0;
     right: 0;
-    background: rgba(15, 23, 42, 0.98);
+    background: var(--ds-surface-card);
     border: 1px solid rgba(30, 215, 96, 0.6);
     border-radius: 12px;
-    box-shadow: 0 18px 36px rgba(2, 6, 23, 0.7);
+    box-shadow: 0 18px 36px var(--ds-canvas);
     overflow: hidden;
 }
 .ip-combobox-search {
@@ -1192,7 +1192,7 @@
 .ip-combobox-search input {
     width: 100%;
     box-sizing: border-box;
-    background: rgba(2, 6, 23, 0.6);
+    background: var(--ds-canvas);
     border: 1px solid rgba(148, 163, 184, 0.3);
     border-radius: 8px;
     padding: 7px 10px;
@@ -1231,7 +1231,7 @@
 }
 .ip-option.is-selected {
     background: rgba(30, 215, 96, 0.28);
-    color: #fff;
+    color: var(--text-primary);
     font-weight: 600;
 }
 .ip-option-label {

@@ -139,13 +139,15 @@
  * 표면/텍스트/경계만 뒤집고 그린 액센트·타이포·라운딩은 그대로.
  * ========================================================================== */
 :root[data-theme='light'] {
-    --ds-canvas: #f7f7f8;
-    --ds-surface: #ffffff;
-    --ds-surface-2: #f0f0f2;
-    --ds-surface-card: #ffffff;
-    --ds-surface-card-2: #f4f4f6;
-    --ds-ink: #121212;
-    --ds-ink-muted: #6a6a6a;
+    /* 눈이 편하도록 순백 대신 살짝 낮춘 뉴트럴 오프화이트(캔버스는 은은하게,
+       카드만 조금 더 밝혀 분리감). 텍스트도 순검정 대신 소프트 잉크로 대비 완화. */
+    --ds-canvas: #e7e8ec;         /* 은은한 오프화이트 캔버스(덜 눈부심) */
+    --ds-surface: #f4f5f8;        /* 카드 — 캔버스보다 살짝 밝게 */
+    --ds-surface-2: #eaebef;      /* 인터랙티브 표면 */
+    --ds-surface-card: #f7f8fb;   /* 엘리베이티드 카드 */
+    --ds-surface-card-2: #eff0f4;
+    --ds-ink: #1b1c22;            /* 소프트 잉크(순검정 대비 완화) */
+    --ds-ink-muted: #63656f;
     --ds-ink-soft: #404040;
     --ds-ink-bright: #000000;
     --ds-border: #d4d4d8;
