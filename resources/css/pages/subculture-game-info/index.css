@@ -29,12 +29,12 @@
 
 .sgi-tab:hover {
     color: var(--text-primary);
-    border-color: rgba(129, 140, 248, 0.7);
+    border-color: rgba(30, 215, 96, 0.7);
 }
 
 .sgi-tab.is-active {
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.3), rgba(129, 140, 248, 0.1));
-    border-color: rgba(129, 140, 248, 0.9);
+    background: linear-gradient(135deg, rgba(30, 215, 96, 0.3), rgba(30, 215, 96, 0.1));
+    border-color: rgba(30, 215, 96, 0.9);
     color: var(--text-primary);
 }
 
@@ -76,7 +76,7 @@
     font-size: 0.8rem;
     font-weight: 600;
     color: #fff;
-    background: rgba(129, 140, 248, 0.85);
+    background: rgba(30, 215, 96, 0.85);
     border-radius: 999px;
     min-width: 22px;
     height: 22px;
@@ -145,8 +145,8 @@
 }
 
 .sgi-copy:hover {
-    border-color: rgba(129, 140, 248, 0.9);
-    background: rgba(129, 140, 248, 0.2);
+    border-color: rgba(30, 215, 96, 0.9);
+    background: rgba(30, 215, 96, 0.2);
 }
 
 .sgi-copy.is-copied {
@@ -172,9 +172,9 @@
 }
 
 .sgi-badge-status {
-    background: rgba(129, 140, 248, 0.15);
-    color: #c7d2fe;
-    border-color: rgba(129, 140, 248, 0.6);
+    background: rgba(30, 215, 96, 0.15);
+    color: #1ed760;
+    border-color: rgba(30, 215, 96, 0.6);
 }
 
 .sgi-status-active .sgi-badge-status {
@@ -222,12 +222,12 @@
     font-weight: 600;
     text-decoration: none;
     color: #fff;
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    background: linear-gradient(135deg, #1ed760, #1ed760);
     transition: all 0.2s ease;
 }
 
 .sgi-redeem-btn:hover {
-    background: linear-gradient(135deg, #818cf8, #6366f1);
+    background: linear-gradient(135deg, #1ed760, #1ed760);
 }
 
 .sgi-redeem-note {
@@ -326,7 +326,7 @@
 .sgi-raids-link {
     display: inline-block;
     margin-top: 6px;
-    color: #a5b4fc;
+    color: #1ed760;
     font-size: 0.9rem;
     font-weight: 600;
     text-decoration: none;

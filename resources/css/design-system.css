@@ -1,204 +1,330 @@
 /* ============================================================================
- * 디자인 시스템 — CSS 템플릿 시트 (기준점)
- * DESIGN.md(Discord 브랜드 언어) 기반. 딥 인디고 캔버스 + Blurple/그린/마젠타,
- * 헤비 디스플레이 타입, 넉넉한 라운딩. 모든 페이지는 여기 토큰을 기준으로 스타일링한다.
+ * 디자인 시스템 — CSS 템플릿 시트 (기준점)  ·  DESIGN.md(Spotify) 기반
+ *
+ * Spotify 언어: 니어블랙 몰입형 다크(#121212~#1f1f1f), 콘텐츠 우선의 아크로매틱 UI.
+ * 단일 브랜드 액센트 = 스포티파이 그린(#1ed760) — 재생/활성/CTA 등 기능적 용도만.
+ * pill 버튼(500~9999px) + 원형 컨트롤(50%), 대문자+넓은 자간 버튼, 헤비 섀도우로 깊이.
  *
  * 사용 원칙:
- *  - 색·간격·라운딩·타이포는 아래 --ds-* 토큰만 쓴다(하드코딩 색 금지).
+ *  - 색·간격·라운딩·타이포·섀도우는 아래 --ds-* 토큰만 쓴다(하드코딩 금지).
  *  - 기존 시맨틱 변수(--bg-card 등)는 아래에서 토큰으로 리매핑돼 전역이 함께 바뀐다.
  *  - 버튼/카드/뱃지 등 반복 UI 는 .ds-* 베이스 클래스를 재사용한다.
+ *  - 그린은 절대 장식용으로 쓰지 않는다(기능적 CTA/활성만). 추가 브랜드색 금지.
  * ========================================================================== */
 
 :root {
-    /* ---- 브랜드 & 액센트 ---------------------------------------------------- */
-    --ds-primary: #5865f2;        /* Blurple — 기본 CTA·밴드·브랜드 마크 */
-    --ds-primary-2: #4752c4;      /* Blurple 딥(그라데이션·hover) */
-    --ds-green: #35ed7e;          /* 일렉트릭 그린 — 최고 의도 CTA 전용 */
-    --ds-magenta: #ec48bd;        /* 바이브런트 마젠타 — 그라데이션 패널·스텝 카드 */
-    --ds-violet: #7b5bff;         /* Blurple↔마젠타 사이 보라(그라데이션 중간) */
-    --ds-link: #00b0f4;           /* 링크 시안 — 다크 표면 인라인 링크 */
+    /* ---- 브랜드 & 액센트 --------------------------------------------------- */
+    --ds-primary: #1ed760;        /* 스포티파이 그린 — 재생/활성/기본 CTA */
+    --ds-primary-press: #1db954;  /* 그린 프레스/보더 변형 */
+    --ds-on-primary: #000000;     /* 그린 필 위 텍스트/아이콘(검정) */
+    --ds-link: #539df5;           /* 안내(announcement) 블루 — 링크 */
 
-    /* ---- 표면 ------------------------------------------------------------- */
-    --ds-canvas: #0a0d3a;         /* 딥 인디고 페이지 베이스 */
-    --ds-surface-indigo: #1e2353; /* 레이즈드 인디고 — 카드·행·고스트 버튼 */
-    --ds-surface-onyx: #23272a;   /* 오닉스 — 제품 크롬 카드·구분선 */
-    --ds-surface-black: #000000;  /* 풀블랙 — 쇼케이스 밴드 */
-    --ds-surface-card: rgba(30, 35, 83, 0.72); /* 캔버스 위 글래스 카드(반투명 인디고) */
+    /* ---- 시맨틱 ------------------------------------------------------------ */
+    --ds-negative: #f3727f;       /* 에러/네거티브 */
+    --ds-warning: #ffa42b;        /* 경고 */
+    --ds-info: #539df5;           /* 정보 */
+
+    /* ---- 표면 (깊이는 명도 단차로) ---------------------------------------- */
+    --ds-canvas: #121212;         /* 레벨0 — 페이지 최심부 배경 */
+    --ds-surface: #181818;        /* 레벨1 — 카드·사이드바·컨테이너 */
+    --ds-surface-2: #1f1f1f;      /* 인터랙티브 표면·버튼 */
+    --ds-surface-card: #252525;   /* 엘리베이티드 카드 */
+    --ds-surface-card-2: #272727; /* 대체 카드 */
 
     /* ---- 텍스트 ----------------------------------------------------------- */
-    --ds-ink: #ffffff;            /* 다크 위 본문·디스플레이(주 텍스트) */
-    --ds-ink-muted: #b8bde8;      /* 다크 위 보조 텍스트(인디고 톤) */
-    --ds-ink-dark: #0a0d3a;       /* 밝은 필(흰/그린 버튼) 위 텍스트 */
+    --ds-ink: #ffffff;            /* 주 텍스트(흰색) */
+    --ds-ink-muted: #b3b3b3;      /* 보조 텍스트·비활성(실버) */
+    --ds-ink-soft: #cbcbcb;       /* 살짝 밝은 보조 */
+    --ds-ink-bright: #fdfdfd;     /* 최대 강조 */
+    --ds-ink-dark: #000000;       /* 밝은 필 위 텍스트 */
+    --ds-on-accent: #000000;      /* 그린 등 밝은 액센트 필 위 텍스트(테마 무관) */
 
-    /* ---- 경계 ------------------------------------------------------------- */
-    --ds-border: rgba(139, 149, 245, 0.22); /* Blurple 톤 미세 경계 */
-    --ds-border-strong: rgba(139, 149, 245, 0.4);
+    /* ---- 경계 (raw 그레이 보더 지양 — 섀도우/inset 우선) ------------------ */
+    --ds-border: #4d4d4d;
+    --ds-border-light: #7c7c7c;
+    --ds-separator: rgba(255, 255, 255, 0.1);
+    --ds-hairline: rgba(255, 255, 255, 0.08);
 
-    /* ---- 브랜드 그라데이션 (아틀라스 시그니처) ------------------------------- */
-    --ds-gradient-brand: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-violet) 45%, var(--ds-magenta) 100%);
-    --ds-gradient-magenta: linear-gradient(135deg, var(--ds-magenta) 0%, #b83fd0 100%);
+    /* ---- 액센트 텍스트(틴트 배경 위 라벨 — 테마 대응) --------------------- */
+    --ds-text-accent: #1ed760;    /* 그린 텍스트 */
+    --ds-text-blue: #539df5;
+    --ds-text-amber: #ffa42b;
+    --ds-text-green: #1ed760;
 
-    /* ---- 간격 (8px 베이스) ------------------------------------------------- */
+    /* ---- 간격 (8px 베이스, DESIGN.md 스케일) ------------------------------ */
+    --ds-space-1: 1px;
+    --ds-space-2: 2px;
+    --ds-space-3: 3px;
     --ds-space-xxs: 4px;
+    --ds-space-5: 5px;
+    --ds-space-3b: 6px;
     --ds-space-xs: 8px;
+    --ds-space-2p5: 10px;
     --ds-space-sm: 12px;
+    --ds-space-3p5: 14px;
+    --ds-space-15: 15px;
     --ds-space-md: 16px;
     --ds-space-lg: 20px;
     --ds-space-xl: 24px;
     --ds-space-xxl: 32px;
     --ds-space-section: 40px;
 
-    /* ---- 라운딩 ----------------------------------------------------------- */
-    --ds-round-xs: 6px;
-    --ds-round-sm: 12px;
-    --ds-round-md: 14px;
-    --ds-round-lg: 16px;
-    --ds-round-xl: 40px;
-    --ds-round-pill: 50px;
-    --ds-round-jumbo: 120px;
+    /* ---- 타입 스케일 (컴팩트 10~24px) ------------------------------------- */
+    --ds-fs-micro: 0.625rem;  /* 10px */
+    --ds-fs-badge: 0.66rem;   /* 10.5px */
+    --ds-fs-small: 0.75rem;   /* 12px */
+    --ds-fs-sm: 0.8rem;
+    --ds-fs-base: 0.875rem;   /* 14px — 버튼·캡션·내비 */
+    --ds-fs-md: 0.95rem;
+    --ds-fs-body: 1rem;       /* 16px — 본문 */
+    --ds-fs-lg: 1.05rem;
+    --ds-fs-heading: 1.125rem;/* 18px — 피처 헤딩 */
+    --ds-fs-xl: 1.25rem;
+    --ds-fs-2xl: 1.5rem;      /* 24px — 섹션 타이틀 */
+    --ds-fs-3xl: 2rem;
+    --ds-fs-hero: clamp(2.2rem, 6vw, 3.5rem);
+
+    /* ---- 폰트 웨이트 (700/400 바이너리 + 600 절제) ----------------------- */
+    --ds-fw-normal: 400;
+    --ds-fw-semibold: 600;
+    --ds-fw-bold: 700;
+    --ds-fw-heavy: 800;
+
+    /* ---- 폰트 (Circular 대체: Figtree 지오메트릭 산세리프) --------------- */
+    --ds-font: 'Figtree', 'Helvetica Neue', Helvetica, Arial, 'Noto Sans KR', sans-serif;
+    --ds-font-title: var(--ds-font);
+    --ds-btn-tracking: 0.1em;  /* 버튼 대문자 자간(≈1.4px) */
+
+    /* ---- 라운딩 (pill·원형 중심) ----------------------------------------- */
+    --ds-round-badge: 2px;
+    --ds-round-xs: 4px;
+    --ds-round-sm: 6px;   /* 카드·앨범아트 */
+    --ds-round-md: 8px;   /* 섹션·다이얼로그 */
+    --ds-round-lg: 12px;
+    --ds-round-xl: 20px;  /* 패널·오버레이 */
+    --ds-round-100: 100px;
+    --ds-round-pill: 500px;
     --ds-round-full: 9999px;
+    --ds-round-circle: 50%;
 
-    /* ---- 타이포 ----------------------------------------------------------- */
-    --ds-font-display: 'Space Grotesk', 'Outfit', 'Noto Sans KR', sans-serif;
-    --ds-font-body: 'Outfit', 'Noto Sans KR', sans-serif;
-    --ds-text-display-xl: 800 clamp(2.6rem, 6vw, 5.1rem)/1.0 var(--ds-font-display);
-    --ds-text-display-lg: 800 clamp(2.2rem, 5vw, 3.9rem)/1.05 var(--ds-font-display);
-    --ds-text-display-md: 700 clamp(1.8rem, 4vw, 3.5rem)/1.05 var(--ds-font-display);
-    --ds-text-heading-lg: 700 clamp(1.5rem, 3vw, 3rem)/1.1 var(--ds-font-display);
-    --ds-text-heading-sm: 700 1.375rem/1.2 var(--ds-font-display);
-
-    /* ---- 엘리베이션 (색·라운딩 우선, 그림자는 절제) ------------------------- */
-    --ds-shadow-float: 0 3px 68px rgba(69, 42, 124, 0.35);
-    --ds-shadow-card: 0 8px 30px rgba(5, 8, 40, 0.4);
+    /* ---- 섀도우 (다크에서 보이도록 헤비하게) ----------------------------- */
+    --ds-shadow-medium: rgba(0, 0, 0, 0.3) 0 8px 8px;
+    --ds-shadow-heavy: rgba(0, 0, 0, 0.5) 0 8px 24px;
+    --ds-shadow-inset: rgb(18, 18, 18) 0 1px 0, rgb(124, 124, 124) 0 0 0 1px inset;
 
     /* ========================================================================
      * 레거시 시맨틱 변수 리매핑 — 기존 페이지들이 이 이름을 참조하므로
-     * 여기서 토큰으로 연결하면 전역 팔레트가 한 번에 Discord 톤으로 전환된다.
+     * 여기서 토큰으로 연결하면 전역 팔레트가 한 번에 Spotify 톤으로 전환된다.
+     * (그린은 브랜드 액센트, 나머지 accent 는 시맨틱 색으로 변화만 유지)
      * ====================================================================== */
     --bg-primary: var(--ds-canvas);
-    --bg-secondary: var(--ds-surface-indigo);
+    --bg-secondary: var(--ds-surface);
     --bg-card: var(--ds-surface-card);
     --text-primary: var(--ds-ink);
     --text-secondary: var(--ds-ink-muted);
-    --accent-1: var(--ds-primary);   /* 기존 보라 → Blurple */
-    --accent-2: var(--ds-magenta);   /* 기존 핑크 → 마젠타 */
-    --accent-3: var(--ds-violet);    /* 기존 로즈 → 보라 */
-    --accent-4: var(--ds-link);      /* 기존 틸 → 링크 시안(팔레트 내) */
-    --accent-teal: var(--ds-link);
+    --accent-1: var(--ds-primary);   /* 그린(브랜드) */
+    --accent-2: var(--ds-info);      /* 블루 */
+    --accent-3: var(--ds-negative);  /* 레드/핑크 */
+    --accent-4: var(--ds-warning);   /* 오렌지 */
+    --accent-teal: var(--ds-primary);
     --accent-indigo: var(--ds-primary);
-    --accent-pink: var(--ds-magenta);
-    --accent-violet: var(--ds-violet);
-    --border-color: var(--ds-border);
+    --accent-pink: var(--ds-negative);
+    --accent-violet: var(--ds-info);
+    --border-color: var(--ds-hairline);
     --card-accent: var(--ds-primary);
+}
+
+/* ============================================================================
+ * 라이트 테마 — data-theme="light". Spotify 는 다크 네이티브지만 라이트도 지원.
+ * 표면/텍스트/경계만 뒤집고 그린 액센트·타이포·라운딩은 그대로.
+ * ========================================================================== */
+:root[data-theme='light'] {
+    --ds-canvas: #f7f7f8;
+    --ds-surface: #ffffff;
+    --ds-surface-2: #f0f0f2;
+    --ds-surface-card: #ffffff;
+    --ds-surface-card-2: #f4f4f6;
+    --ds-ink: #121212;
+    --ds-ink-muted: #6a6a6a;
+    --ds-ink-soft: #404040;
+    --ds-ink-bright: #000000;
+    --ds-border: #d4d4d8;
+    --ds-border-light: #b3b3b3;
+    --ds-separator: rgba(0, 0, 0, 0.1);
+    --ds-hairline: rgba(0, 0, 0, 0.08);
+    /* 그린은 밝은 배경에서 대비를 위해 진한 변형을 텍스트에 사용 */
+    --ds-text-accent: #1a9e49;
+    --ds-text-green: #1a9e49;
+    --ds-link: #2f7fe0;
+    --ds-shadow-medium: rgba(0, 0, 0, 0.12) 0 8px 16px;
+    --ds-shadow-heavy: rgba(0, 0, 0, 0.18) 0 10px 28px;
+    --ds-shadow-inset: rgb(240, 240, 242) 0 1px 0, rgb(180, 180, 180) 0 0 0 1px inset;
+}
+
+/* 전역 폰트 기본값 */
+body {
+    font-family: var(--ds-font);
+    color: var(--text-primary);
 }
 
 /* ============================================================================
  * 베이스 컴포넌트 — 반복 UI 의 단일 출처
  * ========================================================================== */
 
-/* ---- 컨테이너/섹션 ------------------------------------------------------- */
 .ds-container {
     width: 100%;
     max-width: 1200px;
     margin-inline: auto;
-    padding-inline: var(--ds-space-lg);
+    padding-inline: var(--ds-space-md);
 }
 
-/* ---- 버튼 --------------------------------------------------------------- */
+/* ---- 버튼 (pill · 대문자 · 넓은 자간) ---------------------------------- */
 .ds-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--ds-space-xs);
-    font: 500 1.125rem/1.4 var(--ds-font-body);
+    font-family: var(--ds-font);
+    font-size: var(--ds-fs-base);
+    font-weight: var(--ds-fw-bold);
+    text-transform: uppercase;
+    letter-spacing: var(--ds-btn-tracking);
+    line-height: 1;
     border: none;
-    border-radius: var(--ds-round-sm);
-    padding: var(--ds-space-md) var(--ds-space-xl);
+    border-radius: var(--ds-round-full);
+    padding: var(--ds-space-sm) var(--ds-space-xl);
+    min-height: 44px;
     cursor: pointer;
     text-decoration: none;
-    transition: transform 0.12s ease, background 0.15s ease, opacity 0.15s ease;
+    transition: transform 0.1s ease, background 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
 }
-.ds-btn:hover { transform: translateY(-1px); }
-.ds-btn:active { transform: translateY(0); }
+.ds-btn:hover { transform: scale(1.03); }
+.ds-btn:active { transform: scale(1); }
 
-.ds-btn--primary { background: var(--ds-primary); color: var(--ds-ink); }
-.ds-btn--primary:hover { background: var(--ds-primary-2); }
+/* 스포티파이 메인 CTA — 그린 필 + 검정 라벨 */
+.ds-btn--primary { background: var(--ds-primary); color: var(--ds-on-accent); }
+.ds-btn--primary:hover { filter: brightness(1.06); }
 
-.ds-btn--green { background: var(--ds-green); color: var(--ds-ink-dark); font-weight: 700; }
+/* 다크 pill — 보조 액션 */
+.ds-btn--dark { background: var(--ds-surface-2); color: var(--ds-ink); text-transform: none; letter-spacing: 0; }
+.ds-btn--dark:hover { background: color-mix(in srgb, var(--ds-surface-2) 80%, #fff); }
 
-.ds-btn--white { background: var(--ds-ink); color: var(--ds-ink-dark); border-radius: var(--ds-round-lg); font-size: 1rem; }
-
-.ds-btn--ghost {
-    background: var(--ds-surface-indigo);
+/* 아웃라인 pill */
+.ds-btn--outline {
+    background: transparent;
     color: var(--ds-ink);
-    border: 1px solid var(--ds-border);
-    border-radius: var(--ds-round-lg);
-    font-size: 1rem;
+    border: 1px solid var(--ds-border-light);
+    text-transform: none;
+    letter-spacing: 0;
 }
-.ds-btn--ghost:hover { background: color-mix(in srgb, var(--ds-surface-indigo) 80%, var(--ds-primary)); }
+.ds-btn--outline:hover { border-color: var(--ds-ink); }
 
-.ds-btn--sm { font-size: 0.875rem; padding: var(--ds-space-sm) var(--ds-space-lg); border-radius: var(--ds-round-xs); }
+/* 컴팩트 */
+.ds-btn--sm { min-height: 32px; padding: var(--ds-space-3b) var(--ds-space-md); font-size: var(--ds-fs-small); }
+
+/* 원형 재생 컨트롤 */
+.ds-btn--play {
+    width: 48px;
+    height: 48px;
+    min-height: 0;
+    padding: 0;
+    border-radius: var(--ds-round-circle);
+    background: var(--ds-primary);
+    color: var(--ds-on-accent);
+    text-transform: none;
+    letter-spacing: 0;
+}
+.ds-btn--play:hover { transform: scale(1.06); }
 
 /* ---- 카드 --------------------------------------------------------------- */
 .ds-card {
-    background: var(--ds-surface-card);
-    border: 1px solid var(--ds-border);
-    border-radius: var(--ds-round-lg);
-    padding: var(--ds-space-xl);
-    backdrop-filter: blur(12px);
+    background: var(--ds-surface);
+    border-radius: var(--ds-round-md);
+    padding: var(--ds-space-md);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
 }
-.ds-card--dark { background: var(--ds-surface-indigo); border-radius: var(--ds-round-xl); padding: var(--ds-space-xxl); }
-.ds-card--gradient { background: var(--ds-gradient-magenta); border: none; border-radius: var(--ds-round-xl); padding: var(--ds-space-section); color: var(--ds-ink); }
-.ds-card--float { box-shadow: var(--ds-shadow-float); }
+.ds-card:hover { background: var(--ds-surface-card); box-shadow: var(--ds-shadow-medium); }
+.ds-card--flat { background: var(--ds-surface-2); }
+.ds-card--elevated { background: var(--ds-surface-card); box-shadow: var(--ds-shadow-medium); }
 
 /* ---- 뱃지 / 필 --------------------------------------------------------- */
 .ds-badge {
     display: inline-flex;
     align-items: center;
-    background: var(--ds-magenta);
-    color: var(--ds-ink);
-    font: 500 0.875rem/1.4 var(--ds-font-body);
-    border-radius: var(--ds-round-lg);
-    padding: var(--ds-space-xxs) var(--ds-space-sm);
+    background: var(--ds-surface-2);
+    color: var(--ds-ink-muted);
+    font-size: var(--ds-fs-small);
+    font-weight: var(--ds-fw-bold);
+    border-radius: var(--ds-round-badge);
+    padding: var(--ds-space-2) var(--ds-space-3b);
 }
+.ds-badge--green { background: rgba(30, 215, 96, 0.16); color: var(--ds-text-green); }
 .ds-pill {
     display: inline-flex;
     align-items: center;
     gap: var(--ds-space-xxs);
-    background: rgba(88, 101, 242, 0.16);
-    border: 1px solid var(--ds-border-strong);
-    color: color-mix(in srgb, var(--ds-primary) 40%, var(--ds-ink));
-    border-radius: var(--ds-round-pill);
-    padding: 4px 12px;
-    font: 600 0.82rem/1 var(--ds-font-body);
+    background: var(--ds-surface-2);
+    color: var(--ds-ink-muted);
+    border-radius: var(--ds-round-full);
+    padding: var(--ds-space-3b) var(--ds-space-sm);
+    font-size: var(--ds-fs-base);
+    font-weight: var(--ds-fw-bold);
 }
 
-/* ---- 디스플레이 텍스트 유틸 --------------------------------------------- */
-.ds-display-xl { font: var(--ds-text-display-xl); color: var(--ds-ink); letter-spacing: -0.01em; }
-.ds-display-lg { font: var(--ds-text-display-lg); color: var(--ds-ink); }
-.ds-display-md { font: var(--ds-text-display-md); color: var(--ds-ink); }
-.ds-heading-lg { font: var(--ds-text-heading-lg); color: var(--ds-ink); }
-.ds-heading-sm { font: var(--ds-text-heading-sm); color: var(--ds-ink); }
+/* ---- 검색/텍스트 입력 (pill + inset 보더) ----------------------------- */
+.ds-input {
+    background: var(--ds-surface-2);
+    color: var(--ds-ink);
+    border: none;
+    border-radius: var(--ds-round-pill);
+    padding: var(--ds-space-sm) var(--ds-space-lg);
+    font: var(--ds-fw-normal) var(--ds-fs-base)/1.4 var(--ds-font);
+    box-shadow: var(--ds-shadow-inset);
+    outline: none;
+}
+.ds-input:focus { box-shadow: var(--ds-shadow-inset), 0 0 0 2px var(--ds-primary); }
+
+/* ---- 타이틀 유틸 ------------------------------------------------------- */
+.ds-title { font-family: var(--ds-font-title); font-size: var(--ds-fs-2xl); font-weight: var(--ds-fw-bold); color: var(--ds-ink); }
+.ds-heading { font-size: var(--ds-fs-heading); font-weight: var(--ds-fw-semibold); line-height: 1.3; color: var(--ds-ink); }
 
 /* ============================================================================
- * 브랜드 캔버스 — 딥 인디고 + 애니메이션 Blurple↔마젠타 그라데이션 메시.
- * DESIGN.md: 배경은 절대 플랫/뉴트럴이 아니며 항상 움직이는 그라데이션이 대기감을 만든다.
- * .bg-gradient(레이아웃의 고정 배경 레이어)를 이 메시로 대체한다.
+ * 배경 — Spotify 는 콘텐츠 우선의 플랫 니어블랙(그라데이션 메시 없음).
+ * 상단에서 아주 옅은 명도 그라데이션만 줘 몰입감을 더한다.
  * ========================================================================== */
 .bg-gradient {
     background: var(--ds-canvas) !important;
-    background-image:
-        radial-gradient(60% 55% at 18% 12%, rgba(88, 101, 242, 0.55), transparent 60%),
-        radial-gradient(55% 50% at 82% 20%, rgba(236, 72, 189, 0.4), transparent 62%),
-        radial-gradient(65% 60% at 70% 88%, rgba(123, 91, 255, 0.45), transparent 60%),
-        radial-gradient(50% 50% at 25% 85%, rgba(0, 176, 244, 0.22), transparent 60%) !important;
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--ds-canvas) 82%, #fff) 0%, var(--ds-canvas) 320px) !important;
     background-attachment: fixed !important;
-    animation: ds-mesh-drift 24s ease-in-out infinite alternate;
+    animation: none !important;
 }
-@keyframes ds-mesh-drift {
-    0% { background-position: 0% 0%, 100% 0%, 100% 100%, 0% 100%; }
-    100% { background-position: 12% 8%, 88% 6%, 84% 92%, 8% 94%; }
+.noise { opacity: 0.015 !important; }
+
+/* ---- 테마 토글 버튼 (우상단 고정, 원형) -------------------------------- */
+.ds-theme-toggle {
+    position: fixed;
+    top: var(--ds-space-md);
+    right: var(--ds-space-md);
+    z-index: 50;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--ds-round-circle);
+    border: none;
+    background: var(--ds-surface-2);
+    box-shadow: var(--ds-shadow-medium);
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+    transition: transform 0.1s ease, background 0.15s ease;
 }
+.ds-theme-toggle:hover { transform: scale(1.06); background: var(--ds-surface-card); }
+.ds-theme-toggle-icon { display: none; }
+:root[data-theme='dark'] .ds-theme-toggle [data-icon-light] { display: inline; }
+:root[data-theme='light'] .ds-theme-toggle [data-icon-dark] { display: inline; }
+
 @media (prefers-reduced-motion: reduce) {
-    .bg-gradient { animation: none; }
+    .ds-btn, .ds-theme-toggle, .ds-card { transition: none; }
 }
