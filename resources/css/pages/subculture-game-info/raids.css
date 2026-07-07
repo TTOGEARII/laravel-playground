@@ -169,7 +169,7 @@
 
 .sgr-status-badge.is-ended {
     background: rgba(148, 163, 184, 0.2);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .sgr-type-badge {
@@ -550,7 +550,7 @@
     padding: 1px 6px;
     border-radius: 999px;
     background: rgba(148, 163, 184, 0.2);
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .sgr-sub-owned-badge.is-owned {
@@ -637,7 +637,7 @@
 
 .sgr-guide-source.is-arca {
     background: rgba(244, 114, 182, 0.2);
-    color: #f472b6;
+    color: var(--ds-text-pink);
 }
 
 .sgr-guide-title {

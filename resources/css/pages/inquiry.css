@@ -46,7 +46,7 @@
 }
 
 .inquiry-alert-success {
-    color: #d1fae5;
+    color: var(--ds-text-success);
     background: rgba(16, 185, 129, 0.14);
     border: 1px solid rgba(16, 185, 129, 0.4);
 }
@@ -115,12 +115,12 @@
 }
 
 .inquiry-field .has-error {
-    border-color: #f87171;
+    border-color: var(--ds-negative);
 }
 
 .inquiry-error {
     font-size: 0.8rem;
-    color: #fca5a5;
+    color: var(--ds-negative);
 }
 
 .inquiry-submit {

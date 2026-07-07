@@ -115,7 +115,7 @@ const submit = async () => {
   align-items: center;
   gap: 12px;
   margin: 20px 0;
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 .auth-divider::before,

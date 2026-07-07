@@ -135,7 +135,7 @@
 .filter-checkbox input {
     width: 14px;
     height: 14px;
-    accent-color: #f3727f;
+    accent-color: var(--ds-text-accent);
 }
 
 .price-range {
@@ -592,7 +592,7 @@
     cursor: pointer;
     border-color: rgba(243, 114, 127, 0.7);
     background: rgba(243, 114, 127, 0.14);
-    color: #f3727f;
+    color: var(--ds-text-accent);
     font-weight: 600;
     transition: all 0.2s ease;
 }
@@ -951,7 +951,7 @@
 }
 
 .search-hero-sub strong {
-    color: #f3727f;
+    color: var(--ds-text-accent);
     font-weight: 600;
 }
 
@@ -1092,7 +1092,7 @@
 .badge-compare {
     background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(251, 146, 60, 0.2));
     border-color: rgba(248, 113, 113, 0.8);
-    color: #fed7aa;
+    color: var(--ds-text-amber);
     font-weight: 600;
 }
 

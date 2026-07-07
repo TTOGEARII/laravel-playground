@@ -49,6 +49,8 @@
     --ds-text-accent: #f3727f;    /* 코랄 텍스트 */
     --ds-text-blue: #539df5;
     --ds-text-amber: #ffa42b;
+    --ds-text-pink: #f472b6;      /* 소스 구분용 핑크(아카 등) */
+    --ds-text-success: #34d399;   /* 성공 시맨틱 그린(브랜드 아님) */
     --ds-text-green: #f3727f;     /* (레거시 별칭 — 코랄로 통일) */
 
     /* ---- 간격 (8px 베이스, DESIGN.md 스케일) ------------------------------ */
@@ -154,9 +156,14 @@
     --ds-border-light: #b3b3b3;
     --ds-separator: rgba(0, 0, 0, 0.1);
     --ds-hairline: rgba(0, 0, 0, 0.08);
-    /* 코랄은 밝은 배경에서 대비를 위해 진한 변형을 텍스트에 사용 */
+    /* 틴트 배지 텍스트: 밝은 배경에서 대비 확보를 위해 진한 변형 사용
+       (다크용 밝은 색을 그대로 두면 흰 배경에서 글씨가 묻힌다) */
     --ds-text-accent: #d6455a;
     --ds-text-green: #d6455a;
+    --ds-text-blue: #2563eb;
+    --ds-text-amber: #b45309;
+    --ds-text-pink: #c02a6f;
+    --ds-text-success: #15803d;
     --ds-link: #2f7fe0;
     --ds-shadow-medium: rgba(0, 0, 0, 0.12) 0 8px 16px;
     --ds-shadow-heavy: rgba(0, 0, 0, 0.18) 0 10px 28px;
