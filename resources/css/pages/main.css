@@ -4,43 +4,17 @@
             box-sizing: border-box;
         }
 
-        :root {
-            /* 배경 일러스트 위에 올라가는 다크 글래스 톤 */
-            --bg-primary: #020617;
-            --bg-secondary: rgba(15, 23, 42, 0.9);
-            --bg-card: rgba(15, 23, 42, 0.82);
-            --text-primary: #f9fafb;
-            --text-secondary: #e5e7eb;
-            --accent-1: #a855f7;
-            --accent-2: #ec4899;
-            --accent-3: #fb7185;
-            --accent-4: #22c1c3;
-            --border-color: rgba(248, 250, 252, 0.16);
-        }
+        /* 색 토큰은 design-system.css(:root)가 전역 소유한다. 여기서는 재정의하지 않는다. */
 
         body {
-            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
-            background: #000; /* 실제 배경은 .bg-gradient에서 처리 */
+            font-family: var(--ds-font-body);
+            background: var(--ds-canvas);
             color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
         }
 
-        /* 배경: 이미지 + 다크 오버레이 (main.css에서만 정의) */
-        .bg-gradient {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: linear-gradient(135deg, rgba(3, 7, 18, 0.88), rgba(15, 23, 42, 0.88)), url("/images/126475690_p1.jpg?v=1");
-            background-position: center center;
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            pointer-events: none;
-            z-index: 0;
-        }
+        /* 배경 그라데이션 메시는 design-system.css .bg-gradient 가 담당한다. */
 
         /* 노이즈 텍스처 */
         .noise {

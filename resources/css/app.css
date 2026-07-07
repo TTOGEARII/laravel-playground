@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
 @import './base/reset.css';
+@import './design-system.css'; /* 디자인 토큰 시트 — 페이지보다 먼저 로드해 전역 기준을 잡는다 */
 @import './base/site-footer.css';
 @import './pages/main.css';
 @import './pages/mini-game/index.css';

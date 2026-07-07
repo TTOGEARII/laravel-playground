@@ -1,0 +1,204 @@
+/* ============================================================================
+ * 디자인 시스템 — CSS 템플릿 시트 (기준점)
+ * DESIGN.md(Discord 브랜드 언어) 기반. 딥 인디고 캔버스 + Blurple/그린/마젠타,
+ * 헤비 디스플레이 타입, 넉넉한 라운딩. 모든 페이지는 여기 토큰을 기준으로 스타일링한다.
+ *
+ * 사용 원칙:
+ *  - 색·간격·라운딩·타이포는 아래 --ds-* 토큰만 쓴다(하드코딩 색 금지).
+ *  - 기존 시맨틱 변수(--bg-card 등)는 아래에서 토큰으로 리매핑돼 전역이 함께 바뀐다.
+ *  - 버튼/카드/뱃지 등 반복 UI 는 .ds-* 베이스 클래스를 재사용한다.
+ * ========================================================================== */
+
+:root {
+    /* ---- 브랜드 & 액센트 ---------------------------------------------------- */
+    --ds-primary: #5865f2;        /* Blurple — 기본 CTA·밴드·브랜드 마크 */
+    --ds-primary-2: #4752c4;      /* Blurple 딥(그라데이션·hover) */
+    --ds-green: #35ed7e;          /* 일렉트릭 그린 — 최고 의도 CTA 전용 */
+    --ds-magenta: #ec48bd;        /* 바이브런트 마젠타 — 그라데이션 패널·스텝 카드 */
+    --ds-violet: #7b5bff;         /* Blurple↔마젠타 사이 보라(그라데이션 중간) */
+    --ds-link: #00b0f4;           /* 링크 시안 — 다크 표면 인라인 링크 */
+
+    /* ---- 표면 ------------------------------------------------------------- */
+    --ds-canvas: #0a0d3a;         /* 딥 인디고 페이지 베이스 */
+    --ds-surface-indigo: #1e2353; /* 레이즈드 인디고 — 카드·행·고스트 버튼 */
+    --ds-surface-onyx: #23272a;   /* 오닉스 — 제품 크롬 카드·구분선 */
+    --ds-surface-black: #000000;  /* 풀블랙 — 쇼케이스 밴드 */
+    --ds-surface-card: rgba(30, 35, 83, 0.72); /* 캔버스 위 글래스 카드(반투명 인디고) */
+
+    /* ---- 텍스트 ----------------------------------------------------------- */
+    --ds-ink: #ffffff;            /* 다크 위 본문·디스플레이(주 텍스트) */
+    --ds-ink-muted: #b8bde8;      /* 다크 위 보조 텍스트(인디고 톤) */
+    --ds-ink-dark: #0a0d3a;       /* 밝은 필(흰/그린 버튼) 위 텍스트 */
+
+    /* ---- 경계 ------------------------------------------------------------- */
+    --ds-border: rgba(139, 149, 245, 0.22); /* Blurple 톤 미세 경계 */
+    --ds-border-strong: rgba(139, 149, 245, 0.4);
+
+    /* ---- 브랜드 그라데이션 (아틀라스 시그니처) ------------------------------- */
+    --ds-gradient-brand: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-violet) 45%, var(--ds-magenta) 100%);
+    --ds-gradient-magenta: linear-gradient(135deg, var(--ds-magenta) 0%, #b83fd0 100%);
+
+    /* ---- 간격 (8px 베이스) ------------------------------------------------- */
+    --ds-space-xxs: 4px;
+    --ds-space-xs: 8px;
+    --ds-space-sm: 12px;
+    --ds-space-md: 16px;
+    --ds-space-lg: 20px;
+    --ds-space-xl: 24px;
+    --ds-space-xxl: 32px;
+    --ds-space-section: 40px;
+
+    /* ---- 라운딩 ----------------------------------------------------------- */
+    --ds-round-xs: 6px;
+    --ds-round-sm: 12px;
+    --ds-round-md: 14px;
+    --ds-round-lg: 16px;
+    --ds-round-xl: 40px;
+    --ds-round-pill: 50px;
+    --ds-round-jumbo: 120px;
+    --ds-round-full: 9999px;
+
+    /* ---- 타이포 ----------------------------------------------------------- */
+    --ds-font-display: 'Space Grotesk', 'Outfit', 'Noto Sans KR', sans-serif;
+    --ds-font-body: 'Outfit', 'Noto Sans KR', sans-serif;
+    --ds-text-display-xl: 800 clamp(2.6rem, 6vw, 5.1rem)/1.0 var(--ds-font-display);
+    --ds-text-display-lg: 800 clamp(2.2rem, 5vw, 3.9rem)/1.05 var(--ds-font-display);
+    --ds-text-display-md: 700 clamp(1.8rem, 4vw, 3.5rem)/1.05 var(--ds-font-display);
+    --ds-text-heading-lg: 700 clamp(1.5rem, 3vw, 3rem)/1.1 var(--ds-font-display);
+    --ds-text-heading-sm: 700 1.375rem/1.2 var(--ds-font-display);
+
+    /* ---- 엘리베이션 (색·라운딩 우선, 그림자는 절제) ------------------------- */
+    --ds-shadow-float: 0 3px 68px rgba(69, 42, 124, 0.35);
+    --ds-shadow-card: 0 8px 30px rgba(5, 8, 40, 0.4);
+
+    /* ========================================================================
+     * 레거시 시맨틱 변수 리매핑 — 기존 페이지들이 이 이름을 참조하므로
+     * 여기서 토큰으로 연결하면 전역 팔레트가 한 번에 Discord 톤으로 전환된다.
+     * ====================================================================== */
+    --bg-primary: var(--ds-canvas);
+    --bg-secondary: var(--ds-surface-indigo);
+    --bg-card: var(--ds-surface-card);
+    --text-primary: var(--ds-ink);
+    --text-secondary: var(--ds-ink-muted);
+    --accent-1: var(--ds-primary);   /* 기존 보라 → Blurple */
+    --accent-2: var(--ds-magenta);   /* 기존 핑크 → 마젠타 */
+    --accent-3: var(--ds-violet);    /* 기존 로즈 → 보라 */
+    --accent-4: var(--ds-link);      /* 기존 틸 → 링크 시안(팔레트 내) */
+    --accent-teal: var(--ds-link);
+    --accent-indigo: var(--ds-primary);
+    --accent-pink: var(--ds-magenta);
+    --accent-violet: var(--ds-violet);
+    --border-color: var(--ds-border);
+    --card-accent: var(--ds-primary);
+}
+
+/* ============================================================================
+ * 베이스 컴포넌트 — 반복 UI 의 단일 출처
+ * ========================================================================== */
+
+/* ---- 컨테이너/섹션 ------------------------------------------------------- */
+.ds-container {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: var(--ds-space-lg);
+}
+
+/* ---- 버튼 --------------------------------------------------------------- */
+.ds-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ds-space-xs);
+    font: 500 1.125rem/1.4 var(--ds-font-body);
+    border: none;
+    border-radius: var(--ds-round-sm);
+    padding: var(--ds-space-md) var(--ds-space-xl);
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.12s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.ds-btn:hover { transform: translateY(-1px); }
+.ds-btn:active { transform: translateY(0); }
+
+.ds-btn--primary { background: var(--ds-primary); color: var(--ds-ink); }
+.ds-btn--primary:hover { background: var(--ds-primary-2); }
+
+.ds-btn--green { background: var(--ds-green); color: var(--ds-ink-dark); font-weight: 700; }
+
+.ds-btn--white { background: var(--ds-ink); color: var(--ds-ink-dark); border-radius: var(--ds-round-lg); font-size: 1rem; }
+
+.ds-btn--ghost {
+    background: var(--ds-surface-indigo);
+    color: var(--ds-ink);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-round-lg);
+    font-size: 1rem;
+}
+.ds-btn--ghost:hover { background: color-mix(in srgb, var(--ds-surface-indigo) 80%, var(--ds-primary)); }
+
+.ds-btn--sm { font-size: 0.875rem; padding: var(--ds-space-sm) var(--ds-space-lg); border-radius: var(--ds-round-xs); }
+
+/* ---- 카드 --------------------------------------------------------------- */
+.ds-card {
+    background: var(--ds-surface-card);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-round-lg);
+    padding: var(--ds-space-xl);
+    backdrop-filter: blur(12px);
+}
+.ds-card--dark { background: var(--ds-surface-indigo); border-radius: var(--ds-round-xl); padding: var(--ds-space-xxl); }
+.ds-card--gradient { background: var(--ds-gradient-magenta); border: none; border-radius: var(--ds-round-xl); padding: var(--ds-space-section); color: var(--ds-ink); }
+.ds-card--float { box-shadow: var(--ds-shadow-float); }
+
+/* ---- 뱃지 / 필 --------------------------------------------------------- */
+.ds-badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--ds-magenta);
+    color: var(--ds-ink);
+    font: 500 0.875rem/1.4 var(--ds-font-body);
+    border-radius: var(--ds-round-lg);
+    padding: var(--ds-space-xxs) var(--ds-space-sm);
+}
+.ds-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-xxs);
+    background: rgba(88, 101, 242, 0.16);
+    border: 1px solid var(--ds-border-strong);
+    color: color-mix(in srgb, var(--ds-primary) 40%, var(--ds-ink));
+    border-radius: var(--ds-round-pill);
+    padding: 4px 12px;
+    font: 600 0.82rem/1 var(--ds-font-body);
+}
+
+/* ---- 디스플레이 텍스트 유틸 --------------------------------------------- */
+.ds-display-xl { font: var(--ds-text-display-xl); color: var(--ds-ink); letter-spacing: -0.01em; }
+.ds-display-lg { font: var(--ds-text-display-lg); color: var(--ds-ink); }
+.ds-display-md { font: var(--ds-text-display-md); color: var(--ds-ink); }
+.ds-heading-lg { font: var(--ds-text-heading-lg); color: var(--ds-ink); }
+.ds-heading-sm { font: var(--ds-text-heading-sm); color: var(--ds-ink); }
+
+/* ============================================================================
+ * 브랜드 캔버스 — 딥 인디고 + 애니메이션 Blurple↔마젠타 그라데이션 메시.
+ * DESIGN.md: 배경은 절대 플랫/뉴트럴이 아니며 항상 움직이는 그라데이션이 대기감을 만든다.
+ * .bg-gradient(레이아웃의 고정 배경 레이어)를 이 메시로 대체한다.
+ * ========================================================================== */
+.bg-gradient {
+    background: var(--ds-canvas) !important;
+    background-image:
+        radial-gradient(60% 55% at 18% 12%, rgba(88, 101, 242, 0.55), transparent 60%),
+        radial-gradient(55% 50% at 82% 20%, rgba(236, 72, 189, 0.4), transparent 62%),
+        radial-gradient(65% 60% at 70% 88%, rgba(123, 91, 255, 0.45), transparent 60%),
+        radial-gradient(50% 50% at 25% 85%, rgba(0, 176, 244, 0.22), transparent 60%) !important;
+    background-attachment: fixed !important;
+    animation: ds-mesh-drift 24s ease-in-out infinite alternate;
+}
+@keyframes ds-mesh-drift {
+    0% { background-position: 0% 0%, 100% 0%, 100% 100%, 0% 100%; }
+    100% { background-position: 12% 8%, 88% 6%, 84% 92%, 8% 94%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .bg-gradient { animation: none; }
+}

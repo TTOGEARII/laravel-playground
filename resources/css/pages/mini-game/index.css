@@ -4,18 +4,7 @@
     box-sizing: border-box;
 }
 
-:root {
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #12121a;
-    --bg-card: #1a1a24;
-    --text-primary: #f5f5f7;
-    --text-secondary: #a1a1aa;
-    --accent-1: #6366f1;
-    --accent-2: #8b5cf6;
-    --accent-3: #ec4899;
-    --accent-4: #14b8a6;
-    --border-color: rgba(255, 255, 255, 0.08);
-}
+/* 색 토큰은 design-system.css(:root)가 전역 소유한다(Discord 팔레트). */
 
 body {
     font-family: 'Outfit', 'Noto Sans KR', sans-serif;
