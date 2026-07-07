@@ -74,6 +74,7 @@ class AuthService
      * 회원가입용 검증 규칙
      * - 이메일: 형식·중복 검사
      * - 비밀번호: 8자 이상, 영문 대문자 1개 이상, 소문자, 숫자, 특수문자 각 1개 이상
+     * - agree: 개인정보 수집·이용 및 이용약관 동의(필수)
      *
      * @return array<string, array<int, mixed>>
      */
@@ -92,6 +93,19 @@ class AuthService
                     ->numbers()
                     ->symbols(),
             ],
+            'agree' => ['accepted'],
+        ];
+    }
+
+    /**
+     * 검증 메시지(동의 항목은 문구를 다듬는다).
+     *
+     * @return array<string, string>
+     */
+    public static function registerValidationMessages(): array
+    {
+        return [
+            'agree.accepted' => '개인정보 수집·이용 및 이용약관에 동의해 주세요.',
         ];
     }
 }

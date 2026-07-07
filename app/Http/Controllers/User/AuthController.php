@@ -62,7 +62,10 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $data = $request->validate(AuthService::registerValidationRules());
+        $data = $request->validate(
+            AuthService::registerValidationRules(),
+            AuthService::registerValidationMessages(),
+        );
 
         $this->authService->register($data, $request);
 

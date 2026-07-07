@@ -54,8 +54,18 @@
           placeholder="비밀번호 다시 입력"
         />
       </div>
+      <div class="auth-agree">
+        <label class="auth-agree-label" for="reg-agree">
+          <input id="reg-agree" v-model="agree" type="checkbox" />
+          <span>
+            <a :href="termsUrl" target="_blank" rel="noopener">이용약관</a> 및
+            <a :href="privacyUrl" target="_blank" rel="noopener">개인정보 수집·이용</a>에 동의합니다.
+            <em class="auth-agree-required">(필수)</em>
+          </span>
+        </label>
+      </div>
       <p v-if="error" class="auth-error">{{ error }}</p>
-      <button type="submit" class="auth-submit" :disabled="loading">
+      <button type="submit" class="auth-submit" :disabled="loading || !agree">
         {{ loading ? '가입 중...' : '회원가입' }}
       </button>
     </form>
@@ -72,11 +82,14 @@ import { ref } from 'vue';
 import authAxios from './axios.js';
 
 const loginUrl = '/login';
+const termsUrl = '/terms';
+const privacyUrl = '/privacy';
 
 const name = ref('');
 const email = ref('');
 const password = ref('');
 const passwordConfirm = ref('');
+const agree = ref(false);
 const loading = ref(false);
 const error = ref('');
 
@@ -93,6 +106,10 @@ const submit = async () => {
     error.value = '비밀번호가 일치하지 않습니다.';
     return;
   }
+  if (!agree.value) {
+    error.value = '개인정보 수집·이용 및 이용약관에 동의해 주세요.';
+    return;
+  }
   loading.value = true;
   try {
     const { data } = await authAxios.post('/register', {
@@ -100,6 +117,7 @@ const submit = async () => {
       email: email.value,
       password: password.value,
       password_confirmation: passwordConfirm.value,
+      agree: agree.value,
     });
     if (data.ok && data.redirect) {
       window.location.href = data.redirect;

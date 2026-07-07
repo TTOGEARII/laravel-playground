@@ -46,7 +46,8 @@
             <li>Tailwind CSS (MIT) — 스타일링</li>
             <li>Phaser (MIT) — 미니게임 엔진</li>
             <li>Axios (MIT) — HTTP 클라이언트</li>
-            <li>Google Fonts — Outfit, Noto Sans KR (Open Font License)</li>
+            <li>Playwright (Apache-2.0) — 레이드 정보 수집(크롤링) 사이드카</li>
+            <li>Google Fonts — Figtree, Noto Sans KR (Open Font License)</li>
         </ul>
 
         <p class="legal-foot">

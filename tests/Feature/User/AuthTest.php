@@ -19,11 +19,26 @@ class AuthTest extends TestCase
             'email' => 'toge.test@gmail.com',
             'password' => 'Abcd1234!',
             'password_confirmation' => 'Abcd1234!',
+            'agree' => true,
         ]);
 
         $response->assertOk()->assertJson(['ok' => true]);
         $this->assertDatabaseHas('users', ['email' => 'toge.test@gmail.com']);
         $this->assertAuthenticated();
+    }
+
+    public function test_register_requires_privacy_consent(): void
+    {
+        // 개인정보 수집·이용 동의(agree) 없이 가입 시도 → 422, 가입 안 됨
+        $this->postJson('/register', [
+            'name' => '토게',
+            'email' => 'noconsent@gmail.com',
+            'password' => 'Abcd1234!',
+            'password_confirmation' => 'Abcd1234!',
+        ])->assertStatus(422)->assertJsonValidationErrors(['agree']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'noconsent@gmail.com']);
+        $this->assertGuest();
     }
 
     public function test_register_rejects_weak_password(): void
