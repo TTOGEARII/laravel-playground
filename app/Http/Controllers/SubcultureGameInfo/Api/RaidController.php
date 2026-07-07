@@ -51,6 +51,7 @@ class RaidController extends Controller
             'data' => $this->alternativeParties->findParties(
                 $raid,
                 $request->excludeKeys(),
+                $request->includeKeys(),
                 $request->pageNumber(),
                 $request->difficulty(),
             ),

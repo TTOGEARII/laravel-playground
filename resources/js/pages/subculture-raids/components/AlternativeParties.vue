@@ -22,6 +22,9 @@
         >{{ d.label }}</button>
       </div>
 
+      <p v-if="includeNames.length" class="sgr-alt-notice sgr-alt-include">
+        필수 포함: <b>{{ includeNames.join(', ') }}</b> — 이 캐릭터를 넣은 편성만 보여드려요.
+      </p>
       <p v-if="result && result.mode === 'squad'" class="sgr-alt-notice">
         전체 편성이 모두 가능한 랭커가 적어 부대 단위로 보여드려요.
       </p>
@@ -77,6 +80,7 @@ import { raidApi } from '../api';
 const props = defineProps({
   raid: { type: Object, required: true },
   pool: { type: Object, default: () => ({}) },
+  include: { type: Array, default: () => [] }, // 반드시 포함할 external_key (핵심 캐릭터 카드에서 지정)
 });
 
 const characters = ref(null); // 게임 전체 활성 캐릭터 (미보유 계산용)
@@ -114,6 +118,11 @@ const sourceHref = computed(() => {
   const url = result.value?.source_url;
   return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null;
 });
+// 필수 포함 캐릭터 이름 (전체 캐릭터 목록에서 매핑, 로드 전이면 external_key 노출)
+const includeNames = computed(() => props.include.map((key) => {
+  const c = (characters.value ?? []).find((x) => x.external_key === key);
+  return c?.name ?? key;
+}));
 
 function memberCaption(m) {
   const tier = m.meta?.tier;
@@ -142,10 +151,12 @@ async function load(nextPage = 1) {
     if (ownedCount.value === 0) return; // 안내 문구만 표시
 
     const diff = isBlueArchive.value ? difficulty.value : null;
-    const cacheKey = `${props.raid.id}:${nextPage}:${diff ?? 'all'}:${Object.keys(props.pool).filter((k) => props.pool[k]?.owned).sort().join(',')}`;
+    const include = [...props.include].sort();
+    const ownedKey = Object.keys(props.pool).filter((k) => props.pool[k]?.owned).sort().join(',');
+    const cacheKey = `${props.raid.id}:${nextPage}:${diff ?? 'all'}:inc=${include.join(',')}:${ownedKey}`;
     let data = sessionCache.get(cacheKey);
     if (!data) {
-      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), nextPage, diff);
+      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), { page: nextPage, difficulty: diff, include });
       sessionCache.set(cacheKey, data);
     }
 
@@ -177,7 +188,7 @@ function loadMore() {
 // 보유 체크를 연달아 바꾸는 동안 매번 쏘지 않도록 디바운스(500ms) 후 최종 상태로 1회 조회.
 let reloadTimer = null;
 watch(
-  () => [props.raid.id, ownedCount.value],
+  () => [props.raid.id, ownedCount.value, props.include.join(',')],
   ([raidId], [prevRaidId] = []) => {
     if (raidId !== prevRaidId) sessionCache.clear(); // 레이드가 바뀌면 캐시도 비워 메모리 증가 방지
     clearTimeout(reloadTimer);

@@ -21,14 +21,17 @@ export const raidApi = {
      * 미보유 제외 실전 편성 조회 (블아·니케만 supported=true).
      * @param {number} raidId
      * @param {string[]} exclude 미보유 캐릭터 external_key 배열 (max 500)
-     * @param {number} page
-     * @param {?string} difficulty 블아 전용 난이도(insane|torment|lunatic), null=전체
+     * @param {object} [opts]
+     * @param {number} [opts.page]
+     * @param {?string} [opts.difficulty] 블아 전용 난이도(insane|torment|lunatic), null=전체
+     * @param {string[]} [opts.include] 반드시 포함할 캐릭터 external_key 배열 (max 6)
      */
-    async getAlternativeParties(raidId, exclude, page = 1, difficulty = null) {
+    async getAlternativeParties(raidId, exclude, { page = 1, difficulty = null, include = [] } = {}) {
         const { data } = await axios.post(`${API_BASE}/raids/${raidId}/alternative-parties`, {
             exclude,
             page,
             ...(difficulty ? { difficulty } : {}),
+            ...(include.length ? { include } : {}),
         });
         return data.data; // { supported, mode, total_count, parties, has_more, difficulty, source, source_url }
     },

@@ -57,8 +57,17 @@
         </template>
       </p>
 
-      <!-- 미보유 제외 실전 편성 — 원본 랭킹에서 미보유 캐릭터 없이 클리어한 실제 편성 (블아·니케) -->
-      <AlternativeParties v-if="composeMode" :raid="raid" :pool="pool" />
+      <!-- 핵심 캐릭터 요약 + 미보유 제외 실전 편성 (블아·니케) -->
+      <template v-if="composeMode">
+        <CoreCharacters
+          :characters="coreCharacters"
+          :max-count="maxCount"
+          :pool="pool"
+          :required="requiredKeys"
+          @toggle="toggleRequired"
+        />
+        <AlternativeParties :raid="raid" :pool="pool" :include="requiredKeys" />
+      </template>
     </section>
 
     <!-- 커뮤니티 공략글 -->
@@ -84,6 +93,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { raidApi } from '../api';
 import AlternativeParties from './AlternativeParties.vue';
+import CoreCharacters from './CoreCharacters.vue';
 import PartyCard from './PartyCard.vue';
 
 const props = defineProps({
@@ -96,15 +106,30 @@ defineEmits(['back']);
 // "내 풀로 조합" 토글 — 편성 카드에서 미보유 슬롯을 보유 대체 캐릭터로 치환해 보여준다
 const composeMode = ref(false);
 
-// 학생별 출전 횟수(블아 전용) — 대체 후보 팝오버에 실전 채용 빈도를 붙인다
+// 학생별 출전 통계(블아 전용) — 대체 후보 팝오버 빈도 + 핵심 캐릭터 요약 카드
 const usage = ref({});
+const coreCharacters = ref([]);
+const maxCount = ref(0);
+// 실전 편성에 "꼭 포함"할 캐릭터 external_key (핵심 캐릭터 카드에서 토글)
+const requiredKeys = ref([]);
+
+function toggleRequired(key) {
+  requiredKeys.value = requiredKeys.value.includes(key)
+    ? requiredKeys.value.filter((k) => k !== key)
+    : [...requiredKeys.value, key].slice(0, 6); // 파티 슬롯 상 6명 상한
+}
+
 onMounted(async () => {
-  if (props.raid.game?.slug !== 'bluearchive' || props.raid.substitutes_count === 0) return;
+  if (props.raid.game?.slug !== 'bluearchive') return;
   try {
     const res = await raidApi.getStudentUsage(props.raid.id);
-    if (res.supported && res.usage) usage.value = res.usage;
+    if (res.supported) {
+      usage.value = res.usage ?? {};
+      coreCharacters.value = res.characters ?? [];
+      maxCount.value = res.max_count ?? 0;
+    }
   } catch (e) {
-    console.warn('출전 횟수 조회 실패 — 표시 생략', e);
+    console.warn('출전 통계 조회 실패 — 표시 생략', e);
   }
 });
 

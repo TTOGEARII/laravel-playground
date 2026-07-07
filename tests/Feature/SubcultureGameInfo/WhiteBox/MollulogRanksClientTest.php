@@ -115,6 +115,73 @@ class MollulogRanksClientTest extends TestCase
         $this->assertSame('24366위', $result['parties'][3]['title']); // 단일 웨이브는 편성 번호 생략
     }
 
+    public function test_포함_목록을_담아_ranks_를_요청한다(): void
+    {
+        Http::fake([
+            'api.baql.net/*' => Http::response($this->graphqlResponse()),
+            'ranks.baql.net/*' => Http::response($this->ranksBinary(), 200, ['Content-Type' => 'application/x-protobuf']),
+        ]);
+
+        app(AlternativePartyService::class)->findParties($this->raid(), ['10059'], ['20041', '20041', '10111']);
+
+        Http::assertSent(function (Request $request) {
+            if (! str_contains($request->url(), 'ranks.baql.net')) {
+                return false;
+            }
+            $body = json_decode($request->body(), true);
+
+            return $body['includeStudents'] === [ // 정렬·중복제거
+                ['uid' => '10111', 'tiers' => []],
+                ['uid' => '20041', 'tiers' => []],
+            ]
+                && $body['excludeStudents'] === [['uid' => '10059', 'tiers' => []]];
+        });
+    }
+
+    public function test_출전_통계를_출전순_캐릭터_목록으로_조인한다(): void
+    {
+        // StudentStatisticsResponse: 마키(20008) 100회, 미카(10111) 300회
+        $statsBinary = $this->ld(1, $this->ld(1, '20008').$this->ld(2, $this->vf(3, 100)))
+            .$this->ld(1, $this->ld(1, '10111').$this->ld(2, $this->vf(3, 300)));
+        Http::fake([
+            'api.baql.net/*' => Http::response($this->graphqlResponse()),
+            'ranks.baql.net/v1/stats*' => Http::response($statsBinary, 200, ['Content-Type' => 'application/x-protobuf']),
+        ]);
+        $raid = $this->raid();
+        Character::create(['subculture_game_id' => $raid->subculture_game_id, 'external_key' => '20008', 'name' => '마키', 'source' => 'mollulog', 'active_flg' => true]);
+        Character::create(['subculture_game_id' => $raid->subculture_game_id, 'external_key' => '10111', 'name' => '미카', 'source' => 'mollulog', 'active_flg' => true]);
+
+        $result = app(AlternativePartyService::class)->studentUsage($raid);
+
+        $this->assertTrue($result['supported']);
+        $this->assertSame(300, $result['max_count']);
+        // 출전 많은 순 정렬 + 우리 마스터 이름 조인
+        $this->assertSame(['미카', '마키'], array_column($result['characters'], 'name'));
+        $this->assertSame(300, $result['characters'][0]['count']);
+    }
+
+    private function vf(int $field, int $value): string
+    {
+        return $this->vb($field << 3).$this->vb($value);
+    }
+
+    private function ld(int $field, string $payload): string
+    {
+        return $this->vb(($field << 3) | 2).$this->vb(strlen($payload)).$payload;
+    }
+
+    private function vb(int $n): string
+    {
+        $out = '';
+        do {
+            $b = $n & 0x7F;
+            $n >>= 7;
+            $out .= chr($n > 0 ? $b | 0x80 : $b);
+        } while ($n > 0);
+
+        return $out;
+    }
+
     public function test_난이도_지정_시_점수_범위를_담아_요청한다(): void
     {
         Http::fake([
@@ -123,7 +190,7 @@ class MollulogRanksClientTest extends TestCase
         ]);
 
         // 비나(binah) = 180초 버킷. 인세인 구간 = [기본점+HP점, 토먼트 하한)
-        app(AlternativePartyService::class)->findParties($this->raid(), [], 1, 'insane');
+        app(AlternativePartyService::class)->findParties($this->raid(), [], [], 1, 'insane');
 
         Http::assertSent(function (Request $request) {
             if (! str_contains($request->url(), 'ranks.baql.net')) {
@@ -145,7 +212,7 @@ class MollulogRanksClientTest extends TestCase
             'ranks.baql.net/*' => Http::response($this->ranksBinary(), 200, ['Content-Type' => 'application/x-protobuf']),
         ]);
 
-        $result = app(AlternativePartyService::class)->findParties($this->raid(), [], 1, 'lunatic');
+        $result = app(AlternativePartyService::class)->findParties($this->raid(), [], [], 1, 'lunatic');
 
         $this->assertSame('lunatic', $result['difficulty']);
         Http::assertSent(function (Request $request) {

@@ -968,3 +968,53 @@
     border: 1px solid rgba(96, 165, 250, 0.3);
     white-space: nowrap;
 }
+
+/* 핵심 캐릭터 요약 카드 */
+.sgr-core {
+    margin: 16px 0;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+.sgr-core-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+.sgr-core-sub { font-size: 0.72rem; font-weight: 400; color: var(--text-secondary); margin-left: 6px; }
+.sgr-core-hint { font-size: 0.78rem; color: var(--text-secondary); margin: 6px 0 12px; }
+.sgr-core-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 8px;
+}
+.sgr-core-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 4px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+}
+.sgr-core-cell.is-owned:hover { border-color: rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.06); }
+.sgr-core-cell.is-missing { cursor: default; }
+.sgr-core-cell.is-missing .sgr-core-thumb img { filter: grayscale(1); opacity: 0.5; }
+.sgr-core-cell.is-required {
+    border-color: rgba(139, 92, 246, 0.7);
+    background: rgba(139, 92, 246, 0.14);
+}
+.sgr-core-thumb { position: relative; width: 48px; height: 48px; }
+.sgr-core-thumb img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-color); }
+.sgr-core-check {
+    position: absolute; top: -4px; right: -4px;
+    width: 18px; height: 18px; line-height: 18px; text-align: center;
+    font-size: 0.7rem; border-radius: 50%;
+    background: var(--accent-2, #8b5cf6); color: #fff;
+}
+.sgr-core-name { font-size: 0.72rem; color: var(--text-primary); text-align: center; line-height: 1.2; word-break: keep-all; }
+.sgr-core-bar { width: 90%; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.sgr-core-bar span { display: block; height: 100%; background: #93c5fd; }
+.sgr-core-count { font-size: 0.66rem; color: var(--text-secondary); }
+.sgr-core-more { margin-top: 10px; }
+.sgr-alt-include { color: #c4b5fd; }

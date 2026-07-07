@@ -64,7 +64,7 @@ class LetsdoroRankingClientTest extends TestCase
             $this->ranker(4, [$this->squad(1, 60, ['1021'])]),
         ];
 
-        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], 3);
+        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], [], 3);
 
         $this->assertSame('ranker', $result['mode']);
         $this->assertCount(3, $result['groups']); // 2·3·4위 랭커
@@ -82,7 +82,7 @@ class LetsdoroRankingClientTest extends TestCase
             $this->ranker(2, [$this->squad(1, 80, ['1010'])]),
         ];
 
-        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], 3);
+        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, ['5155'], [], 3);
 
         $this->assertSame('squad', $result['mode']);
         $this->assertCount(2, $result['groups']); // 1위 1부대 + 2위 1부대
@@ -101,10 +101,28 @@ class LetsdoroRankingClientTest extends TestCase
             $this->ranker(3, [$this->squad(1, 80, ['1010'])]),
         ];
 
-        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, [], 3);
+        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, [], [], 3);
 
         $this->assertSame('ranker', $result['mode']);
         $this->assertCount(3, $result['groups']);
+    }
+
+    public function test_포함_니케를_모두_가진_랭커만_남긴다(): void
+    {
+        $rankings = [
+            // 1위: 여러 부대에 걸쳐 1007·1010 모두 사용 → 포함 조건 충족
+            $this->ranker(1, [$this->squad(1, 100, ['1007', '1099']), $this->squad(2, 90, ['1010'])]),
+            // 2위: 1007 만 있고 1010 없음 → 탈락
+            $this->ranker(2, [$this->squad(1, 80, ['1007', '1012'])]),
+            // 3위: 둘 다 없음 → 탈락
+            $this->ranker(3, [$this->squad(1, 70, ['1021'])]),
+        ];
+
+        $result = app(LetsdoroRankingClient::class)->filterRankings($rankings, [], ['1007', '1010'], 1);
+
+        $this->assertSame('ranker', $result['mode']);
+        $this->assertCount(1, $result['groups']); // 1위 랭커만
+        $this->assertSame('1위 1부대', $result['groups'][0][0]['title']);
     }
 
     // ── 시즌 매핑 + HTTP 흐름 ────────────────────────────────────────
@@ -155,7 +173,7 @@ class LetsdoroRankingClientTest extends TestCase
             'api3.letsdoro.com/api/soloraid/seasons/6/ranking*' => Http::response(['rankings' => $rankings]),
         ]);
 
-        $result = app(AlternativePartyService::class)->findParties($this->raid(), [], 2);
+        $result = app(AlternativePartyService::class)->findParties($this->raid(), [], [], 2);
 
         $this->assertSame(8, $result['total_count']);
         $this->assertCount(3, $result['parties']); // per_page 5 → 2페이지는 6~8위

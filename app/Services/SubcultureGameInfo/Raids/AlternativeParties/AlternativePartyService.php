@@ -20,10 +20,11 @@ class AlternativePartyService
     ) {}
 
     /**
-     * @param  list<string>  $excludeKeys  미보유 캐릭터 external_key 배열
+     * @param  list<string>  $excludeKeys  미보유(제외) 캐릭터 external_key 배열
+     * @param  list<string>  $includeKeys  반드시 포함할 캐릭터 external_key 배열(AND)
      * @param  ?string  $difficulty  블아 전용 난이도(insane|torment|lunatic), null=전체
      */
-    public function findParties(Raid $raid, array $excludeKeys, int $page = 1, ?string $difficulty = null): array
+    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys = [], int $page = 1, ?string $difficulty = null): array
     {
         $raid->loadMissing('game');
 
@@ -38,7 +39,7 @@ class AlternativePartyService
         }
 
         try {
-            $result = $client->findParties($raid, $excludeKeys, max(1, $page), $difficulty);
+            $result = $client->findParties($raid, $excludeKeys, $includeKeys, max(1, $page), $difficulty);
         } catch (\Throwable $e) {
             Log::warning('[SGI-ALT] 실전 편성 조회 실패', ['raid_id' => $raid->id, 'error' => $e->getMessage()]);
             $result = null;
@@ -71,10 +72,13 @@ class AlternativePartyService
     }
 
     /**
-     * 학생별 출전 횟수(블아 전용) — 대체 캐릭터 후보에 실전 채용 빈도를 붙이는 용도.
-     * 실패는 빈 usage 로 폴백(500 금지).
+     * 학생별 출전 횟수(블아 전용).
+     * - usage: external_key → {count, assist_count} 맵 (대체 후보 뱃지용, 프론트 조회)
+     * - characters: 출전순 정렬 + 우리 마스터 조인(이름·이미지)한 핵심 캐릭터 목록 (요약 카드용)
+     * - max_count: 최다 출전 수(요약 카드의 상대 막대 기준)
+     * 실패는 빈 결과로 폴백(500 금지).
      *
-     * @return array{supported: bool, usage?: array<string, array{count: int, assist_count: int}>}
+     * @return array{supported: bool, usage?: array<string, array{count: int, assist_count: int}>, characters?: list<array>, max_count?: int}
      */
     public function studentUsage(Raid $raid): array
     {
@@ -90,7 +94,55 @@ class AlternativePartyService
             $usage = null;
         }
 
-        return ['supported' => true, 'usage' => $usage ?? []];
+        $usage ??= [];
+        $characters = $this->joinUsageCharacters($raid, $usage);
+
+        return [
+            'supported' => true,
+            'usage' => $usage,
+            'characters' => $characters,
+            'max_count' => $characters[0]['count'] ?? 0,
+        ];
+    }
+
+    /**
+     * 출전 통계(uid → count)를 우리 캐릭터 마스터와 조인해 출전순으로 정렬한다(N+1 없이 일괄 조회).
+     * 마스터에 없는 uid(콜라보 등)는 이름을 못 붙이므로 제외한다.
+     *
+     * @param  array<string, array{count: int, assist_count: int}>  $usage
+     * @return list<array{external_key: string, name: string, rarity: ?string, image_url: ?string, count: int, assist_count: int}>
+     */
+    private function joinUsageCharacters(Raid $raid, array $usage): array
+    {
+        if ($usage === []) {
+            return [];
+        }
+
+        $characters = Character::query()
+            ->where('subculture_game_id', $raid->subculture_game_id)
+            ->whereIn('external_key', array_keys($usage))
+            ->get()
+            ->keyBy('external_key');
+
+        return collect($usage)
+            ->map(fn (array $stat, string $key) => [
+                'external_key' => $key,
+                'character' => $characters->get($key),
+                'count' => $stat['count'],
+                'assist_count' => $stat['assist_count'],
+            ])
+            ->filter(fn (array $row) => $row['character'] !== null)
+            ->sortByDesc('count')
+            ->map(fn (array $row) => [
+                'external_key' => $row['external_key'],
+                'name' => $row['character']->name,
+                'rarity' => $row['character']->rarity,
+                'image_url' => $row['character']->display_image_url,
+                'count' => $row['count'],
+                'assist_count' => $row['assist_count'],
+            ])
+            ->values()
+            ->all();
     }
 
     /**

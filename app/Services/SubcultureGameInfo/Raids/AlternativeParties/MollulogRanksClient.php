@@ -68,12 +68,13 @@ class MollulogRanksClient
     }
 
     /**
-     * 제외 캐릭터(uid 배열) 없이 클리어한 실전 편성을 가져온다.
+     * 제외 캐릭터 없이(+포함 캐릭터를 모두 넣어) 클리어한 실전 편성을 가져온다.
      *
-     * @param  list<string>  $excludeKeys  subculture_characters.external_key(= 몰루로그 uid) 배열
+     * @param  list<string>  $excludeKeys  제외할 uid 배열 (미보유)
+     * @param  list<string>  $includeKeys  반드시 포함할 uid 배열 (AND)
      * @return array{mode: string, total_count: int, parties: list<array>, source_url: ?string}|null 실패 시 null
      */
-    public function findParties(Raid $raid, array $excludeKeys, int $page, ?string $difficulty = null): ?array
+    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys, int $page, ?string $difficulty = null): ?array
     {
         $config = config('subculture-game-info.raids.alternative_parties');
 
@@ -94,7 +95,7 @@ class MollulogRanksClient
 
         $defenseType = $this->resolveDefenseType($raid, $schedule);
         $scoreRange = $this->scoreRangeFor($difficulty, (string) data_get($schedule, 'raidBoss.uid'));
-        $decoded = $this->fetchRanks($raidType, (int) $jpSeason, $defenseType, $excludeKeys, $page, $scoreRange, $config);
+        $decoded = $this->fetchRanks($raidType, (int) $jpSeason, $defenseType, $excludeKeys, $includeKeys, $page, $scoreRange, $config);
         if ($decoded === null) {
             return null;
         }
@@ -259,19 +260,22 @@ class MollulogRanksClient
         return $range;
     }
 
-    /** ranks API 호출 + protobuf 디코딩(1시간 캐시 — 키에 정렬·정규화한 제외 목록·난이도 범위 포함). */
-    private function fetchRanks(string $raidType, int $season, string $defenseType, array $excludeKeys, int $page, ?array $scoreRange, array $config): ?array
+    /** ranks API 호출 + protobuf 디코딩(1시간 캐시 — 키에 정렬·정규화한 제외/포함 목록·난이도 범위 포함). */
+    private function fetchRanks(string $raidType, int $season, string $defenseType, array $excludeKeys, array $includeKeys, int $page, ?array $scoreRange, array $config): ?array
     {
         $perPage = $config['per_page'];
         // 상한은 Form Request 가 1차로 막지만, 다른 경로(커맨드 등)에서 호출돼도 안전하게 재강제
-        $exclude = collect($excludeKeys)->map(fn ($key) => (string) $key)->unique()->sort()->take(500)->values();
+        $normalize = fn (array $keys) => collect($keys)->map(fn ($key) => (string) $key)->unique()->sort()->take(500)->values();
+        $exclude = $normalize($excludeKeys);
+        $include = $normalize($includeKeys);
         $cacheKey = sprintf(
-            'sgi:alt-party:mollulog:ranks:%s:%d:%s:%d:%d:%s:%s',
-            $raidType, $season, $defenseType, $page, $perPage, md5($exclude->implode(',')),
+            'sgi:alt-party:mollulog:ranks:%s:%d:%s:%d:%d:%s:%s:%s',
+            $raidType, $season, $defenseType, $page, $perPage,
+            md5($exclude->implode(',')), md5($include->implode(',')),
             $scoreRange === null ? 'all' : implode('-', $scoreRange),
         );
 
-        return Cache::remember($cacheKey, $config['mollulog']['ranks_cache_ttl'], function () use ($raidType, $season, $defenseType, $exclude, $page, $perPage, $scoreRange, $config): ?array {
+        return Cache::remember($cacheKey, $config['mollulog']['ranks_cache_ttl'], function () use ($raidType, $season, $defenseType, $exclude, $include, $page, $perPage, $scoreRange, $config): ?array {
             $url = $config['mollulog']['ranks_endpoint'].'?'.http_build_query([
                 'raidType' => $raidType,
                 'season' => $season,
@@ -280,7 +284,7 @@ class MollulogRanksClient
             $body = [
                 'perPage' => $perPage,
                 'page' => $page,
-                'includeStudents' => [],
+                'includeStudents' => $include->map(fn (string $uid) => ['uid' => $uid, 'tiers' => []])->values()->all(),
                 'excludeStudents' => $exclude->map(fn (string $uid) => ['uid' => $uid, 'tiers' => []])->values()->all(),
             ];
             if ($scoreRange !== null) {

@@ -20,6 +20,8 @@ class AlternativePartyRequest extends FormRequest
         return [
             'exclude' => ['nullable', 'array', 'max:500'],
             'exclude.*' => ['string', 'max:40'],
+            'include' => ['nullable', 'array', 'max:6'], // 파티 슬롯 상 6명 초과 포함은 무의미
+            'include.*' => ['string', 'max:40'],
             'page' => ['nullable', 'integer', 'min:1', 'max:1000'],
             // 블아 전용 난이도 필터(인세인/토먼트/루나틱) — 그 외 게임은 무시된다
             'difficulty' => ['nullable', 'string', 'in:insane,torment,lunatic'],
@@ -35,7 +37,19 @@ class AlternativePartyRequest extends FormRequest
     /** @return list<string> 중복 제거한 제외 캐릭터 external_key 목록 */
     public function excludeKeys(): array
     {
-        return collect($this->validated('exclude') ?? [])
+        return $this->uniqueKeys('exclude');
+    }
+
+    /** @return list<string> 중복 제거한 포함(필수) 캐릭터 external_key 목록 */
+    public function includeKeys(): array
+    {
+        return $this->uniqueKeys('include');
+    }
+
+    /** @return list<string> */
+    private function uniqueKeys(string $field): array
+    {
+        return collect($this->validated($field) ?? [])
             ->map(fn ($key) => (string) $key)
             ->unique()
             ->values()

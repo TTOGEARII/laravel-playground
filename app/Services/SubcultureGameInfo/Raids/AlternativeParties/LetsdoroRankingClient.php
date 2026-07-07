@@ -26,12 +26,14 @@ class LetsdoroRankingClient
     }
 
     /**
-     * 제외 니케(nikkeId 배열) 없이 클리어한 실전 편성을 가져온다.
+     * 제외 니케 없이(+포함 니케를 모두 넣어) 클리어한 실전 편성을 가져온다.
+     * 레츠도로는 서버 필터 API 가 없어 랭킹 전체를 받아 우리 쪽에서 거른다.
      *
-     * @param  list<string>  $excludeKeys  subculture_characters.external_key(= nikkeId/nameCode) 배열
+     * @param  list<string>  $excludeKeys  제외할 external_key(= nikkeId/nameCode) 배열
+     * @param  list<string>  $includeKeys  반드시 포함할 external_key 배열(AND)
      * @return array{mode: string, total_count: int, parties: list<array>, source_url: ?string}|null 실패 시 null
      */
-    public function findParties(Raid $raid, array $excludeKeys, int $page, ?string $difficulty = null): ?array
+    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys, int $page, ?string $difficulty = null): ?array
     {
         // 니케 솔로 레이드는 난이도 구분이 없어 difficulty 는 무시한다(시그니처 통일용)
         $config = config('subculture-game-info.raids.alternative_parties');
@@ -48,7 +50,7 @@ class LetsdoroRankingClient
             return null;
         }
 
-        $filtered = $this->filterRankings($rankings, $excludeKeys, (int) $config['min_ranker_results']);
+        $filtered = $this->filterRankings($rankings, $excludeKeys, $includeKeys, (int) $config['min_ranker_results']);
 
         // 페이지 단위: ranker 모드=랭커(클리어 1건), squad 모드=개별 스쿼드
         $pageGroups = $this->paginate($filtered['groups'], $page, (int) $config['per_page']);
@@ -65,25 +67,41 @@ class LetsdoroRankingClient
     }
 
     /**
-     * 랭킹을 제외 니케 기준으로 거른다. 화이트박스 테스트를 위해 공개 메서드로 둔다.
+     * 랭킹을 제외/포함 니케 기준으로 거른다. 화이트박스 테스트를 위해 공개 메서드로 둔다.
      * 반환 groups 는 페이지네이션 단위 묶음 — ranker 모드는 랭커별 파티 5장, squad 모드는 스쿼드 1장.
      *
      * @param  list<array>  $rankings  레츠도로 rankings 배열(rank/totalDamage/squads)
      * @param  list<string>  $excludeKeys
+     * @param  list<string>  $includeKeys  반드시 포함할 니케(랭커의 스쿼드 어딘가에 전부 등장)
      * @return array{mode: string, groups: list<list<array{rank: int, score: int, title: string, members: list<array>}>>}
      */
-    public function filterRankings(array $rankings, array $excludeKeys, int $minRankerResults): array
+    public function filterRankings(array $rankings, array $excludeKeys, array $includeKeys, int $minRankerResults): array
     {
         // 상한은 Form Request 가 1차로 막지만, 다른 경로에서 호출돼도 안전하게 재강제
         $exclude = collect($excludeKeys)->map(fn ($key) => (string) $key)->unique()->take(500)->flip();
+        $include = collect($includeKeys)->map(fn ($key) => (string) $key)->unique()->take(500)->values();
 
         $squadClean = fn (array $squad) => collect($squad['nikkes'] ?? [])
             ->every(fn (array $nikke) => ! $exclude->has((string) ($nikke['nikkeId'] ?? '')));
 
-        // 1차: 랭커 단위 — 모든 스쿼드가 깨끗한 랭커의 전체 클리어를 그대로 보여준다
+        // 포함 필터: 랭커의 전체 스쿼드(니케 집합)에 포함 니케가 모두 있어야 한다
+        $rankerHasIncludes = function (array $ranker) use ($include): bool {
+            if ($include->isEmpty()) {
+                return true;
+            }
+            $used = collect($ranker['squads'] ?? [])
+                ->flatMap(fn (array $squad) => collect($squad['nikkes'] ?? [])->pluck('nikkeId'))
+                ->map(fn ($id) => (string) $id)
+                ->flip();
+
+            return $include->every(fn (string $key) => $used->has($key));
+        };
+
+        // 1차: 랭커 단위 — 모든 스쿼드가 깨끗하고 포함 니케를 모두 갖춘 랭커의 전체 클리어
         $cleanRankers = collect($rankings)
             ->filter(fn (array $ranker) => collect($ranker['squads'] ?? [])->isNotEmpty()
-                && collect($ranker['squads'])->every($squadClean))
+                && collect($ranker['squads'])->every($squadClean)
+                && $rankerHasIncludes($ranker))
             ->values();
 
         if ($cleanRankers->count() >= $minRankerResults) {
@@ -97,8 +115,9 @@ class LetsdoroRankingClient
             return ['mode' => 'ranker', 'groups' => $groups];
         }
 
-        // 2차: 스쿼드 단위 — 개별 스쿼드 중 제외 니케 없는 것만 모아 보강
+        // 2차: 스쿼드 단위 — 포함 조건을 만족하는 랭커의 스쿼드 중, 제외 니케 없는 것만 모아 보강
         $groups = collect($rankings)
+            ->filter($rankerHasIncludes)
             ->flatMap(fn (array $ranker) => collect($ranker['squads'] ?? [])
                 ->filter(fn (array $squad) => ! empty($squad['nikkes']) && $squadClean($squad))
                 ->map(fn (array $squad) => [$this->toParty($ranker, $squad)]))
