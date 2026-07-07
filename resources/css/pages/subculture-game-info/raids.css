@@ -304,8 +304,8 @@
 }
 
 .sgr-party {
-    padding: 12px 14px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
     border: 1px solid var(--border-color);
     background: var(--bg-card);
 }
@@ -315,12 +315,20 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
+/* 순위/편성 라벨 — 레퍼런스 스타일 pill 배지 */
 .sgr-party-title {
-    color: var(--text-primary);
-    font-size: 0.92rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(129, 140, 248, 0.14);
+    border: 1px solid rgba(129, 140, 248, 0.3);
+    color: #c7d2fe;
+    font-size: 0.82rem;
+    font-weight: 700;
 }
 
 .sgr-party-note {
@@ -884,12 +892,16 @@
     color: #fbbf24;
     margin-bottom: 10px;
 }
-.sgr-alt-party { padding: 12px 14px; }
+.sgr-alt-party { padding: 14px 16px; }
+/* 점수 — 레퍼런스처럼 크고 강조된 숫자 (우측 정렬) */
 .sgr-alt-score {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
+    margin-left: auto;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #60a5fa;
     font-variant-numeric: tabular-nums;
 }
+.sgr-alt-score::after { content: ' 점'; font-size: 0.72rem; font-weight: 400; color: var(--text-secondary); }
 .sgr-alt-members {
     display: flex;
     flex-wrap: wrap;
@@ -1018,3 +1030,57 @@
 .sgr-core-count { font-size: 0.66rem; color: var(--text-secondary); }
 .sgr-core-more { margin-top: 10px; }
 .sgr-alt-include { color: #c4b5fd; }
+
+/* ===== 레이드 상세 세그먼트 탭 (레퍼런스 스타일) ===== */
+.sgr-tabbar {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+.sgr-tabbar-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.sgr-tabbar-btn:hover { color: var(--text-primary); }
+.sgr-tabbar-btn.is-active {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.sgr-tab-count {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(129, 140, 248, 0.2);
+    color: #a5b4fc;
+    font-size: 0.72rem;
+    line-height: 18px;
+    text-align: center;
+}
+.sgr-tabbar-btn.is-active .sgr-tab-count { background: rgba(129, 140, 248, 0.35); color: #c7d2fe; }
+
+/* 탭 내 상단 바 (범례 + 토글) */
+.sgr-section-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}

@@ -21,10 +21,31 @@
       </div>
     </header>
 
+    <!-- 세그먼트 탭 -->
+    <nav class="sgr-tabbar" role="tablist">
+      <button
+        v-for="t in tabs"
+        :key="t.key"
+        type="button"
+        role="tab"
+        class="sgr-tabbar-btn"
+        :class="{ 'is-active': activeTab === t.key }"
+        :aria-selected="activeTab === t.key"
+        @click="activeTab = t.key"
+      >
+        {{ t.label }}
+        <span v-if="t.count != null" class="sgr-tab-count">{{ t.count }}</span>
+      </button>
+    </nav>
+
     <!-- 추천 편성 -->
-    <section class="sgr-section">
-      <h3 class="sgr-section-title">
-        추천 편성 <span class="sgr-count">{{ raid.parties.length }}</span>
+    <section v-show="activeTab === 'parties'" class="sgr-section">
+      <div class="sgr-section-bar">
+        <p class="sgr-legend">
+          <span class="sgr-legend-owned">■</span> 보유 ·
+          <span class="sgr-legend-missing">■</span> 미보유
+          <template v-if="composeMode"> · <span class="sgr-legend-sub">■</span> 내 대체 캐릭터로 채움</template>
+        </p>
         <button
           v-if="raid.parties.length > 0"
           type="button"
@@ -33,11 +54,11 @@
           :aria-pressed="composeMode"
           @click="composeMode = !composeMode"
         >
-          🧩 내 풀로 조합
+          🧩 대체로 채우기
         </button>
-      </h3>
+      </div>
       <p v-if="raid.parties.length === 0" class="sgr-empty">
-        수집된 추천 편성이 없습니다. 아래 커뮤니티 공략글을 참고하세요.
+        수집된 추천 편성이 없습니다. <b>공략글</b> 탭을 참고하세요.
       </p>
       <div class="sgr-party-list">
         <PartyCard
@@ -49,30 +70,22 @@
           :usage="usage"
         />
       </div>
-      <p v-if="raid.parties.length > 0" class="sgr-legend">
-        <span class="sgr-legend-owned">■</span> 보유 ·
-        <span class="sgr-legend-missing">■</span> 미보유 (내 캐릭터에서 보유 등록 시 반영)
-        <template v-if="composeMode">
-          · <span class="sgr-legend-sub">■</span> 대체 투입 — 미보유 슬롯을 내가 보유한 대체 캐릭터로 치환해 표시
-        </template>
-      </p>
+    </section>
 
-      <!-- 핵심 캐릭터 요약 + 미보유 제외 실전 편성 (블아·니케) -->
-      <template v-if="composeMode">
-        <CoreCharacters
-          :characters="coreCharacters"
-          :max-count="maxCount"
-          :pool="pool"
-          :required="requiredKeys"
-          @toggle="toggleRequired"
-        />
-        <AlternativeParties :raid="raid" :pool="pool" :include="requiredKeys" />
-      </template>
+    <!-- 내 풀 조합 — 핵심 캐릭터 요약 + 미보유 제외 실전 편성 (블아·니케) -->
+    <section v-if="hasAltParties" v-show="activeTab === 'compose'" class="sgr-section">
+      <CoreCharacters
+        :characters="coreCharacters"
+        :max-count="maxCount"
+        :pool="pool"
+        :required="requiredKeys"
+        @toggle="toggleRequired"
+      />
+      <AlternativeParties :raid="raid" :pool="pool" :include="requiredKeys" />
     </section>
 
     <!-- 커뮤니티 공략글 -->
-    <section class="sgr-section">
-      <h3 class="sgr-section-title">커뮤니티 공략글 <span class="sgr-count">{{ raid.guide_posts.length }}</span></h3>
+    <section v-show="activeTab === 'guides'" class="sgr-section">
       <p v-if="raid.guide_posts.length === 0" class="sgr-empty">이 레이드에 연결된 공략글이 아직 없습니다.</p>
       <ul class="sgr-guide-list">
         <li v-for="post in raid.guide_posts" :key="post.url">
@@ -103,7 +116,18 @@ const props = defineProps({
 
 defineEmits(['back']);
 
-// "내 풀로 조합" 토글 — 편성 카드에서 미보유 슬롯을 보유 대체 캐릭터로 치환해 보여준다
+// 실전 편성(원본 랭킹 프록시)이 있는 게임 = 블아·니케
+const hasAltParties = computed(() => ['bluearchive', 'nikke'].includes(props.raid.game?.slug));
+
+// 세그먼트 탭: 추천 편성 / 내 풀 조합(블아·니케) / 공략글
+const tabs = computed(() => [
+  { key: 'parties', label: '추천 편성', count: props.raid.parties.length },
+  ...(hasAltParties.value ? [{ key: 'compose', label: '내 풀 조합', count: null }] : []),
+  { key: 'guides', label: '공략글', count: props.raid.guide_posts.length },
+]);
+const activeTab = ref('parties');
+
+// "대체로 채우기" 토글 — 추천 편성 카드에서 미보유 슬롯을 보유 대체 캐릭터로 치환해 보여준다
 const composeMode = ref(false);
 
 // 학생별 출전 통계(블아 전용) — 대체 후보 팝오버 빈도 + 핵심 캐릭터 요약 카드
