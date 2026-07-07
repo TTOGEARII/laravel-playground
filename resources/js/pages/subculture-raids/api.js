@@ -59,6 +59,15 @@ export const raidApi = {
         });
         return data.data;
     },
+    /**
+     * 속성(성격)별 추천 조합(트릭컬 전용).
+     * @param {string} gameSlug
+     * @returns {Promise<{supported: boolean, groups: Array<{attribute: string, label: string, parties: Array}>}>}
+     */
+    async getAttributeParties(gameSlug) {
+        const { data } = await axios.get(`${API_BASE}/attribute-parties`, { params: { game: gameSlug } });
+        return data.data;
+    },
 };
 
 /**

@@ -1,5 +1,5 @@
 // 레이드 크롤러 사이드카 엔트리.
-// 사용: node index.mjs --game=<slug> --type=characters|raids [--base=<url>]
+// 사용: node index.mjs --game=<slug> --type=characters|raids|attribute-parties [--base=<url>]
 // 데이터(JSON)는 stdout, 로그는 stderr. 실패 시 exit code 1.
 import { parseArgs } from 'node:util';
 import { launchBrowser, newPage } from './lib/browser.mjs';
@@ -27,8 +27,12 @@ const { values } = parseArgs({
 });
 
 const adapter = ADAPTERS[values.game];
-if (!adapter || !['characters', 'raids'].includes(values.type ?? '')) {
-    log('사용법: node index.mjs --game=bluearchive|nikke|trickcal|browndust2 --type=characters|raids [--base=URL]');
+if (!adapter || !['characters', 'raids', 'attribute-parties'].includes(values.type ?? '')) {
+    log('사용법: node index.mjs --game=bluearchive|nikke|trickcal|browndust2 --type=characters|raids|attribute-parties [--base=URL]');
+    process.exit(1);
+}
+if (values.type === 'attribute-parties' && typeof adapter.crawlAttributeParties !== 'function') {
+    log(`${values.game} 는 attribute-parties 를 지원하지 않음(현재 trickcal 전용)`);
     process.exit(1);
 }
 
@@ -39,7 +43,9 @@ try {
     const page = await newPage(browser);
     const items = values.type === 'characters'
         ? await adapter.crawlCharacters(page, base)
-        : await adapter.crawlRaids(page, base);
+        : values.type === 'raids'
+            ? await adapter.crawlRaids(page, base)
+            : await adapter.crawlAttributeParties(page, base);
 
     process.stdout.write(JSON.stringify({
         game: values.game,

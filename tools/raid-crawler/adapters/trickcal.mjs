@@ -232,3 +232,175 @@ export async function crawlRaids() {
     log('trickcal 레이드 일정 소스 없음(수동 입력/공략글로 커버)');
     return [];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 속성(성격)별 추천 조합 — Gemini(토큰) 없이 구조화 사이트 2곳을 크롤한다.
+//   1) 트릭컬 팀 매니저(trickcal-team-manager.netlify.app/builder)
+//      — 성격별 추천 사도(전열/중열/후열 + 사이드 페어링) 큐레이션. SPA 라 DOM 크롤.
+//   2) 트릭컬 레코드(trickcalrecord.pages.dev)
+//      — 최근 시즌(대충돌/프론티어)의 포지션별 사도 사용률 실측.
+//        성격별 분류는 PHP 쪽에서 캐릭터 마스터의 traits.personality 로 파생한다.
+// 한쪽 실패는 로그 후 계속(부분 수집), 둘 다 실패면 전체 실패.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TEAM_MANAGER_URL = 'https://trickcal-team-manager.netlify.app/builder';
+const RECORD_BASE = 'https://trickcalrecord.pages.dev';
+
+/** 팀 매니저 — 성격 탭 5개를 순회하며 포지션별 추천 사도(+사이드)를 수집. */
+async function crawlTeamManager(page) {
+    await page.goto(TEAM_MANAGER_URL, { waitUntil: 'networkidle', timeout: 30_000 });
+
+    // 환영 모달 닫기(있을 때만)
+    await page.evaluate(() => {
+        const no = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === '아니요');
+        no?.click();
+    });
+    await page.waitForTimeout(400);
+
+    const parties = [];
+    for (const personality of ['Jolly', 'Mad', 'Cool', 'Naive', 'Gloomy']) {
+        const clicked = await page.evaluate((code) => {
+            const icon = [...document.querySelectorAll('img[alt]')].find((i) => i.alt === code);
+            if (!icon) return false;
+            (icon.closest('button') ?? icon.parentElement).click();
+            return true;
+        }, personality);
+        if (!clicked) {
+            log(`팀매니저 ${personality} 탭을 찾지 못함(마크업 변경 의심)`);
+            continue;
+        }
+        await page.waitForTimeout(500);
+
+        // 추천 영역: 사도 카드 본체 = img.object-cover(alt=이름).
+        // 포지션은 카드에서 바깥으로 올라가며 만나는 포지션 아이콘(Common_PositionBack/Middle/Front),
+        // 사이드 페어링은 같은 카드의 우상단 absolute 아이콘(alt=이름).
+        const members = await page.evaluate(() => {
+            const result = [];
+            const seen = new Set();
+
+            for (const img of document.querySelectorAll('img[alt]')) {
+                if (!img.className.includes('object-cover')) continue;
+                const name = img.alt.trim();
+                if (!name || seen.has(name)) continue;
+
+                let position = null;
+                let node = img.closest('div');
+                for (let depth = 0; node && depth < 6; depth++, node = node.parentElement) {
+                    const pos = node.querySelector('img[src*="Common_Position"]');
+                    if (pos) {
+                        position = pos.src.includes('Back') ? 'back' : pos.src.includes('Middle') ? 'middle' : 'front';
+                        break;
+                    }
+                }
+                if (position === null) continue; // 보유 사도 목록 등 추천 영역 밖 카드
+
+                const card = img.closest('div')?.parentElement;
+                const aside = card?.querySelector('img[class*="absolute"][alt]')?.alt?.trim() || null;
+
+                seen.add(name);
+                result.push({ name, position, aside: aside !== name ? aside : null });
+            }
+            return result;
+        });
+
+        if (members.length === 0) {
+            log(`팀매니저 ${personality} 추천 사도 0명(마크업 변경 의심)`);
+            continue;
+        }
+        parties.push({
+            kind: 'curated',
+            attribute: personality,
+            source: 'team-manager',
+            source_url: TEAM_MANAGER_URL,
+            members,
+        });
+    }
+
+    log(`팀매니저 성격별 추천 ${parties.length}속성 수집`);
+    return parties;
+}
+
+/** 트릭컬 레코드 — 홈의 최신 시즌 카드(대충돌/대충돌2.0/프론티어)에서 포지션별 사용률 수집. */
+async function crawlTrickcalRecord(page) {
+    await page.goto(RECORD_BASE, { waitUntil: 'networkidle', timeout: 30_000 });
+
+    const seasons = await page.evaluate(() => [...document.querySelectorAll('a[href^="/clash/"], a[href^="/frontier/"]')]
+        .map((a) => a.getAttribute('href'))
+        .filter((href) => /^\/(clash\/v\d+|frontier)\/\d+$/.test(href))
+        .slice(0, 3));
+
+    const items = [];
+    for (const href of seasons) {
+        try {
+            await page.goto(`${RECORD_BASE}${href}`, { waitUntil: 'networkidle', timeout: 30_000 });
+            const parsed = await page.evaluate(() => {
+                // innerText 라인 파싱: '후열/중열/전열' 라벨 뒤로 [이름, 카운트, 사용률%, (증감|점유율)] 반복.
+                // 이름 = 숫자/%/New/± 로 시작하지 않는 라인. '인기 사복'류 섹션에서 종료.
+                const lines = document.body.innerText.split('\n').map((s) => s.trim()).filter(Boolean);
+                const title = document.title.replace(/ - 트릭컬 레코드$/, '');
+                const period = lines.find((l) => /^\d{4}-\d{2}-\d{2} ~/.test(l)) ?? null;
+
+                const positions = { back: [], middle: [], front: [] };
+                let current = null;
+                for (const line of lines) {
+                    if (line === '후열') { current = 'back'; continue; }
+                    if (line === '중열') { current = 'middle'; continue; }
+                    if (line === '전열') { current = 'front'; continue; }
+                    if (line === '인기 사복' || line.startsWith('클리어') || line.startsWith('점수')) {
+                        current = null;
+                        continue;
+                    }
+                    if (!current) continue;
+                    if (/^[\d,.]+$/.test(line) || /%$/.test(line) || line === 'New' || /^[+-]/.test(line)) {
+                        // 이름 다음에 오는 첫 % 값 = 사용률
+                        const last = positions[current][positions[current].length - 1];
+                        if (last && last.usage_pct === null && /%$/.test(line)) {
+                            last.usage_pct = parseFloat(line);
+                        }
+                        continue;
+                    }
+                    positions[current].push({ name: line, usage_pct: null });
+                }
+                return { title, period, positions };
+            });
+
+            const total = parsed.positions.back.length + parsed.positions.middle.length + parsed.positions.front.length;
+            if (total === 0) {
+                log(`트릭컬레코드 ${href} 사용률 0건(마크업 변경 의심) — 스킵`);
+                continue;
+            }
+            items.push({
+                kind: 'usage',
+                source: 'trickcalrecord',
+                source_url: `${RECORD_BASE}${href}`,
+                season_title: parsed.title,
+                period: parsed.period,
+                positions: parsed.positions,
+            });
+        } catch (e) {
+            log(`트릭컬레코드 ${href} 실패(계속 진행): ${e.message}`);
+        }
+    }
+
+    log(`트릭컬레코드 시즌 ${items.length}건 수집`);
+    return items;
+}
+
+/** 속성별 추천 조합 수집 진입점 — 두 소스 중 하나라도 성공하면 부분 수집으로 진행. */
+export async function crawlAttributeParties(page) {
+    const items = [];
+
+    try {
+        items.push(...await crawlTeamManager(page));
+    } catch (e) {
+        log(`팀매니저 수집 실패(계속 진행): ${e.message}`);
+    }
+    try {
+        items.push(...await crawlTrickcalRecord(page));
+    } catch (e) {
+        log(`트릭컬레코드 수집 실패(계속 진행): ${e.message}`);
+    }
+
+    if (items.length === 0) throw new Error('속성별 조합 소스 2곳 모두 실패');
+    return items;
+}

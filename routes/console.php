@@ -76,6 +76,13 @@ Schedule::command('subculture:crawl-raids')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// 속성(성격)별 추천 조합(트릭컬) — 큐레이션은 변동이 느리지만 실측(시즌 집계)이 주 단위로 갱신되어 주 1회.
+Schedule::command('subculture:crawl-attribute-parties')
+    ->weeklyOn(1, '06:00') // 매주 월요일 06:00 (캐릭터 마스터 05:00 이후)
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
 Schedule::command('subculture:collect-guides')
     ->cron('0 8,20 * * *') // 매일 08/20시
     ->timezone(config('app.timezone', 'Asia/Seoul'))

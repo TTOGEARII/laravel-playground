@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Process;
 class CrawlerScriptRunner
 {
     /**
-     * @param  'characters'|'raids'  $type
+     * @param  'characters'|'raids'|'attribute-parties'  $type
      * @return array{source: string, items: array<int, array>}|null
      */
     public function run(string $gameSlug, string $type): ?array

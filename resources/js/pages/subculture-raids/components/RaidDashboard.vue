@@ -13,6 +13,9 @@
         수집된 레이드 일정이 없습니다. 커뮤니티 공략글은 진행 중 레이드에 연결되면 표시됩니다.
       </p>
 
+      <!-- 속성(성격)별 추천 조합 — 트릭컬 전용(서버 config attribute_parties.games 와 동일 게이트) -->
+      <AttributeCompositions v-if="game.slug === 'trickcal'" :game-slug="game.slug" />
+
       <div class="sgr-raid-grid">
         <button
           v-for="raid in raidsOf(game.slug)"
@@ -48,6 +51,8 @@
 </template>
 
 <script setup>
+import AttributeCompositions from './AttributeCompositions.vue';
+
 const props = defineProps({
   games: { type: Array, required: true },
   raids: { type: Array, required: true },

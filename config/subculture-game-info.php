@@ -334,6 +334,24 @@ return [
             ],
         ],
 
+        // 속성(성격)별 추천 조합 — 트릭컬 전용. Gemini(토큰) 없이 구조화 사이트 크롤만 사용:
+        // 팀 매니저(큐레이션) + 트릭컬 레코드(시즌 실측 → traits.personality 로 속성별 파생).
+        'attribute_parties' => [
+            'games' => ['trickcal'],
+            // 성격 코드(캐릭터 traits.personality 와 동일) → 한글 라벨. 배열 순서 = 화면 탭 순서.
+            'attributes' => [
+                'trickcal' => [
+                    'Gloomy' => '우울',
+                    'Jolly' => '활발',
+                    'Naive' => '순수',
+                    'Cool' => '냉정',
+                    'Mad' => '광기',
+                ],
+            ],
+            // 실측(usage) 파생 시 속성·포지션당 상위 N명(사용률순)
+            'usage_top_per_position' => (int) env('SGI_ATTR_USAGE_TOP', 4),
+        ],
+
         // 공략글 수집(디씨 개념글 · 아카 추천글) — 메타만 저장, 본문 파싱 없음.
         'guides' => [
             'max_posts_per_source' => (int) env('SGI_GUIDE_MAX_POSTS', 30),

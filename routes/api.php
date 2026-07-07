@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\OtakuShop\Api\ProductController as OtakuShopProductController;
+use App\Http\Controllers\SubcultureGameInfo\Api\AttributePartyController as SubcultureAttributePartyController;
 use App\Http\Controllers\SubcultureGameInfo\Api\CharacterController as SubcultureCharacterController;
 use App\Http\Controllers\SubcultureGameInfo\Api\CodeController as SubcultureCodeController;
 use App\Http\Controllers\SubcultureGameInfo\Api\RaidController as SubcultureRaidController;
@@ -54,6 +55,8 @@ Route::prefix('subculture-game-info')->group(function () {
         ->whereNumber('raid')
         ->middleware('throttle:10,1');
     Route::get('characters', [SubcultureCharacterController::class, 'index']);
+    // 속성(성격)별 추천 조합(트릭컬) — ?game=trickcal
+    Route::get('attribute-parties', [SubcultureAttributePartyController::class, 'index']);
 });
 
 /*
