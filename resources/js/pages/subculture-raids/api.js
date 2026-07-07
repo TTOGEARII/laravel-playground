@@ -45,6 +45,20 @@ export const raidApi = {
         const { data } = await axios.get(`${API_BASE}/raids/${raidId}/student-usage`);
         return data.data;
     },
+    /**
+     * 미보유 캐릭터의 대체 후보를 Gemini 에게 추천받는다(수동 대체 지정 보조).
+     * @param {number} raidId
+     * @param {string} characterKey 미보유 캐릭터 external_key
+     * @param {string[]} ownedKeys 보유 캐릭터 external_key 목록 (후보 닫힌 어휘)
+     * @returns {Promise<{supported: boolean, recommendations: Array<{external_key: string, name: string, image_url: ?string, reason: ?string}>}>}
+     */
+    async getSubstituteRecommendations(raidId, characterKey, ownedKeys) {
+        const { data } = await axios.post(`${API_BASE}/raids/${raidId}/substitute-recommendations`, {
+            character_key: characterKey,
+            owned: ownedKeys,
+        });
+        return data.data;
+    },
 };
 
 /**

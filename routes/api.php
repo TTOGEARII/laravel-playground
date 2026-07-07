@@ -48,6 +48,11 @@ Route::prefix('subculture-game-info')->group(function () {
     Route::get('raids/{raid}/student-usage', [SubcultureRaidController::class, 'studentUsage'])
         ->whereNumber('raid')
         ->middleware('throttle:30,1');
+    // 미보유 캐릭터 대체 후보 Gemini 추천 — body: { character_key, owned: [...] }
+    // Gemini 토큰 비용이 드는 호출이라 스로틀을 빡빡하게(분당 10) + 서비스단 1일 캐시
+    Route::post('raids/{raid}/substitute-recommendations', [SubcultureRaidController::class, 'substituteRecommendations'])
+        ->whereNumber('raid')
+        ->middleware('throttle:10,1');
     Route::get('characters', [SubcultureCharacterController::class, 'index']);
 });
 

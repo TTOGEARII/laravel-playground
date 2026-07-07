@@ -7,6 +7,7 @@ use App\Http\Requests\SubcultureGameInfo\AlternativePartyRequest;
 use App\Models\SubcultureGameInfo\Raid;
 use App\Services\SubcultureGameInfo\Raids\AlternativeParties\AlternativePartyService;
 use App\Services\SubcultureGameInfo\Raids\RaidQueryService;
+use App\Services\SubcultureGameInfo\Raids\SubstituteRecommendationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,7 @@ class RaidController extends Controller
     public function __construct(
         private RaidQueryService $query,
         private AlternativePartyService $alternativeParties,
+        private SubstituteRecommendationService $substituteRecommendations,
     ) {}
 
     /**
@@ -65,6 +67,27 @@ class RaidController extends Controller
     {
         return response()->json([
             'data' => $this->alternativeParties->studentUsage($raid),
+        ]);
+    }
+
+    /**
+     * 미보유 캐릭터의 대체 후보를 Gemini 에게 추천받는다(내 풀 조합의 수동 대체 지정 보조).
+     * body: { character_key, owned: [external_key...] } — 후보는 보유 목록으로 강제(닫힌 어휘)
+     */
+    public function substituteRecommendations(Request $request, Raid $raid): JsonResponse
+    {
+        $validated = $request->validate([
+            'character_key' => ['required', 'string', 'max:100'],
+            'owned' => ['required', 'array', 'min:1', 'max:500'],
+            'owned.*' => ['string', 'max:100'],
+        ]);
+
+        return response()->json([
+            'data' => $this->substituteRecommendations->recommend(
+                $raid,
+                $validated['character_key'],
+                $validated['owned'],
+            ),
         ]);
     }
 }

@@ -130,6 +130,34 @@ class AlternativePartyApiTest extends TestCase
             ->assertJsonPath('data.supported', false);
     }
 
+    public function test_대체_추천은_입력을_검증한다(): void
+    {
+        Http::fake();
+        $raid = $this->raid();
+
+        // character_key 누락
+        $this->postJson("/api/subculture-game-info/raids/{$raid->id}/substitute-recommendations", [
+            'owned' => ['5124'],
+        ])->assertStatus(422)->assertJsonValidationErrors(['character_key']);
+
+        // owned 비어 있음
+        $this->postJson("/api/subculture-game-info/raids/{$raid->id}/substitute-recommendations", [
+            'character_key' => '5155', 'owned' => [],
+        ])->assertStatus(422)->assertJsonValidationErrors(['owned']);
+    }
+
+    public function test_대체_추천은_api_키_없으면_supported_false_를_200_으로_돌려준다(): void
+    {
+        config(['services.gemini.api_key' => '']);
+        Http::fake();
+        $raid = $this->raid();
+
+        $this->postJson("/api/subculture-game-info/raids/{$raid->id}/substitute-recommendations", [
+            'character_key' => '5155', 'owned' => ['5124'],
+        ])->assertOk()->assertJson(['data' => ['supported' => false, 'recommendations' => []]]);
+        Http::assertNothingSent();
+    }
+
     public function test_없는_레이드는_404(): void
     {
         $this->postJson('/api/subculture-game-info/raids/999999/alternative-parties', ['exclude' => []])

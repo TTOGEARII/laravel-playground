@@ -1023,6 +1023,57 @@
     color: var(--text-primary);
     font-size: var(--ds-fs-base);
 }
+/* 피커 내 Gemini 대체 추천 */
+.sgr-subpicker-ai { margin-bottom: var(--ds-space-sm); }
+.sgr-subpicker-ai-btn { width: 100%; }
+.sgr-subpicker-ai-loading,
+.sgr-subpicker-ai-empty {
+    font-size: var(--ds-fs-small);
+    color: var(--text-secondary);
+    margin: 4px 0;
+}
+.sgr-subpicker-ai-error {
+    font-size: var(--ds-fs-small);
+    color: var(--ds-negative);
+    margin: 4px 0;
+}
+.sgr-subpicker-ai-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-xxs);
+}
+.sgr-subpicker-ai-item {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    width: 100%;
+    padding: var(--ds-space-xs) var(--ds-space-sm);
+    border: 1px solid rgba(243, 114, 127, 0.45);
+    border-radius: var(--ds-round-lg);
+    background: rgba(243, 114, 127, 0.08);
+    cursor: pointer;
+    text-align: left;
+}
+.sgr-subpicker-ai-item:hover { background: rgba(243, 114, 127, 0.16); }
+.sgr-subpicker-ai-item img {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+.sgr-subpicker-ai-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sgr-subpicker-ai-name {
+    font-size: var(--ds-fs-base);
+    font-weight: var(--ds-fw-semibold);
+    color: var(--ds-text-accent);
+}
+.sgr-subpicker-ai-reason {
+    font-size: var(--ds-fs-small);
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
 .sgr-subpicker-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
