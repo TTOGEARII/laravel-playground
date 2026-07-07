@@ -1,0 +1,16 @@
+{
+    "_comment": "대체 캐릭터 수동 입력 템플릿 — subculture:import-substitutes {이 파일 경로} 로 반영. raid 는 external_key(레이드 목록은 커맨드가 틀리면 후보를 보여줌). 캐릭터는 이름으로 적으면 되고 공백·콜론 차이는 자동 정규화된다. 재실행하면 해당 레이드의 manual 행이 이 파일 내용으로 갈아끼워진다.",
+    "game": "nikke",
+    "raid": "soloraid-6",
+    "substitutes": [
+        {
+            "character": "나유타",
+            "substitutes": ["신데렐라", "홍련 : 흑영"],
+            "note": "풀돌 기준"
+        },
+        {
+            "character": "리틀 머메이드",
+            "substitutes": ["앵커 : 이노센트 메이드"]
+        }
+    ]
+}

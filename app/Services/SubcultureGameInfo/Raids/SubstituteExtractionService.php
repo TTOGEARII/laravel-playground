@@ -149,6 +149,100 @@ class SubstituteExtractionService
         return $stats;
     }
 
+    /**
+     * 수동 대체 관계 동기화 — 해당 레이드의 manual 행을 items 내용으로 통째로 갈아끼운다
+     * (JSON 파일이 수동 데이터의 단일 출처 → 재실행 멱등). 커뮤니티 행은 건드리지 않되,
+     * 같은 쌍이 커뮤니티에 있으면 manual 이 우선한다(커뮤니티 행 제거 후 삽입).
+     * 캐릭터명 매칭은 Gemini 추출과 동일한 닫힌 어휘(정규화 이름·브더2 원캐릭터명) 규칙.
+     *
+     * @param  array<int, array{character: string, substitutes: array<int, string>, note?: ?string}>  $items
+     * @return array{saved: int, missing: list<string>} missing=마스터에 없어 버린 이름 목록
+     */
+    public function importManual(Raid $raid, array $items): array
+    {
+        $raid->loadMissing(['game', 'parties.members']);
+
+        $characters = Character::query()
+            ->where('subculture_game_id', $raid->subculture_game_id)
+            ->active()
+            ->get(['id', 'name', 'traits']);
+
+        $nameIndex = $characters->keyBy(fn (Character $c) => $this->normalizeName($c->name));
+        $baseIndex = $characters
+            ->filter(fn (Character $c) => filled(data_get($c->traits, 'base_character')))
+            ->groupBy(fn (Character $c) => $this->normalizeName((string) data_get($c->traits, 'base_character')));
+        $partyCharacterIds = $raid->parties
+            ->flatMap(fn ($party) => $party->members->pluck('subculture_character_id'))
+            ->unique()
+            ->all();
+
+        $rows = [];
+        $missing = [];
+        $seenPairs = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item) || ! is_string($item['character'] ?? null) || ! is_array($item['substitutes'] ?? null)) {
+                continue;
+            }
+
+            $primary = $this->resolveCharacter($item['character'], $nameIndex, $baseIndex, $partyCharacterIds);
+            if ($primary === null) {
+                $missing[] = $item['character'];
+
+                continue;
+            }
+
+            $note = isset($item['note']) && is_string($item['note']) && trim($item['note']) !== ''
+                ? mb_substr(trim($item['note']), 0, 255)
+                : null;
+
+            $sort = 0;
+            foreach ($item['substitutes'] as $substituteName) {
+                if (! is_string($substituteName)) {
+                    continue;
+                }
+                $substitute = $this->resolveCharacter($substituteName, $nameIndex, $baseIndex, $partyCharacterIds);
+                if ($substitute === null) {
+                    $missing[] = $substituteName;
+
+                    continue;
+                }
+                $pairKey = $primary->id.'-'.$substitute->id;
+                if ($substitute->id === $primary->id || isset($seenPairs[$pairKey])) {
+                    continue;
+                }
+
+                $seenPairs[$pairKey] = true;
+                $rows[] = [
+                    'character_id' => $primary->id,
+                    'substitute_character_id' => $substitute->id,
+                    'note' => $note,
+                    'source' => 'manual',
+                    'source_url' => null,
+                    'sort' => $sort++,
+                ];
+            }
+        }
+
+        $saved = 0;
+        DB::transaction(function () use ($raid, $rows, &$saved) {
+            // manual 은 파일이 단일 출처 — 기존 manual 을 비우고 파일 내용으로 재구성
+            $raid->substitutes()->where('source', 'manual')->delete();
+
+            foreach ($rows as $row) {
+                // 같은 쌍의 커뮤니티 행이 있으면 manual 이 우선(unique 충돌 방지 겸 큐레이션 우선)
+                $raid->substitutes()
+                    ->where('character_id', $row['character_id'])
+                    ->where('substitute_character_id', $row['substitute_character_id'])
+                    ->delete();
+                $raid->substitutes()->create($row);
+                $saved++;
+            }
+        });
+
+        return ['saved' => $saved, 'missing' => array_values(array_unique($missing))];
+    }
+
     /** 커뮤니티 추출 행만 갈아끼우고 manual 행은 보존한다(unique 충돌 방지 위해 manual 쌍과 겹치면 스킵). */
     private function syncRows(Raid $raid, array $rows): int
     {

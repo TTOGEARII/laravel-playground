@@ -82,6 +82,70 @@ class SubstituteExtractionServiceTest extends TestCase
         ]);
     }
 
+    public function test_수동_임포트는_manual_행을_갈아끼우고_같은_쌍_커뮤니티_행보다_우선한다(): void
+    {
+        $mika = $this->character('1', '미카');
+        $saki = $this->character('2', '사키');
+        $hoshino = $this->character('3', '호시노');
+
+        // 기존 manual(파일 재실행 시 대체됨) + 같은 쌍의 커뮤니티 행(manual 이 우선해야 함)
+        RaidSubstitute::create([
+            'raid_id' => $this->raid->id, 'character_id' => $mika->id,
+            'substitute_character_id' => $hoshino->id, 'source' => 'manual',
+        ]);
+        RaidSubstitute::create([
+            'raid_id' => $this->raid->id, 'character_id' => $mika->id,
+            'substitute_character_id' => $saki->id, 'source' => 'arca', 'note' => '커뮤니티 추출',
+        ]);
+
+        $result = app(SubstituteExtractionService::class)->importManual($this->raid, [
+            ['character' => '미카', 'substitutes' => ['사키'], 'note' => '수동 큐레이션'],
+        ]);
+
+        $this->assertSame(1, $result['saved']);
+        $this->assertSame([], $result['missing']);
+        // 기존 manual(미카→호시노) 제거, 같은 쌍 커뮤니티 행은 manual 로 대체
+        $this->assertSame(0, RaidSubstitute::where('substitute_character_id', $hoshino->id)->count());
+        $this->assertSame(1, RaidSubstitute::count());
+        $this->assertDatabaseHas('subculture_raid_substitutes', [
+            'character_id' => $mika->id,
+            'substitute_character_id' => $saki->id,
+            'source' => 'manual',
+            'note' => '수동 큐레이션',
+        ]);
+    }
+
+    public function test_수동_임포트는_마스터에_없는_이름을_미매칭으로_보고한다(): void
+    {
+        $this->character('1', '미카');
+        $this->character('2', '사키');
+
+        $result = app(SubstituteExtractionService::class)->importManual($this->raid, [
+            ['character' => '미카', 'substitutes' => ['사키', '없는캐릭']],
+            ['character' => '유령캐릭', 'substitutes' => ['사키']],
+        ]);
+
+        $this->assertSame(1, $result['saved']); // 미카→사키만
+        $this->assertSame(['없는캐릭', '유령캐릭'], $result['missing']);
+    }
+
+    public function test_수동_임포트는_이름의_공백_콜론_차이를_흡수한다(): void
+    {
+        $anchor = $this->character('1', '앵커 : 이노센트 메이드');
+        $mermaid = $this->character('2', '리틀 머메이드');
+
+        $result = app(SubstituteExtractionService::class)->importManual($this->raid, [
+            ['character' => '리틀머메이드', 'substitutes' => ['앵커: 이노센트메이드']],
+        ]);
+
+        $this->assertSame(1, $result['saved']);
+        $this->assertDatabaseHas('subculture_raid_substitutes', [
+            'character_id' => $mermaid->id,
+            'substitute_character_id' => $anchor->id,
+            'source' => 'manual',
+        ]);
+    }
+
     public function test_캐릭터_목록에_없는_이름은_버린다(): void
     {
         $this->character('1', '미카');
