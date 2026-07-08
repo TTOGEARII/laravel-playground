@@ -470,6 +470,37 @@
     opacity: 0.7;
 }
 
+/* 미보유 슬롯 클릭 → 내 대체 지정 */
+.sgr-member.is-pickable { cursor: pointer; }
+.sgr-member.is-pickable:hover img,
+.sgr-member.is-pickable:hover .sgr-member-placeholder {
+    border-color: var(--ds-primary);
+    opacity: 0.85;
+}
+
+/* 내가 지정한 대체(user-sub): 코랄 점선 — 내 풀 조합의 대체 표시와 동일 언어 */
+.sgr-member.is-user-sub .sgr-member-figure { position: relative; }
+.sgr-member.is-user-sub img,
+.sgr-member.is-user-sub .sgr-member-placeholder {
+    border: 2px dashed rgba(243, 114, 127, 0.75);
+}
+.sgr-member-sub-clear {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    z-index: 2;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--ds-round-circle);
+    border: none;
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+}
+.sgr-member-sub-clear:hover { background: var(--ds-negative); color: #fff; }
+
 .sgr-member-slot {
     font-size: 0.6rem;
     color: var(--ds-text-accent);

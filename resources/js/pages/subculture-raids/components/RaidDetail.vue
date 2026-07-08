@@ -62,8 +62,13 @@
           v-for="party in raid.parties"
           :key="party.id"
           :party="party"
+          :raid="raid"
           :pool="pool"
           :usage="usage"
+          :user-subs="userSubs"
+          :characters="allCharacters"
+          @set-substitute="$emit('set-substitute', $event)"
+          @clear-substitute="$emit('clear-substitute', $event)"
         />
       </div>
     </section>
@@ -144,7 +149,17 @@ function toggleRequired(key) {
     : [...requiredKeys.value, key].slice(0, 6); // 파티 슬롯 상 6명 상한
 }
 
+// 캐릭터 마스터(내 대체 지정 표시용 이미지·이름 해석) — 상세 진입 시 한 번만
+const allCharacters = ref([]);
+
 onMounted(async () => {
+  try {
+    const chars = await raidApi.getCharacters(props.raid.game.slug);
+    allCharacters.value = chars.data ?? [];
+  } catch (e) {
+    console.warn('캐릭터 목록 로드 실패 — 내 대체 표시 생략', e);
+  }
+
   if (props.raid.game?.slug !== 'bluearchive') return;
   try {
     const res = await raidApi.getStudentUsage(props.raid.id);

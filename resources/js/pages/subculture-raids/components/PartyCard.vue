@@ -15,10 +15,21 @@
         :class="{
           'is-missing': slot.state === 'missing' || slot.state === 'vacant',
           'is-substituted': slot.state === 'substituted',
+          'is-user-sub': slot.state === 'user-sub',
+          'is-pickable': canPick(slot),
         }"
         :title="slotTitle(slot)"
+        @click="canPick(slot) && openPicker(slot)"
       >
         <div class="sgr-member-figure">
+          <!-- 내가 지정한 대체 해제 -->
+          <button
+            v-if="slot.state === 'user-sub'"
+            type="button"
+            class="sgr-member-sub-clear"
+            title="대체 해제"
+            @click.stop="clearSubstitute(slot)"
+          >×</button>
           <img
             v-if="slot.character?.image_url"
             :src="slot.character.image_url"
@@ -29,6 +40,7 @@
 
           <!-- 조합 모드 상태 배지 -->
           <span v-if="slot.state === 'substituted'" class="sgr-member-flag is-sub">대체</span>
+          <span v-else-if="slot.state === 'user-sub'" class="sgr-member-flag is-sub">내 대체</span>
           <span v-else-if="slot.state === 'vacant'" class="sgr-member-flag is-vacant">미보유</span>
 
           <!-- 대체 후보 인디케이터 (토글과 무관하게 항상 표시, 클릭 토글 팝오버) -->
@@ -45,7 +57,7 @@
         </div>
 
         <span class="sgr-member-name">{{ slot.character?.name ?? '미확인' }}</span>
-        <span v-if="slot.state === 'substituted'" class="sgr-member-caption is-sub">
+        <span v-if="slot.state === 'substituted' || slot.state === 'user-sub'" class="sgr-member-caption is-sub">
           {{ slot.original?.name }} 대신
         </span>
         <span v-if="slot.state === 'substituted' && slot.note" class="sgr-member-caption">{{ slot.note }}</span>
@@ -86,23 +98,79 @@
     <p v-if="composeMode" class="sgr-compose-summary">
       보유 {{ summary.owned }} · 대체 {{ summary.substituted }} · 공석 {{ summary.vacant }}
     </p>
+
+    <!-- 미보유 멤버 대체 지정 피커(공유) — 지정하면 모든 카드의 같은 캐릭터 자리에 반영 -->
+    <SubstitutePicker
+      v-if="picker"
+      :raid-id="raid.id"
+      :game-slug="raid.game.slug"
+      :target="picker"
+      :pool="pool"
+      :current-key="userSubs[picker.external_key] ?? null"
+      @pick="pickSubstitute"
+      @close="picker = null"
+    />
   </article>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import SubstitutePicker from './SubstitutePicker.vue';
 
 const props = defineProps({
   party: { type: Object, required: true },
+  raid: { type: Object, required: true }, // 피커·Gemini 추천에 필요(id + game.slug)
   // { external_key: { owned, growth } }
   pool: { type: Object, default: () => ({}) },
   // "내 풀로 조합" 토글 상태 — 켜면 미보유 슬롯을 보유한 대체 캐릭터로 치환해 보여준다
   composeMode: { type: Boolean, default: false },
   // 학생별 출전 횟수(블아 전용) — { external_key: { count, assist_count } }
   usage: { type: Object, default: () => ({}) },
+  // 내가 지정한 대체 매핑 { 미보유 external_key: 보유 external_key }
+  userSubs: { type: Object, default: () => ({}) },
+  // 캐릭터 마스터(대체 캐릭터 표시용 이미지·이름 해석) — RaidDetail 이 한 번만 로드해 내려준다
+  characters: { type: Array, default: () => [] },
 });
 
+const emit = defineEmits(['set-substitute', 'clear-substitute']);
+
 const openPopover = ref(null);
+
+// ── 내 대체 지정(니케 내 풀 조합과 동일 UX) ──────────────────────
+const picker = ref(null); // { external_key, name }
+
+/** 미보유 원 캐릭터에 클릭으로 대체를 지정할 수 있는 슬롯인가 */
+function canPick(slot) {
+  return slot.state === 'missing' || slot.state === 'vacant' || slot.state === 'user-sub';
+}
+
+function openPicker(slot) {
+  const original = slot.original ?? slot.member?.character;
+  if (!original?.external_key) return;
+  picker.value = { external_key: original.external_key, name: original.name };
+}
+
+function pickSubstitute(substituteKey) {
+  emit('set-substitute', {
+    gameSlug: props.raid.game.slug,
+    characterKey: picker.value.external_key,
+    substituteKey,
+  });
+  picker.value = null;
+}
+
+function clearSubstitute(slot) {
+  const original = slot.original ?? slot.member?.character;
+  if (!original?.external_key) return;
+  emit('clear-substitute', { gameSlug: props.raid.game.slug, characterKey: original.external_key });
+}
+
+/** 내가 지정한 대체 캐릭터 해석(마스터 목록에서 이미지·이름) */
+function userSubCharacter(externalKey) {
+  const key = props.userSubs[externalKey];
+  if (!key) return null;
+  return props.characters.find((c) => c.external_key === key) ?? null;
+}
 
 function isOwnedKey(externalKey) {
   return externalKey ? props.pool[externalKey]?.owned === true : false;
@@ -133,6 +201,12 @@ const slots = computed(() => props.party.members.map((member) => {
   const ownedOriginal = isOwnedKey(member.character?.external_key);
   const base = { member, slot_type: member.slot_type, substitutes };
 
+  // 내가 직접 지정한 대체가 최우선 — 조합 모드와 무관하게 항상 반영(내 명시적 선택)
+  const userSub = !ownedOriginal ? userSubCharacter(member.character?.external_key) : null;
+  if (userSub) {
+    return { ...base, state: 'user-sub', character: userSub, original: member.character };
+  }
+
   if (!props.composeMode || ownedOriginal) {
     return { ...base, state: ownedOriginal ? 'owned' : 'missing', character: member.character };
   }
@@ -160,7 +234,7 @@ const slots = computed(() => props.party.members.map((member) => {
 const summary = computed(() => slots.value.reduce(
   (acc, slot) => {
     if (slot.state === 'owned') acc.owned += 1;
-    else if (slot.state === 'substituted') acc.substituted += 1;
+    else if (slot.state === 'substituted' || slot.state === 'user-sub') acc.substituted += 1;
     else acc.vacant += 1;
     return acc;
   },
@@ -169,14 +243,17 @@ const summary = computed(() => slots.value.reduce(
 
 function slotTitle(slot) {
   const name = slot.character?.name ?? '미확인';
+  if (slot.state === 'user-sub') {
+    return `${name} — ${slot.original?.name ?? '?'} 대신 (내가 지정, 클릭해서 변경)`;
+  }
   if (slot.state === 'substituted') {
     return `${name} — ${slot.original?.name ?? '?'} 대신 투입 (보유)${slot.note ? ` · ${slot.note}` : ''}`;
   }
   if (slot.state === 'vacant') {
-    return `${name} — 미보유 (보유한 대체 후보 없음)`;
+    return `${name} — 미보유 (클릭해서 내 대체 지정)`;
   }
   const entry = slot.character ? props.pool[slot.character.external_key] : null;
-  if (!entry?.owned) return `${name} — 미보유`;
+  if (!entry?.owned) return `${name} — 미보유 (클릭해서 내 대체 지정)`;
   const growth = entry.growth
     ? Object.entries(entry.growth).map(([k, v]) => `${k}: ${v}`).join(', ')
     : '성장도 미입력';
