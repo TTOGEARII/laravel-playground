@@ -4,12 +4,12 @@ namespace App\Services\SubcultureGameInfo\Raids\DTO;
 
 /**
  * 크롤/수동 입력 추천 편성 1개. members 는 캐릭터 참조 배열
- * (각 원소: external_key, name, slot_type?, sort?).
+ * (각 원소: external_key, name, slot_type?, sort?, note? — 성장 스펙 등 짧은 메모).
  */
 final readonly class CrawledPartyData
 {
     /**
-     * @param  array<int, array{external_key: string, name: string, slot_type: ?string, sort: int}>  $members
+     * @param  array<int, array{external_key: string, name: string, slot_type: ?string, sort: int, note: ?string}>  $members
      */
     public function __construct(
         public ?string $title,
@@ -38,6 +38,7 @@ final readonly class CrawledPartyData
                 'name' => $name,
                 'slot_type' => isset($member['slot_type']) ? (string) $member['slot_type'] : null,
                 'sort' => (int) ($member['sort'] ?? $i),
+                'note' => isset($member['note']) && trim((string) $member['note']) !== '' ? (string) $member['note'] : null,
             ];
         }
         if ($members === []) {

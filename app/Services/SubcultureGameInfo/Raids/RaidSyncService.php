@@ -83,6 +83,7 @@ class RaidSyncService
                             'subculture_character_id' => $character->id,
                             'slot_type' => $member['slot_type'],
                             'sort' => $member['sort'],
+                            'note' => $member['note'] ?? null,
                         ]);
                         $stats['members']++;
                     }

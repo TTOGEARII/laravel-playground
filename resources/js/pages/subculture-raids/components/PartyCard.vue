@@ -52,6 +52,8 @@
         <span v-if="slot.state === 'vacant' && slot.candidateNames" class="sgr-member-caption">
           후보: {{ slot.candidateNames }}
         </span>
+        <!-- 성장 스펙 메모(종전시 참고 영상의 전무/성급 등) -->
+        <span v-if="slot.state !== 'substituted' && slot.member?.note" class="sgr-member-caption">{{ slot.member.note }}</span>
         <span v-if="slot.slot_type" class="sgr-member-slot">{{ slotLabel(slot.slot_type) }}</span>
 
         <!-- 대체 후보 팝오버 -->
@@ -182,7 +184,7 @@ function slotTitle(slot) {
 }
 
 function slotLabel(slot) {
-  return { striker: 'STRIKER', special: 'SPECIAL' }[slot] ?? slot;
+  return { striker: 'STRIKER', special: 'SPECIAL', assist: '조력자' }[slot] ?? slot;
 }
 
 function togglePopover(idx) {

@@ -34,11 +34,21 @@
         </p>
       </button>
     </div>
+
+    <!-- 역대 회차(종전시 등) 열람 — 기본은 최근만, 펼치면 전체 -->
+    <button
+      v-if="hasMoreEnded"
+      type="button"
+      class="sgr-btn sgr-raid-more"
+      @click="showAllEnded = !showAllEnded"
+    >
+      {{ showAllEnded ? '지난 회차 접기' : `지난 회차 ${hiddenEndedCount}개 더 보기` }}
+    </button>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   raids: { type: Array, required: true },
@@ -46,13 +56,26 @@ const props = defineProps({
 
 defineEmits(['select']);
 
-// 진행 중 → 예정 → 종료(최신순, 최대 3개만)
-const sorted = computed(() => {
+const ENDED_PREVIEW = 3;
+const showAllEnded = ref(false);
+
+// 진행 중 → 예정 → 종료(시작일 최신순)
+const ordered = computed(() => {
   const order = { active: 0, upcoming: 1, ended: 2 };
-  return [...props.raids]
-    .sort((a, b) => order[a.status] - order[b.status])
-    .filter((r, i, arr) => r.status !== 'ended' || arr.slice(0, i).filter((x) => x.status === 'ended').length < 3);
+  return [...props.raids].sort((a, b) => (order[a.status] - order[b.status])
+    || new Date(b.starts_at ?? 0) - new Date(a.starts_at ?? 0));
 });
+
+// 종료 회차는 기본 3개만 — 역대 전체(종전시 49개 회차 등)는 '더 보기'로 펼친다
+const sorted = computed(() => {
+  if (showAllEnded.value) return ordered.value;
+  let ended = 0;
+  return ordered.value.filter((r) => r.status !== 'ended' || ++ended <= ENDED_PREVIEW);
+});
+
+const totalEnded = computed(() => ordered.value.filter((r) => r.status === 'ended').length);
+const hasMoreEnded = computed(() => totalEnded.value > ENDED_PREVIEW);
+const hiddenEndedCount = computed(() => Math.max(0, totalEnded.value - ENDED_PREVIEW));
 
 function statusLabel(raid) {
   return { active: '진행 중', upcoming: '예정', ended: '종료' }[raid.status] ?? raid.status;

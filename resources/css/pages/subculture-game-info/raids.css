@@ -110,6 +110,9 @@
     gap: var(--ds-space-lg);
 }
 
+/* 역대 회차 더 보기(종전시 등) */
+.sgr-raid-more { align-self: center; margin-top: var(--ds-space-xs); }
+
 /* 공략글 피드(guides 모듈) */
 .sgr-feed-title,
 .sgr-raid-module { margin: 0; }
