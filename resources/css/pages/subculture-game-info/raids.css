@@ -110,8 +110,43 @@
     gap: var(--ds-space-lg);
 }
 
+/* 레이드 종류별 섹션(블아: 총력전/대결전/종전시) */
+.sgr-raid-type {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-sm);
+}
+.sgr-raid-type + .sgr-raid-type { margin-top: var(--ds-space-lg); }
+.sgr-raid-type-head {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-xs);
+    margin: 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ds-hairline);
+    font-size: var(--ds-fs-lg);
+    font-weight: var(--ds-fw-bold);
+    color: var(--text-primary);
+}
+.sgr-raid-type-badge {
+    padding: 2px 10px;
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.16);
+    color: var(--ds-text-accent);
+    border: 1px solid rgba(243, 114, 127, 0.5);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-semibold);
+}
+.sgr-raid-type-count {
+    margin-left: auto;
+    font-size: var(--ds-fs-small);
+    font-weight: var(--ds-fw-normal);
+    color: var(--text-secondary);
+}
+
 /* 역대 회차 더 보기(종전시 등) */
 .sgr-raid-more { align-self: center; margin-top: var(--ds-space-xs); }
+.sgr-raid-module { display: flex; flex-direction: column; }
 
 /* 공략글 피드(guides 모듈) */
 .sgr-feed-title,
