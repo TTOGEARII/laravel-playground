@@ -194,7 +194,7 @@ return [
                 'wuthering' => 'wutheringwaves',
                 'trickcal' => 'trickcal',
                 'nikke' => 'nikketgv',
-                'browndust2' => 'browndust',
+                'browndust2' => 'browndust2', // 주의: /b/browndust 는 브더1 채널
             ],
             // 게임별 쿠폰 카테고리(지정 시: 해당 카테고리의 '최근 recent_days일' 글에서만 코드 수집).
             'categories' => [
