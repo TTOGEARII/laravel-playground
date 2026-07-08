@@ -334,6 +334,16 @@ return [
             ],
         ],
 
+        // 게임별 정보 모듈 — 레이드 페이지에서 게임 탭 선택 시 이 순서대로 섹션을 렌더한다.
+        // 새 정보 유형 추가 = 프론트 모듈 컴포넌트 등록 + 여기 키 추가(게임마다 다른 구성 가능).
+        //   raids: 레이드 일정·편성 카드 / attribute-parties: 속성별 추천 조합 / guides: 최근 공략글 피드
+        'modules' => [
+            'bluearchive' => ['raids', 'guides'],
+            'nikke' => ['raids', 'guides'],
+            'trickcal' => ['attribute-parties', 'raids', 'guides'],
+            'browndust2' => ['raids', 'guides'],
+        ],
+
         // 속성(성격)별 추천 조합 — 트릭컬 전용. Gemini(토큰) 없이 구조화 사이트 크롤만 사용:
         // 팀 매니저(큐레이션) + 트릭컬 레코드(시즌 실측 → traits.personality 로 속성별 파생).
         'attribute_parties' => [

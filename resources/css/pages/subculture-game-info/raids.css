@@ -42,6 +42,84 @@
     color: var(--text-secondary);
 }
 
+/* ---------------------------------- 대시보드 게임 탭(한 번에 한 게임) */
+.sgr-game-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-xs);
+    padding: var(--ds-space-sm) 0;
+    margin-bottom: var(--ds-space-md);
+    background: var(--ds-canvas);
+    border-bottom: 1px solid var(--ds-hairline);
+}
+
+.sgr-game-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: var(--ds-round-full);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-base);
+    font-weight: var(--ds-fw-semibold);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sgr-game-tab:hover {
+    color: var(--text-primary);
+    border-color: rgba(243, 114, 127, 0.7);
+}
+
+.sgr-game-tab.is-active {
+    background: var(--ds-primary);
+    border-color: var(--ds-primary);
+    color: var(--ds-on-accent);
+}
+
+.sgr-game-tab-icon { font-size: 1.05rem; }
+
+/* 진행 중 레이드 수 뱃지 */
+.sgr-game-tab-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.2);
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sgr-game-tab.is-active .sgr-game-tab-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: var(--ds-on-accent);
+}
+
+.sgr-game-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-lg);
+}
+
+/* 공략글 피드(guides 모듈) */
+.sgr-feed-title,
+.sgr-raid-module { margin: 0; }
+.sgr-feed-title {
+    font-size: var(--ds-fs-lg);
+    font-weight: var(--ds-fw-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--ds-space-xs);
+}
+
 /* ---------------------------------- 게임 섹션/탭 공용 */
 .sgr-game-section {
     display: flex;

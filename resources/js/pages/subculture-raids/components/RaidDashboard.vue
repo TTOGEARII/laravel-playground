@@ -1,95 +1,74 @@
 <template>
   <div class="sgr-dashboard">
+    <!-- 게임 탭 — 한 번에 한 게임만 보여 스크롤 피로를 없앤다 -->
+    <nav class="sgr-game-tabs" role="tablist" aria-label="게임 선택">
+      <button
+        v-for="game in games"
+        :key="game.slug"
+        type="button"
+        role="tab"
+        class="sgr-game-tab"
+        :class="{ 'is-active': activeGame === game.slug }"
+        :aria-selected="activeGame === game.slug"
+        @click="$emit('change-game', game.slug)"
+      >
+        <span class="sgr-game-tab-icon">{{ game.icon }}</span>
+        <span class="sgr-game-tab-name">{{ game.name }}</span>
+        <span v-if="activeCount(game.slug) > 0" class="sgr-game-tab-badge">{{ activeCount(game.slug) }}</span>
+      </button>
+    </nav>
+
     <p v-if="loading" class="sgr-empty">레이드 정보를 불러오는 중...</p>
 
-    <section v-for="game in games" :key="game.slug" class="sgr-game-section">
-      <header class="sgr-game-head">
-        <h2 class="sgr-game-title">
-          <span class="sgr-game-icon">{{ game.icon }}</span> {{ game.name }}
-        </h2>
-      </header>
-
-      <p v-if="!loading && raidsOf(game.slug).length === 0" class="sgr-empty">
-        수집된 레이드 일정이 없습니다. 커뮤니티 공략글은 진행 중 레이드에 연결되면 표시됩니다.
-      </p>
-
-      <!-- 속성(성격)별 추천 조합 — 트릭컬 전용(서버 config attribute_parties.games 와 동일 게이트) -->
-      <AttributeCompositions v-if="game.slug === 'trickcal'" :game-slug="game.slug" />
-
-      <div class="sgr-raid-grid">
-        <button
-          v-for="raid in raidsOf(game.slug)"
-          :key="raid.id"
-          class="sgr-raid-card"
-          :class="`is-${raid.status}`"
-          @click="$emit('select', raid)"
-        >
-          <div class="sgr-raid-top">
-            <span class="sgr-status-badge" :class="`is-${raid.status}`">{{ statusLabel(raid) }}</span>
-            <span v-if="raid.raid_type" class="sgr-type-badge">{{ raid.raid_type }}</span>
-          </div>
-          <h3 class="sgr-raid-name">{{ raid.name }}</h3>
-          <div class="sgr-tag-row">
-            <span v-for="(value, key) in raid.tags ?? {}" :key="key" class="sgr-tag" v-show="value">
-              {{ value }}
-            </span>
-          </div>
-          <p class="sgr-raid-period">
-            {{ formatPeriod(raid) }}
-            <strong v-if="raid.status === 'active' && raid.ends_at" class="sgr-countdown">
-              · {{ remaining(raid.ends_at) }} 남음
-            </strong>
-          </p>
-          <p class="sgr-raid-counts">
-            추천 편성 {{ raid.parties_count }} · 공략글 {{ raid.guide_posts_count }}
-            <span v-if="raid.substitutes_count > 0" class="sgr-sub-count-badge">대체정보 {{ raid.substitutes_count }}</span>
-          </p>
-        </button>
-      </div>
+    <!-- 선택된 게임 패널: 서버 config(modules)가 정한 순서대로 정보 모듈을 렌더 -->
+    <section v-else-if="currentGame" :key="currentGame.slug" class="sgr-game-panel">
+      <template v-for="module in currentGame.modules" :key="module">
+        <component
+          :is="MODULES[module]"
+          v-if="MODULES[module]"
+          v-bind="moduleProps(module)"
+          @select="$emit('select', $event)"
+        />
+      </template>
     </section>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import AttributeCompositions from './AttributeCompositions.vue';
+import GuideFeed from './GuideFeed.vue';
+import RaidList from './RaidList.vue';
 
 const props = defineProps({
   games: { type: Array, required: true },
   raids: { type: Array, required: true },
   loading: { type: Boolean, default: false },
+  activeGame: { type: String, default: null },
 });
 
-defineEmits(['select']);
+defineEmits(['select', 'change-game']);
 
-function raidsOf(slug) {
-  // 진행 중 → 예정 → 종료(최신순, 최대 3개만)
-  const list = props.raids.filter((r) => r.game.slug === slug);
-  const order = { active: 0, upcoming: 1, ended: 2 };
-  return list
-    .sort((a, b) => order[a.status] - order[b.status])
-    .filter((r, i, arr) => r.status !== 'ended' || arr.slice(0, i).filter((x) => x.status === 'ended').length < 3);
+/**
+ * 정보 모듈 레지스트리 — 새 정보 유형 추가 = 컴포넌트 등록 + 서버 config modules 에 키 추가.
+ * (게임마다 다른 정보 구성을 서버가 결정하고, 프론트는 키→컴포넌트 매핑만 안다)
+ */
+const MODULES = {
+  'raids': RaidList,
+  'attribute-parties': AttributeCompositions,
+  'guides': GuideFeed,
+};
+
+const currentGame = computed(() => props.games.find((g) => g.slug === props.activeGame) ?? props.games[0]);
+
+function moduleProps(module) {
+  if (module === 'raids') {
+    return { raids: props.raids.filter((r) => r.game.slug === currentGame.value.slug) };
+  }
+  return { gameSlug: currentGame.value.slug };
 }
 
-function statusLabel(raid) {
-  return { active: '진행 중', upcoming: '예정', ended: '종료' }[raid.status] ?? raid.status;
-}
-
-function formatDate(iso) {
-  if (!iso) return '?';
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function formatPeriod(raid) {
-  if (!raid.starts_at && !raid.ends_at) return '기간 미상';
-  return `${formatDate(raid.starts_at)} ~ ${formatDate(raid.ends_at)}`;
-}
-
-function remaining(endIso) {
-  const diff = new Date(endIso) - Date.now();
-  if (diff <= 0) return '곧 종료';
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  return days > 0 ? `${days}일 ${hours}시간` : `${hours}시간`;
+function activeCount(slug) {
+  return props.raids.filter((r) => r.game.slug === slug && r.status === 'active').length;
 }
 </script>

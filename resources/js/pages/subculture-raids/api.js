@@ -68,6 +68,15 @@ export const raidApi = {
         const { data } = await axios.get(`${API_BASE}/attribute-parties`, { params: { game: gameSlug } });
         return data.data;
     },
+    /**
+     * 게임 단위 최근 공략글 피드(guides 모듈).
+     * @param {string} gameSlug
+     * @param {number} [limit]
+     */
+    async getGuidePosts(gameSlug, limit = 10) {
+        const { data } = await axios.get(`${API_BASE}/guide-posts`, { params: { game: gameSlug, limit } });
+        return data.data;
+    },
 };
 
 /**

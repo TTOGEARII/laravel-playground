@@ -24,13 +24,15 @@
       @clear-substitute="onClearSubstitute"
     />
 
-    <!-- 레이드 대시보드 -->
+    <!-- 레이드 대시보드 (게임 탭 + 게임별 정보 모듈) -->
     <RaidDashboard
       v-else-if="view === 'dashboard'"
       :games="games"
       :raids="raids"
       :loading="loadingRaids"
+      :active-game="activeGame"
       @select="openDetail"
+      @change-game="selectGame"
     />
 
     <!-- 내 캐릭터 관리 -->
@@ -63,6 +65,19 @@ const view = ref('dashboard');
 const raids = ref([]);
 const loadingRaids = ref(false);
 const detail = ref(null);
+// 대시보드 게임 탭 — 마지막 선택을 기억한다(?game 딥링크 우선)
+const activeGame = ref(
+  new URLSearchParams(location.search).get('game')
+  ?? localStorage.getItem('sgr:last-game')
+  ?? props.games[0]?.slug
+  ?? null,
+);
+
+function selectGame(slug) {
+  activeGame.value = slug;
+  localStorage.setItem('sgr:last-game', slug);
+  history.replaceState(null, '', `?game=${slug}`);
+}
 // 게임별 내 풀({ external_key: { owned, growth } }) — 편성 보유 매칭 하이라이트용
 const pools = reactive({});
 // 게임별 내 대체 매핑({ 미보유 external_key: 보유 external_key }) — 내 풀 조합 표시용
@@ -122,6 +137,8 @@ async function onClearSubstitute({ gameSlug, characterKey }) {
 async function openDetail(raid) {
   view.value = 'detail';
   detail.value = null;
+  activeGame.value = raid.game.slug; // 뒤로가기 시 해당 게임 탭으로 복귀
+  localStorage.setItem('sgr:last-game', raid.game.slug);
   try {
     const [full] = await Promise.all([
       raidApi.getRaid(raid.id),
@@ -138,7 +155,8 @@ async function openDetail(raid) {
 function showDashboard() {
   view.value = 'dashboard';
   detail.value = null;
-  history.replaceState(null, '', location.pathname);
+  // 보던 게임 탭 유지(딥링크도 복원)
+  history.replaceState(null, '', activeGame.value ? `?game=${activeGame.value}` : location.pathname);
 }
 
 function onPoolChanged({ gameSlug, pool }) {

@@ -23,6 +23,8 @@ class RaidPageController extends Controller
                 'name' => $g->name,
                 'icon' => $g->icon,
                 'color' => $g->color,
+                // 게임별 정보 모듈(렌더 순서) — 게임마다 다른 정보 구성을 서버가 결정한다
+                'modules' => config("subculture-game-info.raids.modules.{$g->slug}", ['raids', 'guides']),
             ])
             ->values();
 
