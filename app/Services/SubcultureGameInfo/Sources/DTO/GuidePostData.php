@@ -15,5 +15,6 @@ final readonly class GuidePostData
         public string $url,
         public ?Carbon $postedAt = null,
         public int $views = 0,
+        public int $rate = 0, // 추천 수 — 수집 상한 안에서 인기 글 우선 선별에 사용
     ) {}
 }

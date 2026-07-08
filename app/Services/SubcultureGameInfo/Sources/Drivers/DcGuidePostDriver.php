@@ -89,12 +89,16 @@ class DcGuidePostDriver implements GuidePostDriver
             $countNode = $xp->query(".//td[contains(@class, 'gall_count')]", $tr)->item(0);
             $views = $countNode instanceof \DOMElement ? (int) preg_replace('/\D/', '', $countNode->textContent) : 0;
 
+            $recommendNode = $xp->query(".//td[contains(@class, 'gall_recommend')]", $tr)->item(0);
+            $rate = $recommendNode instanceof \DOMElement ? (int) preg_replace('/\D/', '', $recommendNode->textContent) : 0;
+
             $posts[] = new GuidePostData(
                 externalId: $externalId,
                 title: $title,
                 url: $url,
                 postedAt: $postedAt,
                 views: $views,
+                rate: $rate,
             );
         }
 

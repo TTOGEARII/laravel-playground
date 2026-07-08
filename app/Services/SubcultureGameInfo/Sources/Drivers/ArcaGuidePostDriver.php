@@ -42,12 +42,15 @@ class ArcaGuidePostDriver implements GuidePostDriver
         }
         $queries[] = ['mode' => 'best'];
 
+        // 쿼리(카테고리)별로 추천·조회수 상위를 앞세워 합친다 — 수집 상한(max_posts_per_source)에
+        // 잘려도 인기 공략이 남는다. 쿼리 간 순서(공략 카테고리 → 추천글)는 유지해
+        // 팬아트 위주의 추천글이 상한을 독식하지 않게 한다.
         $posts = [];
         foreach ($queries as $i => $query) {
             if ($i > 0) {
                 usleep(1_000_000); // 목록 페이지 다연속 요청으로 차단당하지 않게 1초 간격
             }
-            foreach ($this->fetchList($base, $query) as $post) {
+            foreach ($this->sortByPopularity($this->fetchList($base, $query)) as $post) {
                 $posts[$post->externalId] ??= $post;
             }
         }
@@ -57,6 +60,7 @@ class ArcaGuidePostDriver implements GuidePostDriver
 
     /**
      * 채널 제목 검색(target=title). 검색 결과 마크업이 일반 목록과 동일해 파서를 재사용한다.
+     * 검색 결과도 추천·조회수 상위 우선.
      */
     public function searchPosts(string $gameSlug, string $keyword): array
     {
@@ -66,10 +70,23 @@ class ArcaGuidePostDriver implements GuidePostDriver
             return [];
         }
 
-        return $this->fetchList(
+        return $this->sortByPopularity($this->fetchList(
             rtrim($cfg['base'], '/').'/'.$channel,
             ['target' => 'title', 'keyword' => $keyword],
-        );
+        ));
+    }
+
+    /**
+     * 추천 수 → 조회수 순 정렬(둘 다 품질 신호지만 추천이 더 강하다).
+     *
+     * @param  GuidePostData[]  $posts
+     * @return GuidePostData[]
+     */
+    private function sortByPopularity(array $posts): array
+    {
+        usort($posts, fn (GuidePostData $a, GuidePostData $b) => [$b->rate, $b->views] <=> [$a->rate, $a->views]);
+
+        return $posts;
     }
 
     /**
@@ -120,12 +137,17 @@ class ArcaGuidePostDriver implements GuidePostDriver
             $viewNode = $xp->query(".//*[contains(@class, 'col-view')]", $a)->item(0);
             $views = $viewNode instanceof \DOMElement ? (int) preg_replace('/\D/', '', $viewNode->textContent) : 0;
 
+            // 추천 수(col-rate) — 0이면 &nbsp; 로 비어 있다
+            $rateNode = $xp->query(".//*[contains(@class, 'col-rate')]", $a)->item(0);
+            $rate = $rateNode instanceof \DOMElement ? (int) preg_replace('/\D/', '', $rateNode->textContent) : 0;
+
             $posts[] = new GuidePostData(
                 externalId: $externalId,
                 title: $title,
                 url: 'https://arca.live'.parse_url($href, PHP_URL_PATH),
                 postedAt: $postedAt,
                 views: $views,
+                rate: $rate,
             );
         }
 
