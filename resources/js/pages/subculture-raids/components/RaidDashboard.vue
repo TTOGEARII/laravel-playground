@@ -28,6 +28,8 @@
           v-if="MODULES[module]"
           v-bind="moduleProps(module)"
           @select="$emit('select', $event)"
+          @set-substitute="$emit('set-substitute', $event)"
+          @clear-substitute="$emit('clear-substitute', $event)"
         />
       </template>
     </section>
@@ -45,9 +47,11 @@ const props = defineProps({
   raids: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   activeGame: { type: String, default: null },
+  pool: { type: Object, default: () => ({}) }, // 활성 게임의 내 풀(보유 하이라이트용)
+  userSubs: { type: Object, default: () => ({}) }, // 활성 게임의 내 대체 매핑
 });
 
-defineEmits(['select', 'change-game']);
+defineEmits(['select', 'change-game', 'set-substitute', 'clear-substitute']);
 
 /**
  * 정보 모듈 레지스트리 — 새 정보 유형 추가 = 컴포넌트 등록 + 서버 config modules 에 키 추가.
@@ -62,8 +66,13 @@ const MODULES = {
 const currentGame = computed(() => props.games.find((g) => g.slug === props.activeGame) ?? props.games[0]);
 
 function moduleProps(module) {
+  const gameRaids = props.raids.filter((r) => r.game.slug === currentGame.value.slug);
   if (module === 'raids') {
-    return { raids: props.raids.filter((r) => r.game.slug === currentGame.value.slug) };
+    return { raids: gameRaids };
+  }
+  if (module === 'attribute-parties') {
+    // 보유 하이라이트 + 대체 지정(피커·Gemini 추천은 최신 레이드를 컨텍스트로 사용)
+    return { gameSlug: currentGame.value.slug, pool: props.pool, userSubs: props.userSubs, raids: gameRaids };
   }
   return { gameSlug: currentGame.value.slug };
 }

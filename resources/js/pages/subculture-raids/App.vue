@@ -31,8 +31,12 @@
       :raids="raids"
       :loading="loadingRaids"
       :active-game="activeGame"
+      :pool="poolFor(activeGame)"
+      :user-subs="userSubsFor(activeGame)"
       @select="openDetail"
       @change-game="selectGame"
+      @set-substitute="onSetSubstitute"
+      @clear-substitute="onClearSubstitute"
     />
 
     <!-- 내 캐릭터 관리 -->
@@ -77,6 +81,8 @@ function selectGame(slug) {
   activeGame.value = slug;
   localStorage.setItem('sgr:last-game', slug);
   history.replaceState(null, '', `?game=${slug}`);
+  // 대시보드 모듈(속성 조합 등)의 보유 하이라이트·대체 지정에 필요
+  if (!pools[slug]) loadPool(slug);
 }
 // 게임별 내 풀({ external_key: { owned, growth } }) — 편성 보유 매칭 하이라이트용
 const pools = reactive({});
@@ -165,6 +171,7 @@ function onPoolChanged({ gameSlug, pool }) {
 
 onMounted(async () => {
   await loadRaids();
+  if (activeGame.value) loadPool(activeGame.value); // 대시보드 보유 하이라이트용
   // ?raid= 딥링크
   const raidId = new URLSearchParams(location.search).get('raid');
   const target = raidId ? raids.value.find((r) => r.id === Number(raidId)) : null;

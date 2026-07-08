@@ -11,10 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * 속성(성격)별 추천 조합 — 사이드카 수집물(JSON)을 DB 에 동기화하고 API 응답을 조립한다.
- * Gemini(토큰) 없이 동작:
- *  - curated: 팀 매니저의 성격별 추천 사도(포지션+사이드)를 그대로 저장.
- *  - usage:   트릭컬 레코드 시즌 실측(포지션별 사용률)을 캐릭터 마스터의
- *             traits.personality 로 속성별 필터해 상위 N명씩 파생 저장.
+ * Gemini(토큰) 없이 동작. curated: 팀 매니저의 성격별 추천 사도(포지션+사이드).
+ * (트릭컬 레코드 시즌 실측은 crawlRaids 의 레이드 정보로 분리 — 여기서 다루지 않는다)
  */
 class AttributePartyService
 {
@@ -48,7 +46,6 @@ class AttributePartyService
             return $prefix->count() === 1 ? $prefix->first() : null;
         };
 
-        $topPerPosition = (int) config('subculture-game-info.raids.attribute_parties.usage_top_per_position', 4);
         $attributes = array_keys((array) config("subculture-game-info.raids.attribute_parties.attributes.{$game->slug}", []));
 
         $stats = ['parties' => 0, 'members' => 0, 'missing' => []];
@@ -94,52 +91,6 @@ class AttributePartyService
                 continue;
             }
 
-            if (($item['kind'] ?? null) === 'usage') {
-                // 시즌 실측 → 속성별 파생: 포지션 목록에서 해당 성격 캐릭터만 사용률순 상위 N
-                foreach ($attributes as $attribute) {
-                    $members = [];
-                    foreach (self::POSITIONS as $position) {
-                        $picked = collect((array) data_get($item, 'positions.'.($position === 'front' ? 'front' : $position), []))
-                            ->map(function (array $entry) use ($resolve, &$stats) {
-                                $character = $resolve((string) ($entry['name'] ?? ''));
-                                if ($character === null) {
-                                    $stats['missing'][] = (string) ($entry['name'] ?? '?');
-                                }
-
-                                return $character === null ? null : ['character' => $character, 'usage_pct' => $entry['usage_pct'] ?? null];
-                            })
-                            ->filter()
-                            ->filter(fn (array $row) => data_get($row['character']->traits, 'personality') === $attribute)
-                            ->sortByDesc(fn (array $row) => (float) ($row['usage_pct'] ?? 0))
-                            ->take($topPerPosition)
-                            ->values();
-
-                        foreach ($picked as $i => $row) {
-                            $members[] = [
-                                'subculture_character_id' => $row['character']->id,
-                                'position' => $position,
-                                'sort' => count($members),
-                                'meta' => $row['usage_pct'] !== null ? ['usage_pct' => $row['usage_pct']] : null,
-                            ];
-                        }
-                    }
-                    if ($members === []) {
-                        continue;
-                    }
-                    $rows[] = [
-                        'party' => [
-                            'attribute' => $attribute,
-                            'kind' => 'usage',
-                            'source' => (string) ($item['source'] ?? 'trickcalrecord'),
-                            'title' => '실측 인기 · '.str_replace(' 집계', '', (string) ($item['season_title'] ?? '시즌')),
-                            'source_url' => $item['source_url'] ?? null,
-                            'period' => $item['period'] ?? null,
-                            'sort' => 100 + $sort, // 큐레이션 뒤에
-                        ],
-                        'members' => $members,
-                    ];
-                }
-            }
         }
 
         // 수집 0건이면 기존 데이터를 지우지 않는다(수집량 가드와 동일 원칙)

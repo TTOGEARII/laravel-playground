@@ -228,19 +228,92 @@ export async function crawlCharacters(page, base) {
     return [...items.values()];
 }
 
-export async function crawlRaids() {
-    log('trickcal 레이드 일정 소스 없음(수동 입력/공략글로 커버)');
-    return [];
+// 트릭컬 레코드(trickcalrecord.pages.dev) — 대충돌/대충돌2.0/프론티어 시즌을 레이드로 수집.
+// 시즌 페이지의 기간·규칙과 '인기 조합'(순위 구간별 9인 편성)을 결정적 파싱한다(Gemini 불필요).
+const RECORD_TYPE_LABELS = [
+    [/^\/clash\/v1\//, '차원 대충돌'],
+    [/^\/clash\/v2\//, '대충돌 2.0'],
+    [/^\/frontier\//, '프론티어'],
+];
+
+export async function crawlRaids(page) {
+    await page.goto(RECORD_BASE, { waitUntil: 'networkidle', timeout: 30_000 });
+
+    const seasons = await page.evaluate(() => [...document.querySelectorAll('a[href^="/clash/"], a[href^="/frontier/"]')]
+        .map((a) => a.getAttribute('href'))
+        .filter((href) => /^\/(clash\/v\d+|frontier)\/\d+$/.test(href))
+        .slice(0, 3));
+
+    const items = [];
+    for (const href of seasons) {
+        try {
+            await page.goto(`${RECORD_BASE}${href}`, { waitUntil: 'networkidle', timeout: 30_000 });
+            const parsed = await page.evaluate(() => {
+                const lines = document.body.innerText.split('\n').map((s) => s.trim()).filter(Boolean);
+                const name = document.title.replace(/ 집계 - 트릭컬 레코드$/, '').trim();
+                const period = lines.find((l) => /^\d{4}-\d{2}-\d{2} ~/.test(l)) ?? null;
+                const bossIdx = lines.indexOf('기간');
+                const boss = bossIdx > 0 ? lines[bossIdx - 1] : null; // '기간' 직전 줄 = 보스/시즌명
+
+                // 규칙(있으면): '규칙' 라벨 뒤 ~ '순위 지정' 전
+                const rules = [];
+                const ri = lines.indexOf('규칙');
+                if (ri >= 0) {
+                    for (let i = ri + 1; i < lines.length && !lines[i].startsWith('순위'); i++) rules.push(lines[i]);
+                }
+
+                // 인기 조합: '1~100위' 류 라벨 뒤 9명
+                const parties = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const m = lines[i].match(/^(\d+~\d+위)$/);
+                    if (!m) continue;
+                    const members = [];
+                    for (let j = i + 1; j < lines.length && members.length < 9; j++) {
+                        const l = lines[j];
+                        if (/^(\d+~\d+위|조합|성격)$/.test(l) || /%$/.test(l)) break;
+                        members.push(l);
+                    }
+                    if (members.length >= 6) parties.push({ label: m[1], members });
+                }
+                return { name, period, boss, rules, parties };
+            });
+
+            if (!parsed.name || !parsed.period) {
+                log(`트릭컬레코드 ${href} 파싱 실패(이름/기간 없음) — 스킵`);
+                continue;
+            }
+            const [start, end] = parsed.period.split('~').map((s) => s.trim());
+            const raidType = RECORD_TYPE_LABELS.find(([re]) => re.test(href))?.[1] ?? '레이드';
+
+            items.push({
+                external_key: href.slice(1).replaceAll('/', '-'), // clash-v1-46 / frontier-18
+                name: parsed.name,
+                raid_type: raidType,
+                boss_name: parsed.boss && parsed.boss !== parsed.name ? parsed.boss : null,
+                tags: parsed.rules.length > 0 ? { 규칙: parsed.rules.join(' · ').slice(0, 120) } : null,
+                starts_at: start || null,
+                ends_at: end || null,
+                source_url: `${RECORD_BASE}${href}`,
+                parties: parsed.parties.map((party, i) => ({
+                    title: `인기 조합 ${party.label}`,
+                    sort: i,
+                    source_url: `${RECORD_BASE}${href}`,
+                    members: party.members.map((memberName, j) => ({ external_key: '', name: memberName, sort: j })),
+                })),
+            });
+        } catch (e) {
+            log(`트릭컬레코드 ${href} 실패(계속 진행): ${e.message}`);
+        }
+    }
+
+    log(`trickcal 레이드(트릭컬 레코드 시즌) ${items.length}건 수집`);
+    return items;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 속성(성격)별 추천 조합 — Gemini(토큰) 없이 구조화 사이트 2곳을 크롤한다.
-//   1) 트릭컬 팀 매니저(trickcal-team-manager.netlify.app/builder)
-//      — 성격별 추천 사도(전열/중열/후열 + 사이드 페어링) 큐레이션. SPA 라 DOM 크롤.
-//   2) 트릭컬 레코드(trickcalrecord.pages.dev)
-//      — 최근 시즌(대충돌/프론티어)의 포지션별 사도 사용률 실측.
-//        성격별 분류는 PHP 쪽에서 캐릭터 마스터의 traits.personality 로 파생한다.
-// 한쪽 실패는 로그 후 계속(부분 수집), 둘 다 실패면 전체 실패.
+// 속성(성격)별 추천 조합 — 팀 매니저(trickcal-team-manager.netlify.app/builder)의
+// 성격별 추천 사도(전열/중열/후열 + 사이드 페어링) 큐레이션. SPA 라 DOM 크롤.
+// (트릭컬 레코드 시즌 실측은 crawlRaids 의 레이드 정보로 분리 — 속성 탭과 별개)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TEAM_MANAGER_URL = 'https://trickcal-team-manager.netlify.app/builder';
@@ -320,87 +393,9 @@ async function crawlTeamManager(page) {
     return parties;
 }
 
-/** 트릭컬 레코드 — 홈의 최신 시즌 카드(대충돌/대충돌2.0/프론티어)에서 포지션별 사용률 수집. */
-async function crawlTrickcalRecord(page) {
-    await page.goto(RECORD_BASE, { waitUntil: 'networkidle', timeout: 30_000 });
-
-    const seasons = await page.evaluate(() => [...document.querySelectorAll('a[href^="/clash/"], a[href^="/frontier/"]')]
-        .map((a) => a.getAttribute('href'))
-        .filter((href) => /^\/(clash\/v\d+|frontier)\/\d+$/.test(href))
-        .slice(0, 3));
-
-    const items = [];
-    for (const href of seasons) {
-        try {
-            await page.goto(`${RECORD_BASE}${href}`, { waitUntil: 'networkidle', timeout: 30_000 });
-            const parsed = await page.evaluate(() => {
-                // innerText 라인 파싱: '후열/중열/전열' 라벨 뒤로 [이름, 카운트, 사용률%, (증감|점유율)] 반복.
-                // 이름 = 숫자/%/New/± 로 시작하지 않는 라인. '인기 사복'류 섹션에서 종료.
-                const lines = document.body.innerText.split('\n').map((s) => s.trim()).filter(Boolean);
-                const title = document.title.replace(/ - 트릭컬 레코드$/, '');
-                const period = lines.find((l) => /^\d{4}-\d{2}-\d{2} ~/.test(l)) ?? null;
-
-                const positions = { back: [], middle: [], front: [] };
-                let current = null;
-                for (const line of lines) {
-                    if (line === '후열') { current = 'back'; continue; }
-                    if (line === '중열') { current = 'middle'; continue; }
-                    if (line === '전열') { current = 'front'; continue; }
-                    if (line === '인기 사복' || line.startsWith('클리어') || line.startsWith('점수')) {
-                        current = null;
-                        continue;
-                    }
-                    if (!current) continue;
-                    if (/^[\d,.]+$/.test(line) || /%$/.test(line) || line === 'New' || /^[+-]/.test(line)) {
-                        // 이름 다음에 오는 첫 % 값 = 사용률
-                        const last = positions[current][positions[current].length - 1];
-                        if (last && last.usage_pct === null && /%$/.test(line)) {
-                            last.usage_pct = parseFloat(line);
-                        }
-                        continue;
-                    }
-                    positions[current].push({ name: line, usage_pct: null });
-                }
-                return { title, period, positions };
-            });
-
-            const total = parsed.positions.back.length + parsed.positions.middle.length + parsed.positions.front.length;
-            if (total === 0) {
-                log(`트릭컬레코드 ${href} 사용률 0건(마크업 변경 의심) — 스킵`);
-                continue;
-            }
-            items.push({
-                kind: 'usage',
-                source: 'trickcalrecord',
-                source_url: `${RECORD_BASE}${href}`,
-                season_title: parsed.title,
-                period: parsed.period,
-                positions: parsed.positions,
-            });
-        } catch (e) {
-            log(`트릭컬레코드 ${href} 실패(계속 진행): ${e.message}`);
-        }
-    }
-
-    log(`트릭컬레코드 시즌 ${items.length}건 수집`);
-    return items;
-}
-
-/** 속성별 추천 조합 수집 진입점 — 두 소스 중 하나라도 성공하면 부분 수집으로 진행. */
+/** 속성별 추천 조합 수집 진입점 — 팀 매니저 큐레이션. */
 export async function crawlAttributeParties(page) {
-    const items = [];
-
-    try {
-        items.push(...await crawlTeamManager(page));
-    } catch (e) {
-        log(`팀매니저 수집 실패(계속 진행): ${e.message}`);
-    }
-    try {
-        items.push(...await crawlTrickcalRecord(page));
-    } catch (e) {
-        log(`트릭컬레코드 수집 실패(계속 진행): ${e.message}`);
-    }
-
-    if (items.length === 0) throw new Error('속성별 조합 소스 2곳 모두 실패');
+    const items = await crawlTeamManager(page);
+    if (items.length === 0) throw new Error('팀 매니저 성격별 추천 수집 실패');
     return items;
 }

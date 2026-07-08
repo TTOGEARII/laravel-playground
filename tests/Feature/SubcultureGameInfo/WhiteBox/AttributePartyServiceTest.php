@@ -66,40 +66,6 @@ class AttributePartyServiceTest extends TestCase
         $this->assertSame(['aside' => '모모'], $party->members->firstWhere('subculture_character_id', $vela->id)->meta);
     }
 
-    public function test_usage_는_성격별로_파생하고_사용률순_상위만_남긴다(): void
-    {
-        config(['subculture-game-info.raids.attribute_parties.usage_top_per_position' => 2]);
-        $this->character('A', '활발A', 'Jolly');
-        $this->character('B', '활발B', 'Jolly');
-        $this->character('C', '활발C', 'Jolly'); // top 2 에서 잘림
-        $this->character('D', '광기D', 'Mad');   // 다른 속성으로 분류
-
-        $stats = app(AttributePartyService::class)->sync($this->game, [
-            [
-                'kind' => 'usage', 'source' => 'trickcalrecord',
-                'source_url' => 'https://example.com/frontier/18',
-                'season_title' => '프론티어 시즌18 집계', 'period' => '2026-05-28 ~ 2026-06-04',
-                'positions' => [
-                    'back' => [
-                        ['name' => '활발A', 'usage_pct' => 10],
-                        ['name' => '활발B', 'usage_pct' => 90],
-                        ['name' => '활발C', 'usage_pct' => 5],
-                        ['name' => '광기D', 'usage_pct' => 80],
-                    ],
-                    'middle' => [], 'front' => [],
-                ],
-            ],
-        ]);
-
-        // Jolly(상위 2) + Mad(1) 두 조합이 파생된다
-        $this->assertSame(2, $stats['parties']);
-        $jolly = AttributeParty::where('attribute', 'Jolly')->with('members.character')->first();
-        $this->assertSame('실측 인기 · 프론티어 시즌18', $jolly->title);
-        $this->assertSame(['활발B', '활발A'], $jolly->members->pluck('character.name')->all()); // 사용률순
-        $this->assertSame(90, $jolly->members[0]->meta['usage_pct']);
-        $this->assertSame(1, AttributeParty::where('attribute', 'Mad')->first()->members()->count());
-    }
-
     public function test_재수집하면_기존_조합을_갈아끼운다(): void
     {
         $this->character('A', '벨라', 'Jolly');

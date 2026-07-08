@@ -1284,6 +1284,26 @@
 .sgr-attr-usage { font-size: 0.62rem; color: var(--ds-text-blue); font-weight: var(--ds-fw-semibold); }
 .sgr-attr-aside { font-size: 0.62rem; color: var(--ds-text-accent); }
 
+/* 속성 조합 멤버 — 보유 하이라이트·대체 지정(다른 편성 카드와 동일 언어) */
+.sgr-attr-member.is-unowned img,
+.sgr-attr-member.is-unowned .sgr-member-placeholder {
+    filter: grayscale(1);
+    opacity: 0.55;
+    border: 2px dashed rgba(148, 163, 184, 0.6);
+}
+.sgr-attr-member.is-unowned .sgr-attr-member-name { color: var(--text-secondary); }
+.sgr-attr-member.is-clickable { cursor: pointer; }
+.sgr-attr-member.is-clickable:hover img,
+.sgr-attr-member.is-clickable:hover .sgr-member-placeholder {
+    border-color: var(--ds-primary);
+    opacity: 0.8;
+}
+.sgr-attr-member.is-user-sub { position: relative; cursor: pointer; }
+.sgr-attr-member.is-user-sub img,
+.sgr-attr-member.is-user-sub .sgr-member-placeholder {
+    border: 2px dashed rgba(243, 114, 127, 0.75);
+}
+
 /* 카드별 내 풀 매칭 뱃지 — 정렬 근거(왜 상위 랭커보다 먼저 오는지) 표시 */
 .sgr-alt-match {
     flex-shrink: 0;
