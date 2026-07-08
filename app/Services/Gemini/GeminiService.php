@@ -98,6 +98,17 @@ class GeminiService
 
         $json = $response->json() ?? [];
 
+        // 토큰 사용량 관측 — 비용 추적용(입력/사고/출력). grep '[Gemini] usage' 로 집계할 수 있다.
+        if ($usage = data_get($json, 'usageMetadata')) {
+            Log::info('[Gemini] usage', [
+                'model' => $this->model,
+                'prompt' => data_get($usage, 'promptTokenCount'),
+                'thoughts' => data_get($usage, 'thoughtsTokenCount'),
+                'output' => data_get($usage, 'candidatesTokenCount'),
+                'total' => data_get($usage, 'totalTokenCount'),
+            ]);
+        }
+
         // 출력 예산 초과로 응답이 잘린 경우를 관측 가능하게 남긴다 (대사 중간 끊김 진단용).
         if (data_get($json, 'candidates.0.finishReason') === 'MAX_TOKENS') {
             Log::warning('Gemini 응답이 MAX_TOKENS로 잘림', [
