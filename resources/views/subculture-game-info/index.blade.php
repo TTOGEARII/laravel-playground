@@ -47,6 +47,14 @@
             <label class="sgi-hide-redeemed-toggle">
                 <input type="checkbox" id="sgi-hide-redeemed"> 교환완료 안 한 코드만 보기
             </label>
+
+            {{-- 새 리딤코드 웹푸시 알림 (VAPID 키 설정 + 푸시 지원 브라우저에서만 노출) --}}
+            @if (filled(config('services.webpush.public_key')))
+                <button type="button" id="sgi-push-toggle" class="sgi-push-toggle" hidden
+                        data-vapid="{{ config('services.webpush.public_key') }}">
+                    🔔 <span id="sgi-push-label">새 코드 알림 받기</span>
+                </button>
+            @endif
         </div>
 
         @forelse ($groups as $g)
@@ -226,6 +234,78 @@
 
             })();
 
+            // === 새 리딤코드 웹푸시 알림 토글 ===
+            (function () {
+                var btn = document.getElementById('sgi-push-toggle');
+                var label = document.getElementById('sgi-push-label');
+                if (!btn || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+
+                var CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                // base64url → Uint8Array (applicationServerKey 형식)
+                function vapidKey() {
+                    var b64 = btn.dataset.vapid.replace(/-/g, '+').replace(/_/g, '/');
+                    var pad = '='.repeat((4 - b64.length % 4) % 4);
+                    var raw = atob(b64 + pad);
+                    return Uint8Array.from(raw, function (c) { return c.charCodeAt(0); });
+                }
+
+                function setState(subscribed) {
+                    btn.classList.toggle('is-on', subscribed);
+                    label.textContent = subscribed ? '새 코드 알림 켜짐' : '새 코드 알림 받기';
+                }
+
+                function api(url, body) {
+                    return fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                        body: JSON.stringify(body),
+                    });
+                }
+
+                navigator.serviceWorker.ready.then(function (reg) {
+                    return reg.pushManager.getSubscription();
+                }).then(function (sub) {
+                    btn.hidden = false;
+                    setState(!!sub);
+                }).catch(function () { /* SW 미등록 등 — 버튼 숨김 유지 */ });
+
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+                    navigator.serviceWorker.ready.then(function (reg) {
+                        return reg.pushManager.getSubscription().then(function (existing) {
+                            if (existing) {
+                                // 해지
+                                return api(@json(route('push.unsubscribe')), { endpoint: existing.endpoint })
+                                    .then(function () { return existing.unsubscribe(); })
+                                    .then(function () { setState(false); });
+                            }
+                            // 구독: 권한 → 브라우저 구독 → 서버 등록
+                            return Notification.requestPermission().then(function (perm) {
+                                if (perm !== 'granted') throw new Error('denied');
+                                return reg.pushManager.subscribe({
+                                    userVisibleOnly: true,
+                                    applicationServerKey: vapidKey(),
+                                });
+                            }).then(function (sub) {
+                                var json = sub.toJSON();
+                                return api(@json(route('push.subscribe')), {
+                                    endpoint: sub.endpoint,
+                                    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+                                }).then(function (res) {
+                                    if (!res.ok) { sub.unsubscribe(); throw new Error('server'); }
+                                    setState(true);
+                                });
+                            });
+                        });
+                    }).catch(function (e) {
+                        if (e && e.message === 'denied') {
+                            alert('알림 권한이 차단돼 있어요. 브라우저 설정에서 이 사이트의 알림을 허용해 주세요.');
+                        }
+                    }).finally(function () { btn.disabled = false; });
+                });
+            })();
+
             document.querySelectorAll('.sgi-copy').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     var code = btn.dataset.code || '';
@@ -258,6 +338,21 @@
             color: #cbd5e1; font-size: 14px; font-weight: 600; user-select: none;
         }
         .sgi-hide-redeemed-toggle input { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+
+        /* 새 코드 웹푸시 알림 토글 — 켜짐 상태만 코랄(기능적 활성 표시) */
+        .sgi-push-toggle {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: var(--ds-round-pill);
+            background: transparent; border: 1px solid var(--ds-border-light);
+            color: var(--ds-ink-muted); font-size: 13px; font-weight: var(--ds-fw-semibold);
+            cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+        }
+        .sgi-push-toggle:hover { color: var(--ds-ink); border-color: var(--ds-ink-soft); }
+        .sgi-push-toggle.is-on {
+            background: rgba(243, 114, 127, 0.14); color: var(--ds-text-accent);
+            border-color: rgba(243, 114, 127, 0.5);
+        }
+        .sgi-push-toggle:disabled { opacity: 0.55; cursor: default; }
 
         /* 필터 ON: 교환완료 카드 숨김 + 카드가 모두 사라진 섹션 숨김 */
         .sgi-page.sgi-hide-redeemed .sgi-code-card.is-redeemed { display: none; }

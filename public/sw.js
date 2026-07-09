@@ -3,7 +3,7 @@
 //  - 페이지 이동(navigate): network-first, 실패 시 오프라인 폴백 페이지
 //  - 빌드 에셋(/build/, 해시 파일명): cache-first (내용 불변이라 안전)
 //  - 그 외(API 등): 서비스워커가 관여하지 않음(브라우저 기본 동작)
-const VERSION = 'v2'; // 아이콘 교체(프로필 일러스트) — 프리캐시 갱신
+const VERSION = 'v3'; // 웹푸시(새 리딤코드 알림) 핸들러 추가
 const SHELL_CACHE = `shell-${VERSION}`;
 const ASSET_CACHE = `assets-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -51,4 +51,35 @@ self.addEventListener('fetch', (event) => {
             })),
         );
     }
+});
+
+// ── 웹푸시: 새 리딤코드 알림 ──────────────────────────────────────
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch (e) { /* 비 JSON 페이로드 무시 */ }
+
+    event.waitUntil(self.registration.showNotification(data.title || '가시있음', {
+        body: data.body || '새 소식이 있어요.',
+        icon: '/images/pwa/icon-192.png',
+        badge: '/images/pwa/icon-192.png',
+        data: { url: data.url || '/' },
+    }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || '/';
+
+    // 이미 열린 탭이 있으면 포커스+이동, 없으면 새로 연다
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((tabs) => {
+            for (const tab of tabs) {
+                if (new URL(tab.url).origin === self.location.origin) {
+                    tab.navigate(url);
+                    return tab.focus();
+                }
+            }
+            return clients.openWindow(url);
+        }),
+    );
 });

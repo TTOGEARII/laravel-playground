@@ -35,6 +35,13 @@ return [
         ],
     ],
 
+    // 웹푸시(VAPID) — PWA 새 리딤코드 알림. 키가 비어 있으면 푸시 기능 전체 비활성(graceful).
+    'webpush' => [
+        'subject' => env('VAPID_SUBJECT', 'mailto:cagameku3842@gmail.com'),
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+    ],
+
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-3-flash-preview'),
