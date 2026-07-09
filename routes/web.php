@@ -21,6 +21,8 @@ Route::post('/push/subscribe', [\App\Http\Controllers\PushSubscriptionController
     ->middleware('throttle:10,1')->name('push.subscribe');
 Route::post('/push/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])
     ->middleware('throttle:10,1')->name('push.unsubscribe');
+Route::post('/push/test', [\App\Http\Controllers\PushSubscriptionController::class, 'test'])
+    ->middleware('throttle:5,1')->name('push.test');
 
 // 약관·정책·라이센스 (정적 안내 페이지)
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');

@@ -100,4 +100,100 @@
             </p>
         </article>
     </section>
+
+    {{-- 푸시 알림 테스트 — 누른 브라우저(기기)에만 발송. VAPID 설정 + 푸시 지원 브라우저에서만 노출 --}}
+    @if (filled(config('services.webpush.public_key')))
+        <section class="push-test">
+            <button type="button" id="push-test-btn" class="push-test-btn" hidden
+                    data-vapid="{{ config('services.webpush.public_key') }}">
+                🔔 푸시 알림 테스트
+            </button>
+            <span id="push-test-status" class="push-test-status" role="status"></span>
+        </section>
+
+        @push('styles')
+        <style>
+            .push-test { display: flex; align-items: center; gap: 12px; justify-content: center; margin-top: 28px; }
+            .push-test-btn {
+                display: inline-flex; align-items: center; gap: 6px;
+                padding: 8px 18px; border-radius: var(--ds-round-pill);
+                background: transparent; border: 1px solid var(--ds-border-light);
+                color: var(--ds-ink-muted); font-size: 13px; font-weight: var(--ds-fw-semibold);
+                cursor: pointer; transition: color .15s, border-color .15s;
+            }
+            .push-test-btn:hover { color: var(--ds-ink); border-color: var(--ds-ink-soft); }
+            .push-test-btn:disabled { opacity: 0.55; cursor: default; }
+            .push-test-status { font-size: 13px; color: var(--ds-ink-muted); }
+        </style>
+        @endpush
+
+        @push('scripts')
+        <script>
+            (function () {
+                var btn = document.getElementById('push-test-btn');
+                var status = document.getElementById('push-test-status');
+                if (!btn || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+
+                var CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                btn.hidden = false;
+
+                function say(msg) { status.textContent = msg; }
+
+                // base64url → Uint8Array (applicationServerKey 형식)
+                function vapidKey() {
+                    var b64 = btn.dataset.vapid.replace(/-/g, '+').replace(/_/g, '/');
+                    var pad = '='.repeat((4 - b64.length % 4) % 4);
+                    return Uint8Array.from(atob(b64 + pad), function (c) { return c.charCodeAt(0); });
+                }
+
+                function api(url, body) {
+                    return fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                        body: JSON.stringify(body),
+                    });
+                }
+
+                // 구독이 없으면 만들어서 서버에 등록까지 하고 돌려준다
+                function ensureSubscription(reg) {
+                    return reg.pushManager.getSubscription().then(function (sub) {
+                        if (sub) return sub;
+                        return Notification.requestPermission().then(function (perm) {
+                            if (perm !== 'granted') throw new Error('denied');
+                            return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey() });
+                        }).then(function (sub) {
+                            var keys = sub.toJSON().keys;
+                            return api(@json(route('push.subscribe')), {
+                                endpoint: sub.endpoint,
+                                keys: { p256dh: keys.p256dh, auth: keys.auth },
+                            }).then(function (res) {
+                                if (!res.ok) { sub.unsubscribe(); throw new Error('server'); }
+                                return sub;
+                            });
+                        });
+                    });
+                }
+
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+                    say('보내는 중…');
+                    navigator.serviceWorker.ready.then(function (reg) {
+                        return ensureSubscription(reg);
+                    }).then(function (sub) {
+                        return api(@json(route('push.test')), { endpoint: sub.endpoint });
+                    }).then(function (res) {
+                        return res.json().then(function (json) {
+                            var result = json && json.data && json.data.result;
+                            say(result === 'sent' ? '발송 완료 — 잠시 후 알림이 떠요 ✅' : '발송 실패 (' + (result || res.status) + ')');
+                        });
+                    }).catch(function (e) {
+                        say(e && e.message === 'denied'
+                            ? '알림 권한이 차단돼 있어요 — 브라우저 설정에서 허용해 주세요'
+                            : '테스트 실패 — 잠시 후 다시 시도해 주세요');
+                    }).finally(function () { btn.disabled = false; });
+                });
+            })();
+        </script>
+        @endpush
+    @endif
 @endsection
