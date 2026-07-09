@@ -1,0 +1,50 @@
+{
+    "name": "돈없음 가시있음 — Kanenashi Togeari",
+    "short_name": "가시있음",
+    "description": "오타쿠 굿즈 가격비교 · AI 캐릭터 채팅 · 미니게임 · 서브컬쳐 게임 리딤코드/레이드 정보",
+    "id": "/",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#121212",
+    "theme_color": "#121212",
+    "lang": "ko",
+    "icons": [
+        {
+            "src": "/images/pwa/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/pwa/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/pwa/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "리딤코드",
+            "url": "/subculture-game-info",
+            "icons": [{ "src": "/images/pwa/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "레이드 정보",
+            "url": "/subculture-game-info/raids",
+            "icons": [{ "src": "/images/pwa/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "오타쿠샵 가격비교",
+            "url": "/otaku-shop",
+            "icons": [{ "src": "/images/pwa/icon-192.png", "sizes": "192x192" }]
+        }
+    ]
+}

@@ -5,12 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Kanenashi Togeari')</title>
-    {{-- 테마 초기화: 페인트 전에 data-theme 를 확정해 플래시(FOUC)를 막는다. 기본 다크. --}}
+    {{-- PWA: 홈 화면 설치(standalone) 지원 --}}
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#121212">
+    <link rel="apple-touch-icon" href="/images/pwa/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="가시있음">
+    {{-- 테마 초기화: 페인트 전에 data-theme 를 확정해 플래시(FOUC)를 막는다. 기본 다크.
+         PWA 상태바(theme-color)도 현재 테마에 맞춘다. --}}
     <script>
         (function () {
             var saved = localStorage.getItem('theme');
             var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
             document.documentElement.setAttribute('data-theme', theme);
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', theme === 'light' ? '#e7e8ec' : '#121212');
         })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,8 +48,20 @@
                 var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
                 document.documentElement.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
+                // PWA 상태바 색도 테마에 맞춰 전환
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', next === 'light' ? '#e7e8ec' : '#121212');
             });
         })();
+    </script>
+
+    {{-- PWA 서비스워커 등록 (오프라인 폴백 + 빌드 에셋 캐시) --}}
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () { /* 미지원/실패 시 조용히 무시 */ });
+            });
+        }
     </script>
 
     <div class="container">
