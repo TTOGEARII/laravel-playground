@@ -3,7 +3,7 @@
 //  - 페이지 이동(navigate): network-first, 실패 시 오프라인 폴백 페이지
 //  - 빌드 에셋(/build/, 해시 파일명): cache-first (내용 불변이라 안전)
 //  - 그 외(API 등): 서비스워커가 관여하지 않음(브라우저 기본 동작)
-const VERSION = 'v3'; // 웹푸시(새 리딤코드 알림) 핸들러 추가
+const VERSION = 'v4'; // 푸시 알림 tag 부여 — 같은 종류 알림 중복 표시 방지
 const SHELL_CACHE = `shell-${VERSION}`;
 const ASSET_CACHE = `assets-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -62,6 +62,9 @@ self.addEventListener('push', (event) => {
         body: data.body || '새 소식이 있어요.',
         icon: '/images/pwa/icon-192.png',
         badge: '/images/pwa/icon-192.png',
+        // 같은 태그 알림은 겹쳐 쌓이지 않고 최신 내용으로 교체된다
+        tag: data.tag || 'sgi-push',
+        renotify: true,
         data: { url: data.url || '/' },
     }));
 });
