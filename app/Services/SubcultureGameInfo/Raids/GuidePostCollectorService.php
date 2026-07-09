@@ -102,6 +102,7 @@ class GuidePostCollectorService
                     'url' => $data->url,
                     'posted_at' => $data->postedAt,
                     'views' => $data->views,
+                    'rate' => $data->rate,
                     'subculture_raid_id' => $raid?->id,
                     'matched_keyword' => $matchedKeyword,
                 ],

@@ -1,6 +1,6 @@
 <template>
   <div v-if="loaded && posts.length" class="sgr-feed">
-    <h3 class="sgr-feed-title">📰 최근 커뮤니티 공략글</h3>
+    <h3 class="sgr-feed-title">📰 커뮤니티 공략글 <small class="sgr-feed-hint">최근 레이드·추천순</small></h3>
     <ul class="sgr-guide-list">
       <li v-for="post in posts" :key="post.url">
         <a :href="post.url" target="_blank" rel="noopener" class="sgr-guide-item">
@@ -10,7 +10,7 @@
           <span class="sgr-guide-title">{{ post.title }}</span>
           <span class="sgr-guide-meta">
             <template v-if="post.raid_name">{{ post.raid_name }} · </template>
-            {{ formatDate(post.posted_at) }} · 조회 {{ (post.views ?? 0).toLocaleString() }}
+            {{ formatDate(post.posted_at) }}<template v-if="post.rate"> · 추천 {{ post.rate.toLocaleString() }}</template> · 조회 {{ (post.views ?? 0).toLocaleString() }}
           </span>
         </a>
       </li>

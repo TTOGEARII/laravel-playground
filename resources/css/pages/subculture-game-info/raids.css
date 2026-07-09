@@ -157,6 +157,12 @@
     color: var(--text-primary);
     margin-bottom: var(--ds-space-xs);
 }
+.sgr-feed-hint {
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-regular);
+    color: var(--text-secondary);
+    margin-left: var(--ds-space-xs);
+}
 
 /* ---------------------------------- 게임 섹션/탭 공용 */
 .sgr-game-section {

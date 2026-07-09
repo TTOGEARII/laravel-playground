@@ -21,6 +21,7 @@ class GuidePost extends Model
         'url',
         'posted_at',
         'views',
+        'rate',
         'matched_keyword',
     ];
 
@@ -29,6 +30,7 @@ class GuidePost extends Model
         return [
             'posted_at' => 'datetime',
             'views' => 'integer',
+            'rate' => 'integer',
         ];
     }
 

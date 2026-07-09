@@ -24,9 +24,13 @@ class GuidePostController extends Controller
         $game = Game::where('slug', $validated['game'])->firstOrFail();
         $limit = (int) ($validated['limit'] ?? 10);
 
+        // 최근 레이드에 연결된 공략글 우선 → 추천수 많은 순 → 최신순.
+        // (수집 자체가 keep_days(60일) 내 글만 유지하므로 별도 기간 필터는 불필요)
         $posts = GuidePost::query()
             ->where('subculture_game_id', $game->id)
             ->with('raid:id,name')
+            ->orderByRaw('CASE WHEN subculture_raid_id IS NOT NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('rate')
             ->orderByDesc('posted_at')
             ->limit($limit)
             ->get()
@@ -36,6 +40,7 @@ class GuidePostController extends Controller
                 'source' => $post->source,
                 'posted_at' => $post->posted_at?->toIso8601String(),
                 'views' => $post->views,
+                'rate' => $post->rate,
                 'raid_id' => $post->subculture_raid_id,
                 'raid_name' => $post->raid?->name,
             ]);
