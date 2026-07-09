@@ -22,7 +22,8 @@
         {{-- 게임 필터: 버튼(탭) 다중 선택. 각 버튼은 해당 게임을 선택 목록에 넣고 빼는 링크(토글) --}}
         <nav class="sgi-tabs">
             <a href="{{ route('subculture-game-info.index') }}"
-               class="sgi-tab {{ empty($selected) ? 'is-active' : '' }}">전체</a>
+               class="sgi-tab {{ empty($selected) ? 'is-active' : '' }}">전체
+                <span class="sgi-tab-unredeemed" data-unredeemed-tab="__all__" hidden></span></a>
             @foreach ($games as $game)
                 @php
                     $isSel = in_array($game->slug, $selected, true);
@@ -35,6 +36,8 @@
                 @endphp
                 <a href="{{ $href }}" class="sgi-tab {{ $isSel ? 'is-active' : '' }}">
                     <span class="sgi-tab-icon">{{ $game->icon }}</span> {{ $game->name }}
+                    {{-- 안 쓴(미교환) 코드 수 — 교환완료 상태가 클라이언트(로그인=서버값, 게스트=localStorage)라 JS 가 채운다 --}}
+                    <span class="sgi-tab-unredeemed" data-unredeemed-tab="{{ $game->slug }}" hidden></span>
                 </a>
             @endforeach
         </nav>
@@ -47,12 +50,14 @@
         </div>
 
         @forelse ($groups as $g)
-            <section class="sgi-game">
+            <section class="sgi-game" data-game="{{ $g['game']->slug }}">
                 <header class="sgi-game-head">
                     <h2 class="sgi-game-title">
                         <span class="sgi-game-icon">{{ $g['game']->icon }}</span>
                         {{ $g['game']->name }}
                         <span class="sgi-count">{{ $g['verified']->count() }}</span>
+                        {{-- 아직 교환 안 한 코드 수(미검증 포함) — JS 계산 --}}
+                        <span class="sgi-unredeemed" data-unredeemed-badge hidden title="아직 교환 완료 처리하지 않은 코드">안 쓴 코드 <b>0</b></span>
                     </h2>
                     @if ($g['game']->redeem_note)
                         <span class="sgi-game-note">{{ $g['game']->redeem_note }}</span>
@@ -174,6 +179,34 @@
                         var anyVisible = Array.prototype.some.call(cards, function (c) { return c.offsetParent !== null; });
                         box.classList.toggle('sgi-hidden-empty', cards.length > 0 && !anyVisible);
                     });
+                    recountUnredeemed();
+                }
+
+                // === 안 쓴(미교환) 코드 수 배지 — 섹션 헤더 + 게임 탭 ===
+                // 교환완료 상태가 클라이언트(게스트=localStorage)에만 있어 JS 로 센다.
+                // 접힌 미검증(커뮤니티) 코드는 제외 — 검증 코드 수(sgi-count)와 짝이 맞아야 안 헷갈린다.
+                function recountUnredeemed() {
+                    var total = 0;
+                    document.querySelectorAll('.sgi-game[data-game]').forEach(function (section) {
+                        var n = section.querySelectorAll(':scope > .sgi-codes .sgi-code-card:not(.is-redeemed)').length;
+                        total += n;
+
+                        var badge = section.querySelector('[data-unredeemed-badge]');
+                        if (badge) {
+                            badge.hidden = n === 0;
+                            badge.querySelector('b').textContent = n;
+                        }
+                        var tab = document.querySelector('[data-unredeemed-tab="' + section.dataset.game + '"]');
+                        if (tab) {
+                            tab.hidden = n === 0;
+                            tab.textContent = n;
+                        }
+                    });
+                    var allTab = document.querySelector('[data-unredeemed-tab="__all__"]');
+                    if (allTab) {
+                        allTab.hidden = total === 0;
+                        allTab.textContent = total;
+                    }
                 }
                 function applyHide(on) {
                     if (page) page.classList.toggle('sgi-hide-redeemed', on);
@@ -229,6 +262,24 @@
         /* 필터 ON: 교환완료 카드 숨김 + 카드가 모두 사라진 섹션 숨김 */
         .sgi-page.sgi-hide-redeemed .sgi-code-card.is-redeemed { display: none; }
         .sgi-hidden-empty { display: none !important; }
+
+        /* 안 쓴(미교환) 코드 수 배지 — 탭은 숫자만, 섹션 헤더는 라벨 포함 */
+        .sgi-tab-unredeemed {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 18px; height: 18px; padding: 0 5px; margin-left: 2px;
+            border-radius: var(--ds-round-full);
+            background: rgba(243, 114, 127, 0.18); color: var(--ds-text-accent);
+            border: 1px solid rgba(243, 114, 127, 0.5);
+            font-size: var(--ds-fs-micro); font-weight: var(--ds-fw-bold);
+        }
+        .sgi-tab.is-active .sgi-tab-unredeemed { background: rgba(243, 114, 127, 0.3); }
+        .sgi-unredeemed {
+            padding: 2px 10px; border-radius: var(--ds-round-full);
+            background: rgba(243, 114, 127, 0.14); color: var(--ds-text-accent);
+            border: 1px solid rgba(243, 114, 127, 0.45);
+            font-size: 0.72rem; font-weight: var(--ds-fw-semibold);
+        }
+        .sgi-unredeemed b { font-weight: var(--ds-fw-bold); }
     </style>
     @endpush
 @endsection
