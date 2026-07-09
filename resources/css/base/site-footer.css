@@ -64,6 +64,36 @@
     opacity: 0.4;
 }
 
+/* PWA 앱 설치 버튼 + iOS 설치 안내 */
+.site-footer-install {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ds-space-xs);
+}
+
+.site-footer-install-btn {
+    padding: 9px 20px;
+    border: 1px solid rgba(243, 114, 127, 0.55);
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.12);
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-small);
+    font-weight: var(--ds-fw-semibold);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.site-footer-install-btn:hover {
+    background: rgba(243, 114, 127, 0.22);
+}
+
+.site-footer-install-hint {
+    font-size: var(--ds-fs-micro);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
 .site-footer-made {
     margin-top: 2px;
     font-size: 0.75rem;

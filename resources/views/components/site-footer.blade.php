@@ -31,6 +31,54 @@
             <a href="{{ route('inquiry.create') }}">문의하기</a>
         </nav>
 
+        {{-- PWA 앱 설치 — 크롬/안드로이드는 설치 프롬프트 직접 호출, 그 외(iOS 등)는 설치 방법 안내.
+             앱(standalone)으로 이미 실행 중이면 표시하지 않는다. --}}
+        <div class="site-footer-install" id="pwa-install" hidden>
+            <button type="button" id="pwa-install-btn" class="site-footer-install-btn">
+                📱 홈 화면에 앱으로 설치
+            </button>
+            <p class="site-footer-install-hint" id="pwa-install-hint" hidden>
+                아이폰: 사파리 공유(<span aria-hidden="true">&#x2B06;&#xFE0E;</span>) → "홈 화면에 추가" ·
+                안드로이드: 크롬 메뉴(⋮) → "앱 설치"
+            </p>
+        </div>
+        <script>
+            (function () {
+                var box = document.getElementById('pwa-install');
+                var btn = document.getElementById('pwa-install-btn');
+                var hint = document.getElementById('pwa-install-hint');
+                if (!box || !btn) return;
+
+                // 이미 앱으로 실행 중이면 설치 링크 불필요
+                var standalone = window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+                if (standalone) return;
+
+                box.hidden = false;
+
+                var deferredPrompt = null;
+                window.addEventListener('beforeinstallprompt', function (e) {
+                    e.preventDefault(); // 브라우저 기본 배너 대신 푸터 버튼으로 트리거
+                    deferredPrompt = e;
+                });
+
+                btn.addEventListener('click', function () {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then(function (choice) {
+                            if (choice.outcome === 'accepted') box.hidden = true;
+                            deferredPrompt = null;
+                        });
+                    } else if (hint) {
+                        // 프롬프트 미지원(iOS 사파리 등) → 설치 방법 토글
+                        hint.hidden = !hint.hidden;
+                    }
+                });
+
+                window.addEventListener('appinstalled', function () { box.hidden = true; });
+            })();
+        </script>
+
         <p class="site-footer-made">
             Made with <span class="footer-heart">❤️</span> by TTOGEARII
         </p>
