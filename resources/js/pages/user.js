@@ -10,5 +10,5 @@ if (el) {
       userData = JSON.parse(raw);
     } catch (_) {}
   }
-  createApp(UserPage, { userData }).mount(el);
+  createApp(UserPage, { userData, vapidKey: el.getAttribute('data-vapid') || '' }).mount(el);
 }

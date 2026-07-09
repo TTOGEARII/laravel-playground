@@ -242,6 +242,45 @@
   color: var(--text-primary);
 }
 
+/* 설정 섹션 — 다크 모드 · 앱 푸시 토글 */
+.user-settings {
+  border-top: 1px solid var(--border-color);
+  padding-top: 24px;
+  margin-bottom: 28px;
+}
+
+.user-settings-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.user-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.user-setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.user-setting-name {
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.user-setting-desc {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
 .user-logout {
   padding: 12px 24px;
   background: rgba(248, 113, 113, 0.2);

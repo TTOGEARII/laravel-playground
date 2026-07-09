@@ -9,5 +9,8 @@
 @endsection
 
 @section('content')
-    <div id="user-app" data-user="{{ json_encode($user, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) }}"></div>
+    {{-- data-vapid: 웹푸시 공개키(미설정이면 빈 값 → 알림 설정 행 비활성) --}}
+    <div id="user-app"
+         data-user="{{ json_encode($user, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) }}"
+         data-vapid="{{ config('services.webpush.public_key') }}"></div>
 @endsection
