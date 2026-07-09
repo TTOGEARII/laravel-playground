@@ -3,7 +3,7 @@
 //  - 페이지 이동(navigate): network-first, 실패 시 오프라인 폴백 페이지
 //  - 빌드 에셋(/build/, 해시 파일명): cache-first (내용 불변이라 안전)
 //  - 그 외(API 등): 서비스워커가 관여하지 않음(브라우저 기본 동작)
-const VERSION = 'v4'; // 푸시 알림 tag 부여 — 같은 종류 알림 중복 표시 방지
+const VERSION = 'v5'; // 상태바용 모노크롬 배지 아이콘 적용 (가시 돋친 꽃 실루엣)
 const SHELL_CACHE = `shell-${VERSION}`;
 const ASSET_CACHE = `assets-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -61,7 +61,9 @@ self.addEventListener('push', (event) => {
     event.waitUntil(self.registration.showNotification(data.title || '가시있음', {
         body: data.body || '새 소식이 있어요.',
         icon: '/images/pwa/icon-192.png',
-        badge: '/images/pwa/icon-192.png',
+        // badge = 안드로이드 상태바의 작은 아이콘. OS가 흑백 실루엣으로 강제하므로
+        // 컬러 아이콘 대신 투명 배경 모노크롬 전용 이미지를 쓴다(사각형 뭉개짐 방지).
+        badge: '/images/pwa/badge-96.png',
         // 같은 태그 알림은 겹쳐 쌓이지 않고 최신 내용으로 교체된다
         tag: data.tag || 'sgi-push',
         renotify: true,
