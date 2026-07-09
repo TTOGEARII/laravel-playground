@@ -27,10 +27,20 @@ class MainController extends Controller
             ? CodeRedemption::where('user_id', Auth::id())->pluck('redeem_code_id')->all()
             : [];
 
+        // 전체 게임 기준으로 한 번 조회 — 화면 표시는 선택 게임만 걸러내되,
+        // '안 쓴 코드' 배지는 선택 안 된 탭에도 떠야 하므로 게임별 검증 코드 ID 를 통째로 내려준다.
+        $allGroups = $this->codeService->grouped();
+        $groups = empty($selected)
+            ? $allGroups
+            : array_values(array_filter($allGroups, fn (array $g) => in_array($g['game']->slug, $selected, true)));
+
         return view('subculture-game-info.index', [
             'games' => $games,
             'selected' => $selected,
-            'groups' => $this->codeService->grouped($selected),
+            'groups' => $groups,
+            'verifiedIdsByGame' => collect($allGroups)
+                ->mapWithKeys(fn (array $g) => [$g['game']->slug => $g['verified']->pluck('id')->all()])
+                ->all(),
             'isLoggedIn' => Auth::check(),
             'redeemedIds' => $redeemedIds,
         ]);

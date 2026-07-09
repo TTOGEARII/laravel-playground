@@ -192,22 +192,27 @@
 
                 // === 안 쓴(미교환) 코드 수 배지 — 섹션 헤더 + 게임 탭 ===
                 // 교환완료 상태가 클라이언트(게스트=localStorage)에만 있어 JS 로 센다.
+                // 게임 필터로 화면에 없는(선택 안 된) 탭에도 숫자가 떠야 하므로,
+                // DOM 카드가 아니라 서버가 내려준 게임별 검증 코드 ID 목록으로 센다.
                 // 접힌 미검증(커뮤니티) 코드는 제외 — 검증 코드 수(sgi-count)와 짝이 맞아야 안 헷갈린다.
+                var VERIFIED_IDS = @json($verifiedIdsByGame);
+
                 function recountUnredeemed() {
                     var total = 0;
-                    document.querySelectorAll('.sgi-game[data-game]').forEach(function (section) {
-                        var n = section.querySelectorAll(':scope > .sgi-codes .sgi-code-card:not(.is-redeemed)').length;
+                    Object.keys(VERIFIED_IDS).forEach(function (slug) {
+                        var n = VERIFIED_IDS[slug].filter(function (id) { return !redeemed.has(Number(id)); }).length;
                         total += n;
 
-                        var badge = section.querySelector('[data-unredeemed-badge]');
-                        if (badge) {
-                            badge.hidden = n === 0;
-                            badge.querySelector('b').textContent = n;
-                        }
-                        var tab = document.querySelector('[data-unredeemed-tab="' + section.dataset.game + '"]');
+                        var tab = document.querySelector('[data-unredeemed-tab="' + slug + '"]');
                         if (tab) {
                             tab.hidden = n === 0;
                             tab.textContent = n;
+                        }
+                        var section = document.querySelector('.sgi-game[data-game="' + slug + '"]');
+                        var badge = section && section.querySelector('[data-unredeemed-badge]');
+                        if (badge) {
+                            badge.hidden = n === 0;
+                            badge.querySelector('b').textContent = n;
                         }
                     });
                     var allTab = document.querySelector('[data-unredeemed-tab="__all__"]');
