@@ -528,10 +528,10 @@ class CrawlSyncService
      * @param  array<int, string>  $a
      * @param  array<int, string>  $b
      */
-    public static function tokensSimilar(array $a, array $b): bool
+    public static function tokensSimilar(array $a, array $b, ?int $minShared = null): bool
     {
         [$shared, $uniqA, $uniqB] = self::tokenDiff(array_values(array_unique($a)), array_values(array_unique($b)));
-        if ($shared < self::FUZZY_MIN_SHARED) {
+        if ($shared < ($minShared ?? self::FUZZY_MIN_SHARED)) {
             return false;
         }
         // 의상 변형 가드: 공유로 소화되지 못한 고유 토큰에 변형 키워드(수영복/교복 등)가 남아 있으면
