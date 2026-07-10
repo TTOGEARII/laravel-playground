@@ -211,6 +211,16 @@
             :class="{ 'is-featured': index === 0, 'is-upcoming': isUpcoming(product) }"
           >
             <span v-if="isUpcoming(product)" class="upcoming-ribbon">발매예정</span>
+            <button
+              type="button"
+              class="wish-btn"
+              :class="{ 'is-on': isWished(product) }"
+              :title="isWished(product) ? '찜 해제' : '찜하기 — 품절 상품이 재입고되면 푸시로 알려드려요'"
+              :disabled="wishBusy.has(product.ok_product_id)"
+              @click="toggleWish(product)"
+            >
+              {{ isWished(product) ? '♥' : '♡' }}
+            </button>
             <div class="product-thumbnail">
               <div
                 v-if="product.ok_product_image_url"
@@ -357,6 +367,10 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { otakuShopApi } from './api.js';
+
+const props = defineProps({
+  loggedIn: { type: Boolean, default: false },
+});
 
 const categories = ref([]);
 const ips = ref([]);
@@ -636,10 +650,56 @@ function resetFilters() {
   fetchProducts(1);
 }
 
+// === 찜(재입고 알림) — 로그인 전용. 품절 상품이 다시 입고되면 웹푸시로 알려준다. ===
+const wishedIds = ref(new Set());
+const wishBusy = ref(new Set());
+
+function isWished(product) {
+  return wishedIds.value.has(product.ok_product_id);
+}
+
+async function loadWishes() {
+  if (!props.loggedIn) return;
+  try {
+    wishedIds.value = new Set(await otakuShopApi.getWishes());
+  } catch (e) {
+    console.error('찜 목록 로드 실패', e);
+  }
+}
+
+async function toggleWish(product) {
+  if (!props.loggedIn) {
+    if (window.confirm('찜(재입고 알림)은 로그인이 필요해요. 로그인 페이지로 이동할까요?')) {
+      window.location.href = '/login';
+    }
+    return;
+  }
+
+  const id = product.ok_product_id;
+  wishBusy.value.add(id);
+  wishBusy.value = new Set(wishBusy.value);
+  try {
+    if (wishedIds.value.has(id)) {
+      await otakuShopApi.removeWish(id);
+      wishedIds.value.delete(id);
+    } else {
+      await otakuShopApi.addWish(id);
+      wishedIds.value.add(id);
+    }
+    wishedIds.value = new Set(wishedIds.value); // Set 은 반응형 감지가 안 돼 재할당
+  } catch (e) {
+    console.error('찜 처리 실패', e);
+  } finally {
+    wishBusy.value.delete(id);
+    wishBusy.value = new Set(wishBusy.value);
+  }
+}
+
 onMounted(() => {
   fetchCategories();
   fetchIps();
   fetchShops().then(() => fetchProducts(1));
+  loadWishes();
   document.addEventListener('mousedown', onDocClick);
 });
 

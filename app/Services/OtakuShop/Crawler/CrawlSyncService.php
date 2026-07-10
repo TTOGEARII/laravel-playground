@@ -7,6 +7,7 @@ use App\Models\OtakuShop\OtakuIp;
 use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
 use App\Models\OtakuShop\OtakuShop;
+use App\Models\OtakuShop\OtakuWish;
 use App\Services\OtakuShop\Crawler\DTO\CrawledProductDto;
 use Illuminate\Support\Carbon;
 
@@ -22,9 +23,28 @@ class CrawlSyncService
     /** 이름 유사 매칭에 필요한 최소 공통 코어 토큰 수(과병합 방지). */
     public const FUZZY_MIN_SHARED = 3;
 
+    /** 이번 동기화에서 품절→구매가능으로 바뀐 상품 ID (찜 재입고 알림용). */
+    private array $restockedProductIds = [];
+
+    /** 찜이 하나라도 있는지 (없으면 재입고 감지 자체를 생략 — 전량 적재 시 불필요한 쿼리 방지). */
+    private ?bool $anyWishExists = null;
+
     public function __construct(
         private ProductNormalizer $normalizer
     ) {}
+
+    /**
+     * 재입고 상품 ID 를 꺼내고 비운다. 크롤 커맨드가 동기화 후 호출해 찜 알림을 보낸다.
+     *
+     * @return int[]
+     */
+    public function pullRestockedProductIds(): array
+    {
+        $ids = array_keys($this->restockedProductIds);
+        $this->restockedProductIds = [];
+
+        return $ids;
+    }
 
     /**
      * 1. config 의 샵 정보를 otaku_shop 에 insert (이미 있으면 스킵).
@@ -753,12 +773,41 @@ class CrawlSyncService
             ->where('ok_offer_external_id', $dto->externalId)
             ->first();
 
+        $this->detectRestock($product, $offer, $dto);
+
         if ($offer !== null) {
             $offer->update($offerData);
             $stats['offers_updated']++;
         } else {
             OtakuOffer::create($offerData);
             $stats['offers_created']++;
+        }
+    }
+
+    /**
+     * 품절→구매가능 전환 감지(찜 재입고 알림용). 오퍼가 새로 재고 있음이 되는 시점에,
+     * 상품에 다른 구매가능 오퍼가 하나도 없었다면 "상품 재입고"로 본다.
+     * 찜이 없으면 감지 자체를 생략하고, 방금 생성된 상품(찜 불가능)도 건너뛴다.
+     */
+    private function detectRestock(OtakuProduct $product, ?OtakuOffer $offer, CrawledProductDto $dto): void
+    {
+        $becameAvailable = $dto->available && ($offer === null || ! $offer->ok_offer_available_flg);
+        if (! $becameAvailable || $product->wasRecentlyCreated) {
+            return;
+        }
+
+        $this->anyWishExists ??= OtakuWish::exists();
+        if (! $this->anyWishExists) {
+            return;
+        }
+
+        $hadStock = OtakuOffer::where('ok_offer_product_id', $product->ok_product_id)
+            ->where('ok_offer_available_flg', true)
+            ->when($offer !== null, fn ($q) => $q->where('ok_offer_id', '!=', $offer->ok_offer_id))
+            ->exists();
+
+        if (! $hadStock) {
+            $this->restockedProductIds[(int) $product->ok_product_id] = true;
         }
     }
 

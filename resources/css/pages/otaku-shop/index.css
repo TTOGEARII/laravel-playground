@@ -442,6 +442,7 @@
 }
 
 .product-card-row {
+    position: relative; /* 찜 하트·발매예정 리본의 absolute 기준 */
     display: grid;
     grid-template-columns: 120px minmax(0, 1.7fr) minmax(0, 1.7fr);
     gap: 16px;
@@ -452,6 +453,30 @@
     transition: all 0.2s ease;
     min-width: 0;
 }
+
+/* 찜(재입고 알림) 하트 — 카드 좌상단, 켜짐은 코랄(기능적 활성) */
+.wish-btn {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    z-index: 2;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--ds-round-circle);
+    background: color-mix(in srgb, var(--ds-surface) 78%, transparent);
+    color: var(--ds-ink-muted);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.12s ease, color 0.15s ease;
+}
+.wish-btn:hover { transform: scale(1.12); color: var(--ds-ink); }
+.wish-btn.is-on { color: var(--ds-primary); }
+.wish-btn:disabled { opacity: 0.5; cursor: default; }
 
 .product-card-row.is-featured {
     border-color: rgba(243, 114, 127, 0.9);

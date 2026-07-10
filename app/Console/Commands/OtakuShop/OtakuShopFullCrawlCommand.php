@@ -4,6 +4,7 @@ namespace App\Console\Commands\OtakuShop;
 
 use App\Services\OtakuShop\Crawler\CrawlSyncService;
 use App\Services\OtakuShop\Crawler\ShopCrawlRunner;
+use App\Services\OtakuShop\RestockAlertService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -22,7 +23,7 @@ class OtakuShopFullCrawlCommand extends Command
 
     protected $description = '오타쿠샵 3사 전량 크롤 (최초 1회, 모든 카테고리·끝 페이지·차단 방지 딜레이)';
 
-    public function handle(ShopCrawlRunner $runner, CrawlSyncService $syncService): int
+    public function handle(ShopCrawlRunner $runner, CrawlSyncService $syncService, RestockAlertService $restockAlerts): int
     {
         $reqMs = (int) config('otaku-crawler.crawl.full.delay_ms_between_requests', 3000);
         $shopMs = (int) config('otaku-crawler.crawl.full.delay_ms_between_shops', 8000);
@@ -85,6 +86,13 @@ class OtakuShopFullCrawlCommand extends Command
             ? 0
             : $syncService->markUnseenOffersUnavailable($disappearShops, $runStartedAt);
         $this->line("    ↳ 품절 전환된 오퍼: {$soldOut}건");
+
+        // 품절→구매가능으로 바뀐 찜 상품이 있으면 해당 유저에게 웹푸시
+        $restocked = $syncService->pullRestockedProductIds();
+        if ($restocked !== []) {
+            $r = $restockAlerts->notify($restocked);
+            $this->info("재입고 알림: 찜 상품 {$r['products']} · 유저 {$r['users']} · 발송 {$r['sent']}");
+        }
 
         $this->info('4. 누적 저장 결과:');
         $this->table(

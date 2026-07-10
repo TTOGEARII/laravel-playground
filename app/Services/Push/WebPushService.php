@@ -27,16 +27,31 @@ class WebPushService
      */
     public function broadcast(string $title, string $body, string $url): array
     {
+        $stats = $this->sendToSubscriptions(PushSubscription::all(), $title, $body, $url);
+
+        Log::info('[PUSH] 발송 완료', $stats + ['title' => $title]);
+
+        return $stats;
+    }
+
+    /**
+     * 지정한 구독 목록에만 알림을 보낸다(특정 유저 대상 알림 등).
+     *
+     * @param  iterable<int, PushSubscription>  $subscriptions
+     * @return array{sent: int, pruned: int, failed: int}
+     */
+    public function sendToSubscriptions(iterable $subscriptions, string $title, string $body, string $url): array
+    {
         $stats = ['sent' => 0, 'pruned' => 0, 'failed' => 0];
+
+        $subscriptions = collect($subscriptions);
+        if ($subscriptions->isEmpty()) {
+            return $stats;
+        }
 
         if (! $this->enabled()) {
             Log::info('[PUSH] VAPID 키 미설정 — 발송 스킵');
 
-            return $stats;
-        }
-
-        $subscriptions = PushSubscription::all();
-        if ($subscriptions->isEmpty()) {
             return $stats;
         }
 
@@ -50,8 +65,6 @@ class WebPushService
         foreach ($subscriptions as $row) {
             $stats[$this->send($webPush, $row, $payload)]++;
         }
-
-        Log::info('[PUSH] 발송 완료', $stats + ['title' => $title]);
 
         return $stats;
     }

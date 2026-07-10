@@ -4,6 +4,7 @@ namespace App\Console\Commands\OtakuShop;
 
 use App\Services\OtakuShop\Crawler\CrawlSyncService;
 use App\Services\OtakuShop\Crawler\ShopCrawlRunner;
+use App\Services\OtakuShop\RestockAlertService;
 use Illuminate\Console\Command;
 
 /**
@@ -17,7 +18,7 @@ class OtakuShopCrawlCommand extends Command
 
     protected $description = '오타쿠샵 3사 업데이트 크롤 (신규/가격/재고 갱신)';
 
-    public function handle(ShopCrawlRunner $runner, CrawlSyncService $syncService): int
+    public function handle(ShopCrawlRunner $runner, CrawlSyncService $syncService, RestockAlertService $restockAlerts): int
     {
         // 샵/카테고리는 firstOrCreate(멱등)이며, 상품·오퍼 동기화 시 코드→ID 매핑에 반드시 필요하므로
         // 증분 모드에서도 항상 먼저 보장한다. (빈 DB + 증분 스케줄에서 아무것도 적재되지 않던 문제 방지)
@@ -51,6 +52,13 @@ class OtakuShopCrawlCommand extends Command
             $this->warn('크롤된 상품이 없습니다. Selenium 드라이버(Chrome) 실행 여부를 확인하세요.');
 
             return self::FAILURE;
+        }
+
+        // 품절→구매가능으로 바뀐 찜 상품이 있으면 해당 유저에게 웹푸시
+        $restocked = $syncService->pullRestockedProductIds();
+        if ($restocked !== []) {
+            $r = $restockAlerts->notify($restocked);
+            $this->info("재입고 알림: 찜 상품 {$r['products']} · 유저 {$r['users']} · 발송 {$r['sent']}");
         }
 
         $this->info('3. 누적 저장 결과:');

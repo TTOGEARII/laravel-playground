@@ -21,5 +21,6 @@
 @endsection
 
 @section('content')
-    <div id="otaku-shop-app"></div>
+    {{-- data-logged-in: 찜(재입고 알림)은 로그인 전용 — Vue 가 하트 버튼 동작을 분기한다 --}}
+    <div id="otaku-shop-app" data-logged-in="{{ auth()->check() ? '1' : '' }}"></div>
 @endsection

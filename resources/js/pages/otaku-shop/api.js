@@ -49,4 +49,27 @@ export const otakuShopApi = {
     const { data } = await axios.get(`${BASE}/shops`);
     return data;
   },
+
+  // === 찜(재입고 알림) — 로그인 전용, 세션 인증 web 라우트(/otaku-shop/wishes) ===
+
+  /** 내 찜 상품 ID 목록 */
+  async getWishes() {
+    const { data } = await axios.get('/otaku-shop/wishes');
+    return data.data || [];
+  },
+
+  /** 찜 등록 */
+  async addWish(productId) {
+    await axios.post('/otaku-shop/wishes', { product_id: productId }, { headers: csrfHeader() });
+  },
+
+  /** 찜 해제 */
+  async removeWish(productId) {
+    await axios.delete(`/otaku-shop/wishes/${productId}`, { headers: csrfHeader() });
+  },
 };
+
+function csrfHeader() {
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  return { 'X-CSRF-TOKEN': token };
+}
