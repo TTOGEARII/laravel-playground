@@ -3,6 +3,7 @@
     <h3 class="sgr-feed-title">
       🎯 이벤트 챌린지 — {{ event?.name }}
       <small v-if="period" class="sgr-feed-hint">{{ period }}</small>
+      <small class="sgr-role-legend"><i class="is-striker" />스트라이커 <i class="is-special" />스페셜</small>
       <button
         v-if="hasPool && anyMissing && !myPartyLoaded"
         type="button"
@@ -17,26 +18,16 @@
     <div class="sgr-challenge-grid">
       <article v-for="stage in stages" :key="stage.label" class="sgr-challenge-card">
         <header class="sgr-challenge-head">
-          <span class="sgr-challenge-label">{{ stage.label }}</span>
-          <span v-if="stage.condition" class="sgr-challenge-cond">{{ stage.condition }}</span>
+          <div class="sgr-challenge-head-main">
+            <span class="sgr-challenge-label">{{ stage.label.replace('Challenge ', 'CH ') }}</span>
+            <span v-if="stage.name" class="sgr-challenge-map">{{ stage.name }}</span>
+          </div>
+          <span v-if="stage.condition" class="sgr-challenge-cond">⏱ {{ stage.condition }}</span>
         </header>
-        <p v-if="stage.name" class="sgr-challenge-map">{{ stage.name }}</p>
-
-        <p v-if="stage.summary" class="sgr-challenge-summary" :class="{ 'is-open': opened.has(stage.label) }">
-          {{ stage.summary }}
-        </p>
-        <button
-          v-if="stage.summary && stage.summary.length > 90"
-          type="button"
-          class="sgr-challenge-more"
-          @click="toggle(stage.label)"
-        >
-          {{ opened.has(stage.label) ? '접기 ▲' : '더 보기 ▼' }}
-        </button>
 
         <!-- ① 공략글 정리 추천 조합 — 보유는 강조, 미보유는 흐림. 스트라이커 먼저, 스페셜 뒤 -->
         <div v-if="stage.best_party?.length" class="sgr-challenge-party">
-          <span class="sgr-challenge-party-tag">🏆 추천 조합 <small class="sgr-role-legend"><i class="is-striker" />스트라이커 <i class="is-special" />스페셜</small></span>
+          <span class="sgr-challenge-party-tag">🏆 추천 조합</span>
           <div class="sgr-challenge-chars">
             <template v-for="(member, i) in sortedParty(stage.best_party)" :key="member.key">
               <span v-if="isRoleBoundary(sortedParty(stage.best_party), i)" class="sgr-role-divider" />
@@ -73,15 +64,29 @@
           <span v-for="name in stage.mentioned" :key="name" class="sgr-challenge-char">{{ name }}</span>
         </div>
 
-        <a
-          v-if="stage.video_url"
-          :href="stage.video_url"
-          target="_blank"
-          rel="noopener"
-          class="sgr-challenge-video"
-        >
-          ▶ 공략 영상 보기
-        </a>
+        <div class="sgr-challenge-actions">
+          <a
+            v-if="stage.video_url"
+            :href="stage.video_url"
+            target="_blank"
+            rel="noopener"
+            class="sgr-challenge-video"
+          >
+            ▶ 공략 영상
+          </a>
+          <button
+            v-if="stage.summary"
+            type="button"
+            class="sgr-challenge-more"
+            @click="toggle(stage.label)"
+          >
+            📝 공략 메모 {{ opened.has(stage.label) ? '▲' : '▼' }}
+          </button>
+        </div>
+
+        <p v-if="stage.summary && opened.has(stage.label)" class="sgr-challenge-summary">
+          {{ stage.summary }}
+        </p>
 
         <ul v-if="stage.extra_videos?.length" class="sgr-challenge-extra">
           <li v-for="video in stage.extra_videos" :key="video.url">
