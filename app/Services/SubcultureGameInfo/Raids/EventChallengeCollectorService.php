@@ -313,13 +313,18 @@ class EventChallengeCollectorService
             'condition' => $s['condition'],
             'summary' => mb_substr((string) $s['summary'], 0, 400),
             'video_titles' => collect($s['extra_videos'] ?? [])->pluck('title')->filter()->values()->all(),
+            // 영상 설명란 — 공략 영상은 설명에 실제 편성 명단을 적는 경우가 많아 조합 추출의 핵심 재료
+            'video_descriptions' => $this->videoDescriptions($s),
+            // 디시 챌린지 글 본문 발췌(스테이지 매핑된 글)
+            'guide_texts' => array_slice(array_values(array_unique($s['guide_texts'] ?? [])), 0, 2),
             'mentioned' => $s['mentioned'],
         ])->all();
 
-        $prompt = "블루 아카이브 이벤트 챌린지 공략 자료를 정리해 스테이지별 추천 편성(최대 6명)을 뽑아라.\n"
+        $prompt = "블루 아카이브 이벤트 챌린지 공략 자료에서 스테이지별 실제 사용 편성을 추출하라.\n"
             ."규칙:\n"
             ."- 캐릭터 이름은 반드시 아래 [캐릭터 목록]에 있는 표기 그대로만 사용한다(목록에 없는 이름 금지).\n"
-            ."- 공략 요약·영상 제목에서 실제 사용/추천된 캐릭터를 우선하고, 부족한 자리는 클리어 조건과 기믹에 맞는 대중적인 픽으로 채운다.\n"
+            ."- 자료(요약·영상 설명·영상 제목)에서 실제 사용/추천이 확인되는 캐릭터만 넣는다. 추정으로 자리를 채우지 마라.\n"
+            ."- 확인되는 캐릭터가 6명 미만이면 그 수만큼만 넣는다(최대 6명). 하나도 확인 안 되면 빈 배열.\n"
             ."- 응답은 JSON 배열만: [{\"label\": \"Challenge 01\", \"party\": [\"이름\", ...]}]\n\n"
             .'[캐릭터 목록] '.implode(', ', array_keys($nameToKey))."\n\n"
             .'[공략 자료] '.json_encode($material, JSON_UNESCAPED_UNICODE);
@@ -394,11 +399,45 @@ class EventChallengeCollectorService
                     'title' => mb_substr($candidate['title'], 0, 120),
                     'source' => $candidate['source'],
                 ];
+                // 디시 글 본문 발췌는 조합 추출 재료로 스테이지에 붙여둔다
+                if (($candidate['body'] ?? '') !== '') {
+                    $stage['guide_texts'][] = $candidate['body'];
+                }
             }
             $stage['extra_videos'] = $picked;
         }
 
         return $stages;
+    }
+
+    /**
+     * 스테이지의 주 영상 + 관련 영상(최대 2개)의 유튜브 설명란을 가져온다.
+     * 공략 영상 설명에는 실제 편성 명단이 적히는 경우가 많다 — 조합 추출의 메인 재료.
+     *
+     * @return string[]
+     */
+    private function videoDescriptions(array $stage): array
+    {
+        $urls = collect([$stage['video'] ?? null])
+            ->concat(collect($stage['extra_videos'] ?? [])->pluck('url')->take(2))
+            ->filter()
+            ->unique()
+            ->take(3);
+
+        $descriptions = [];
+        foreach ($urls as $url) {
+            usleep(300_000);
+            $html = $this->getHtml($url);
+            if ($html === null || ! preg_match('/"shortDescription":"((?:[^"\\\\]|\\\\.)*)"/', $html, $m)) {
+                continue;
+            }
+            $text = json_decode('"'.$m[1].'"');
+            if (is_string($text) && trim($text) !== '') {
+                $descriptions[] = mb_substr(trim($text), 0, 500);
+            }
+        }
+
+        return $descriptions;
     }
 
     /**
@@ -470,11 +509,13 @@ class EventChallengeCollectorService
             if ($body === null) {
                 continue;
             }
+            $excerpt = mb_substr($this->stripToText($body), 0, 500);
             if (preg_match_all('~(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})~', $body, $m)) {
                 foreach (array_unique($m[1]) as $id) {
                     $videos[] = [
                         'url' => 'https://www.youtube.com/watch?v='.$id,
                         'title' => $post->title, // 영상 자체 제목은 알 수 없어 글 제목으로 표기
+                        'body' => $excerpt, // 본문 발췌 — 조합 추출 재료
                     ];
                 }
             }
