@@ -1,8 +1,7 @@
 <template>
-  <div v-if="loaded && stages.length" class="sgr-event-challenges">
+  <div v-if="loaded && events.length" class="sgr-event-challenges">
     <h3 class="sgr-feed-title">
-      🎯 이벤트 챌린지 — {{ event?.name }}
-      <small v-if="period" class="sgr-feed-hint">{{ period }}</small>
+      🎯 이벤트 챌린지
       <small class="sgr-role-legend"><i class="is-striker" />스트라이커 <i class="is-special" />스페셜</small>
       <button
         v-if="hasPool && anyMissing && !myPartyLoaded"
@@ -15,8 +14,16 @@
       </button>
     </h3>
 
+    <!-- 동시 진행 이벤트(메인+미니)가 있으면 이벤트별 섹션으로 구분 -->
+    <section v-for="ev in events" :key="ev.key" class="sgr-ec-event">
+      <header class="sgr-ec-event-head">
+        <span class="sgr-ec-event-name">{{ ev.name }}</span>
+        <small v-if="periodOf(ev)" class="sgr-feed-hint">{{ periodOf(ev) }}</small>
+        <a :href="ev.source_url" target="_blank" rel="noopener" class="sgr-ec-event-src">원문 ↗</a>
+      </header>
+
     <div class="sgr-challenge-grid">
-      <article v-for="stage in stages" :key="stage.label" class="sgr-challenge-card">
+      <article v-for="stage in ev.stages" :key="stage.id" class="sgr-challenge-card">
         <header class="sgr-challenge-head">
           <div class="sgr-challenge-head-main">
             <span class="sgr-challenge-label">{{ stage.label.replace('Challenge ', 'CH ') }}</span>
@@ -100,10 +107,10 @@
         </ul>
       </article>
     </div>
+    </section>
 
     <p class="sgr-challenge-source">
-      출처: <a :href="event?.source_url" target="_blank" rel="noopener">아카라이브 이벤트 올인원 공략</a>
-      — 조합 세부(스킬 타이밍·배치)는 각 스테이지 영상을 참고하세요
+      출처: 아카라이브 이벤트 올인원 공략(각 이벤트의 '원문' 링크) — 조합 세부(스킬 타이밍·배치)는 각 스테이지 영상을 참고하세요
     </p>
   </div>
 </template>
@@ -117,11 +124,19 @@ const props = defineProps({
   pool: { type: Object, default: () => ({}) }, // 내 풀: { [external_key]: { owned, ... } }
 });
 
-const event = ref(null);
-const stages = ref([]);
+const events = ref([]);
 const loaded = ref(false);
 const opened = ref(new Set());
 const cache = new Map();
+
+// 모든 이벤트의 스테이지 평탄화(내 풀 조합 계산용)
+const allStages = computed(() => events.value.flatMap((e) => e.stages || []));
+
+function periodOf(ev) {
+  if (!ev?.starts_at) return '';
+  const fmt = (d) => d?.slice(5).replace('-', '.');
+  return `${fmt(ev.starts_at)} ~ ${fmt(ev.ends_at) ?? ''}`;
+}
 
 // === 내 풀 조합 ===
 const myParties = ref({}); // stage.id → party[]
@@ -132,7 +147,7 @@ const ownedKeys = computed(() => Object.entries(props.pool)
   .filter(([, v]) => v?.owned)
   .map(([k]) => k));
 const hasPool = computed(() => ownedKeys.value.length > 0);
-const anyMissing = computed(() => stages.value.some(
+const anyMissing = computed(() => allStages.value.some(
   (s) => (s.best_party || []).some((m) => !props.pool[m.key]?.owned),
 ));
 
@@ -186,7 +201,7 @@ async function loadMyParties() {
   myPartyLoading.value = true;
   try {
     const result = {};
-    for (const stage of stages.value) {
+    for (const stage of allStages.value) {
       if (!stage.best_party?.length) continue;
       result[stage.id] = await raidApi.getEventChallengeMyParty(stage.id, ownedKeys.value);
     }
@@ -198,12 +213,6 @@ async function loadMyParties() {
     myPartyLoading.value = false;
   }
 }
-
-const period = computed(() => {
-  if (!event.value?.starts_at) return '';
-  const fmt = (d) => d?.slice(5).replace('-', '.');
-  return `${fmt(event.value.starts_at)} ~ ${fmt(event.value.ends_at) ?? ''}`;
-});
 
 function toggle(label) {
   opened.value.has(label) ? opened.value.delete(label) : opened.value.add(label);
@@ -219,11 +228,10 @@ async function load() {
       cache.set(props.gameSlug, await raidApi.getEventChallenges(props.gameSlug));
     }
     const data = cache.get(props.gameSlug);
-    event.value = data.event;
-    stages.value = data.stages || [];
+    events.value = data.events || [];
   } catch (e) {
     console.error('이벤트 챌린지 로드 실패', e);
-    stages.value = [];
+    events.value = [];
   } finally {
     loaded.value = true;
   }

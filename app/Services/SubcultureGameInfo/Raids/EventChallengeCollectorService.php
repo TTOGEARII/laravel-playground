@@ -50,7 +50,14 @@ class EventChallengeCollectorService
             ->sortByDesc(fn (GuidePostData $p) => $p->postedAt?->getTimestamp() ?? 0)
             ->take(3);
 
+        // 이벤트 챌린지는 동시에 2개가 열리기도 한다(메인 이벤트 + 미니 이벤트) — 후보를 모두 처리
+        $collectedKeys = [];
+        $eventNames = [];
+
         foreach ($candidates as $post) {
+            if (count($collectedKeys) >= 2) {
+                break;
+            }
             usleep((int) ((float) $cfg['fetch_delay_seconds'] * 1_000_000));
             // 아카 글 페이지는 Cloudflare 가 일반 HTTP 를 차단하는 경우가 있어
             // 먼저 가볍게 시도하고, 막히면 실브라우저(사이드카)로 폴백한다.
@@ -67,6 +74,11 @@ class EventChallengeCollectorService
 
             $eventName = $this->eventNameFromTitle($post->title, (string) $cfg['search_keyword']);
             [$startsAt, $endsAt] = $this->parsePeriod($html);
+
+            // 이미 종료된 이벤트의 올인원(지난 이벤트 글)은 저장하지 않는다
+            if ($endsAt !== null && $endsAt < now()->toDateString()) {
+                continue;
+            }
 
             // 보조 영상(유튜브 검색·디시 챌린지 글)을 스테이지에 매핑해 붙인다 — 실패해도 본 수집은 진행
             try {
@@ -105,18 +117,25 @@ class EventChallengeCollectorService
                 );
             }
 
-            // 이전 이벤트 스테이지 정리 — 대시보드는 항상 최신 이벤트 하나만 노출
-            $stats['pruned'] = EventChallenge::where('subculture_game_id', $game->id)
-                ->where('event_key', '!=', $post->externalId)
-                ->delete();
+            $collectedKeys[] = $post->externalId;
+            $eventNames[] = $eventName;
+            $stats['stages'] += count($stages);
+        }
 
-            $stats['event'] = $eventName;
-            $stats['stages'] = count($stages);
+        if ($collectedKeys === []) {
+            Log::info('[SGI-EVENT] 챌린지 공략 올인원 글을 찾지 못함', ['game' => $game->slug]);
 
             return $stats;
         }
 
-        Log::info('[SGI-EVENT] 챌린지 공략 올인원 글을 찾지 못함', ['game' => $game->slug]);
+        // 정리: 이번에 수집되지 않았고 이미 종료된 이벤트만 삭제
+        // (진행 중인데 이번 런에서 글을 못 찾은 이벤트는 보존 — 일시적 수집 실패 방어)
+        $stats['pruned'] = EventChallenge::where('subculture_game_id', $game->id)
+            ->whereNotIn('event_key', $collectedKeys)
+            ->whereDate('ends_at', '<', now()->toDateString())
+            ->delete();
+
+        $stats['event'] = implode(' · ', $eventNames);
 
         return $stats;
     }
