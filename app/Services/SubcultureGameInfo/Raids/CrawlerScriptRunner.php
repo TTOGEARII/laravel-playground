@@ -71,4 +71,52 @@ class CrawlerScriptRunner
             'items' => $decoded['items'],
         ];
     }
+
+    /**
+     * 실브라우저로 페이지 HTML 을 가져온다(Cloudflare 등으로 일반 HTTP 가 막히는 페이지용).
+     *
+     * @param  string|null  $waitSelector  이 셀렉터가 나타날 때까지 대기(챌린지 통과 신호)
+     */
+    public function fetchHtml(string $url, ?string $waitSelector = null): ?string
+    {
+        $cfg = config('subculture-game-info.raids.crawler');
+
+        $env = array_filter([
+            'PLAYWRIGHT_BROWSERS_PATH' => $cfg['browsers_path'] ?? null,
+            'SGI_PLAYWRIGHT_WS' => $cfg['playwright_ws'] ?? null,
+            'SGI_CRAWLER_UA' => config('subculture-game-info.http.user_agent'),
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $args = [
+            $cfg['node_binary'],
+            dirname((string) $cfg['script']).'/fetch-html.mjs',
+            "--url={$url}",
+        ];
+        if ($waitSelector !== null) {
+            $args[] = "--wait={$waitSelector}";
+        }
+
+        try {
+            $result = Process::timeout((int) $cfg['timeout'])->env($env)->run($args);
+        } catch (\Throwable $e) {
+            Log::warning('[SGI-RAID] fetch-html 프로세스 예외', ['url' => $url, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if (! $result->successful()) {
+            Log::warning('[SGI-RAID] fetch-html 실패', [
+                'url' => $url,
+                'exit' => $result->exitCode(),
+                'stderr' => mb_substr($result->errorOutput(), 0, 500),
+            ]);
+
+            return null;
+        }
+
+        $decoded = json_decode($result->output(), true);
+        $html = is_array($decoded) ? ($decoded['html'] ?? null) : null;
+
+        return is_string($html) && $html !== '' ? $html : null;
+    }
 }

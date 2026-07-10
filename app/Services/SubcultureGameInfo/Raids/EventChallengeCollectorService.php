@@ -24,7 +24,10 @@ class EventChallengeCollectorService
 {
     use FetchesWebContent;
 
-    public function __construct(private ArcaGuidePostDriver $arca) {}
+    public function __construct(
+        private ArcaGuidePostDriver $arca,
+        private CrawlerScriptRunner $browser,
+    ) {}
 
     /**
      * @return array{event: ?string, stages: int, pruned: int}
@@ -44,7 +47,10 @@ class EventChallengeCollectorService
 
         foreach ($candidates as $post) {
             usleep((int) ((float) $cfg['fetch_delay_seconds'] * 1_000_000));
-            $html = $this->getHtml($post->url);
+            // 아카 글 페이지는 Cloudflare 가 일반 HTTP 를 차단하는 경우가 있어
+            // 먼저 가볍게 시도하고, 막히면 실브라우저(사이드카)로 폴백한다.
+            $html = $this->getHtml($post->url)
+                ?? $this->browser->fetchHtml($post->url, '.article-content');
             if ($html === null) {
                 continue;
             }
