@@ -57,6 +57,14 @@ class ProductNormalizer
             $this->aliases[mb_strtolower($canonical)] = array_map('mb_strtolower', $variants);
             // 분류는 원본 코드를 키로, 표준명+별칭 전부를 검색어로(소문자) 둔다.
             $this->ipClassify[$canonical] = array_map('mb_strtolower', array_merge([$canonical], $variants));
+            // IP 표준명은 시그니처에서 제외 — IP 는 별도 축(ok_product_ip_id)이 담당하고,
+            // 제목에 IP명이 있냐 없냐(대괄호 말머리 여부 등)로 시그니처가 갈라지는 것을 막는다.
+            $this->stopwords[mb_strtolower($canonical)] = true;
+        }
+
+        // 일반 토큰 별칭(라인명 등) — 매칭 치환에만 쓰고 IP 분류에는 넣지 않는다.
+        foreach ((array) config('otaku-crawler.product_match.token_aliases', []) as $canonical => $variants) {
+            $this->aliases[mb_strtolower($canonical)] = array_map('mb_strtolower', (array) $variants);
         }
     }
 

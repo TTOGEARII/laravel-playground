@@ -43,6 +43,7 @@ class OtakuShopRematchCommand extends Command
         $this->info('2. 병합 그룹 산출...');
         $groups = array_merge(
             $this->makerCodeGroups(),
+            $this->sigEqualityGroups(),
             $this->containmentGroups(),
         );
         $mergeCount = array_sum(array_map(fn ($g) => count($g) - 1, $groups));
@@ -256,6 +257,31 @@ class OtakuShopRematchCommand extends Command
      *
      * @return array<int, array<int, int>>
      */
+    /**
+     * 시그니처가 완전히 동일한 상품 병합 — 카테고리 무관(같은 상품이 샵마다 다른 카테고리로
+     * 보정돼 갈라지는 사례 대응). 동일성이 정렬 토큰 전체 일치라 오병합 위험이 매우 낮고,
+     * IP(작품)가 서로 다르게 판정된 행은 묶지 않는다.
+     *
+     * @return array<int, array<int, int>>
+     */
+    private function sigEqualityGroups(): array
+    {
+        $groups = [];
+
+        OtakuProduct::query()
+            ->whereNotNull('ok_product_match_sig')
+            ->where('ok_product_match_sig', '!=', '')
+            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_match_sig'])
+            ->groupBy(fn (OtakuProduct $p) => ($p->ok_product_ip_id ?? 'x').'|'.$p->ok_product_match_sig)
+            ->each(function ($products) use (&$groups) {
+                if ($products->count() > 1) {
+                    $groups[] = $products->pluck('ok_product_id')->map(fn ($id) => (int) $id)->all();
+                }
+            });
+
+        return $groups;
+    }
+
     private function containmentGroups(): array
     {
         // 굿즈류 오병합을 막기 위해 이름이 변별적인 '피규어' 카테고리에만 적용.
