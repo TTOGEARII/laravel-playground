@@ -14,14 +14,24 @@
       </button>
     </h3>
 
-    <!-- 동시 진행 이벤트(메인+미니)가 있으면 이벤트별 섹션으로 구분 -->
-    <section v-for="ev in events" :key="ev.key" class="sgr-ec-event">
-      <header class="sgr-ec-event-head">
-        <span class="sgr-ec-event-name">{{ ev.name }}</span>
-        <small v-if="periodOf(ev)" class="sgr-feed-hint">{{ periodOf(ev) }}</small>
-        <a :href="ev.source_url" target="_blank" rel="noopener" class="sgr-ec-event-src">원문 ↗</a>
-      </header>
+    <!-- 이벤트 = 큰 섹션 카드(종전시 스타일). 누르면 챌린지 내용이 펼쳐진다 -->
+    <section v-for="ev in events" :key="ev.key" class="sgr-ec-event" :class="{ 'is-open': openEvents.has(ev.key) }">
+      <button type="button" class="sgr-ec-event-head" @click="toggleEvent(ev.key)">
+        <span class="sgr-ec-event-icon">🎪</span>
+        <span class="sgr-ec-event-info">
+          <span class="sgr-ec-event-name">{{ ev.name }}</span>
+          <small class="sgr-ec-event-meta">
+            {{ periodOf(ev) }} · 챌린지 {{ ev.stages.length }}개
+          </small>
+        </span>
+        <span v-if="ddayOf(ev)" class="sgr-ec-event-dday">{{ ddayOf(ev) }}</span>
+        <span class="sgr-ec-event-chevron">▾</span>
+      </button>
 
+    <template v-if="openEvents.has(ev.key)">
+    <div class="sgr-ec-event-body-head">
+      <a :href="ev.source_url" target="_blank" rel="noopener" class="sgr-ec-event-src">원문 보기 ↗</a>
+    </div>
     <div class="sgr-challenge-grid">
       <article v-for="stage in ev.stages" :key="stage.id" class="sgr-challenge-card">
         <header class="sgr-challenge-head">
@@ -107,6 +117,7 @@
         </ul>
       </article>
     </div>
+    </template>
     </section>
 
     <p class="sgr-challenge-source">
@@ -136,6 +147,21 @@ function periodOf(ev) {
   if (!ev?.starts_at) return '';
   const fmt = (d) => d?.slice(5).replace('-', '.');
   return `${fmt(ev.starts_at)} ~ ${fmt(ev.ends_at) ?? ''}`;
+}
+
+function ddayOf(ev) {
+  if (!ev?.ends_at) return '';
+  const diff = Math.ceil((new Date(ev.ends_at) - new Date()) / 86400000);
+  if (diff < 0) return '';
+  return diff === 0 ? '오늘 종료' : `D-${diff}`;
+}
+
+// 이벤트 섹션 접기/펼치기 — 첫 이벤트는 기본 펼침
+const openEvents = ref(new Set());
+
+function toggleEvent(key) {
+  openEvents.value.has(key) ? openEvents.value.delete(key) : openEvents.value.add(key);
+  openEvents.value = new Set(openEvents.value);
 }
 
 // === 내 풀 조합 ===
@@ -229,6 +255,8 @@ async function load() {
     }
     const data = cache.get(props.gameSlug);
     events.value = data.events || [];
+    // 첫(최신) 이벤트는 기본 펼침 — 나머지는 눌러서 열기
+    openEvents.value = new Set(events.value.length ? [events.value[0].key] : []);
   } catch (e) {
     console.error('이벤트 챌린지 로드 실패', e);
     events.value = [];

@@ -166,23 +166,54 @@
 
 /* ---------------------------------- 이벤트 챌린지(블아) */
 .sgr-event-challenges { display: flex; flex-direction: column; gap: var(--ds-space-md); }
-/* 동시 진행 이벤트 섹션 — 이벤트명 헤더 + 코랄 액센트 바 */
+/* 이벤트 섹션 카드(종전시 스타일) — 누르면 챌린지 내용이 펼쳐진다 */
 .sgr-ec-event { display: flex; flex-direction: column; gap: var(--ds-space-md); }
-.sgr-ec-event + .sgr-ec-event { margin-top: var(--ds-space-lg); }
 .sgr-ec-event-head {
     display: flex;
-    align-items: baseline;
-    gap: var(--ds-space-sm);
-    padding-left: var(--ds-space-md);
-    border-left: 3px solid var(--ds-primary);
+    align-items: center;
+    gap: var(--ds-space-md);
+    width: 100%;
+    padding: var(--ds-space-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--ds-primary);
+    border-radius: var(--ds-round-lg);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s ease, transform 0.1s ease;
 }
+.sgr-ec-event-head:hover { border-color: rgba(243, 114, 127, 0.7); transform: translateY(-1px); }
+.sgr-ec-event-icon { font-size: 1.4rem; flex: none; }
+.sgr-ec-event-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sgr-ec-event-name {
-    font-size: var(--ds-fs-md);
+    font-size: var(--ds-fs-lg);
     font-weight: var(--ds-fw-bold);
     color: var(--text-primary);
 }
-.sgr-ec-event-src {
+.sgr-ec-event-meta { color: var(--text-secondary); font-size: var(--ds-fs-micro); }
+.sgr-ec-event-dday {
     margin-left: auto;
+    flex: none;
+    padding: 3px 12px;
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.14);
+    color: var(--ds-text-accent);
+    border: 1px solid rgba(243, 114, 127, 0.45);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+}
+.sgr-ec-event-chevron {
+    flex: none;
+    color: var(--text-secondary);
+    transition: transform 0.15s ease;
+}
+.sgr-ec-event-dday + .sgr-ec-event-chevron { margin-left: 0; }
+.sgr-ec-event-chevron { margin-left: auto; }
+.sgr-ec-event-dday { margin-left: auto; }
+.sgr-ec-event-dday ~ .sgr-ec-event-chevron { margin-left: 0; }
+.sgr-ec-event.is-open .sgr-ec-event-chevron { transform: rotate(180deg); }
+.sgr-ec-event-body-head { display: flex; justify-content: flex-end; margin-bottom: calc(var(--ds-space-xs) * -1); }
+.sgr-ec-event-src {
     color: var(--text-secondary);
     font-size: var(--ds-fs-micro);
     text-decoration: none;
