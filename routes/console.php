@@ -83,6 +83,13 @@ Schedule::command('subculture:collect-jfd')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// 블아 이벤트 챌린지 — 아카 '올인원' 글에서 챌린지 조합·영상 파싱(가벼운 HTML, Gemini 없음). 매일 1회.
+Schedule::command('subculture:collect-event-challenges')
+    ->dailyAt('06:40')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
 // 속성(성격)별 추천 조합(트릭컬) — 큐레이션은 변동이 느리지만 실측(시즌 집계)이 주 단위로 갱신되어 주 1회.
 Schedule::command('subculture:crawl-attribute-parties')
     ->weeklyOn(1, '06:00') // 매주 월요일 06:00 (캐릭터 마스터 05:00 이후)

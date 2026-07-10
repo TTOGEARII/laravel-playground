@@ -372,11 +372,23 @@ return [
         // 게임별 정보 모듈 — 레이드 페이지에서 게임 탭 선택 시 이 순서대로 섹션을 렌더한다.
         // 새 정보 유형 추가 = 프론트 모듈 컴포넌트 등록 + 여기 키 추가(게임마다 다른 구성 가능).
         //   raids: 레이드 일정·편성 카드 / attribute-parties: 속성별 추천 조합 / guides: 최근 공략글 피드
+        //   event-challenges: 진행 중 이벤트 챌린지 공략(블아 — 아카 올인원 글)
         'modules' => [
-            'bluearchive' => ['raids', 'guides'],
+            'bluearchive' => ['raids', 'event-challenges', 'guides'],
             'nikke' => ['raids', 'guides'],
             'trickcal' => ['attribute-parties', 'raids', 'guides'],
             'browndust2' => ['raids', 'guides'],
+        ],
+
+        // 이벤트 챌린지 공략(블아) — 아카 채널의 이벤트 '올인원' 글에서 챌린지 섹션을 파싱.
+        // 조합 표는 없고 본문 언급 + 스테이지별 유튜브 임베드가 규칙이라, 언급 캐릭터·영상을 스테이지 단위로 저장한다.
+        'event_challenges' => [
+            'games' => ['bluearchive'],
+            // 올인원 글 검색어(제목 검색). 시리즈 글 제목이 "저장용 {이벤트명} 올인원" 형식이라
+            // 두 단어가 모두 제목에 있어야 후보로 본다(잡담 오탐 방지).
+            'search_keyword' => '올인원',
+            'require_title_words' => ['저장용', '올인원'],
+            'fetch_delay_seconds' => (float) env('SGI_EVENT_CHALLENGE_FETCH_DELAY', 1.0),
         ],
 
         // 속성(성격)별 추천 조합 — 트릭컬 전용. Gemini(토큰) 없이 팀 매니저 큐레이션 크롤.

@@ -4,6 +4,7 @@ use App\Http\Controllers\OtakuShop\Api\ProductController as OtakuShopProductCont
 use App\Http\Controllers\SubcultureGameInfo\Api\AttributePartyController as SubcultureAttributePartyController;
 use App\Http\Controllers\SubcultureGameInfo\Api\CharacterController as SubcultureCharacterController;
 use App\Http\Controllers\SubcultureGameInfo\Api\CodeController as SubcultureCodeController;
+use App\Http\Controllers\SubcultureGameInfo\Api\EventChallengeController as SubcultureEventChallengeController;
 use App\Http\Controllers\SubcultureGameInfo\Api\GuidePostController as SubcultureGuidePostController;
 use App\Http\Controllers\SubcultureGameInfo\Api\RaidController as SubcultureRaidController;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,8 @@ Route::prefix('subculture-game-info')->group(function () {
     Route::get('attribute-parties', [SubcultureAttributePartyController::class, 'index']);
     // 게임 단위 최근 공략글 피드 — ?game=&limit=
     Route::get('guide-posts', [SubcultureGuidePostController::class, 'index']);
+    // 진행 중 이벤트 챌린지 공략(블아) — ?game=
+    Route::get('event-challenges', [SubcultureEventChallengeController::class, 'index']);
 });
 
 /*

@@ -77,6 +77,15 @@ export const raidApi = {
         const { data } = await axios.get(`${API_BASE}/guide-posts`, { params: { game: gameSlug, limit } });
         return data.data;
     },
+    /**
+     * 진행 중 이벤트 챌린지 공략(event-challenges 모듈, 블아).
+     * @param {string} gameSlug
+     * @returns {Promise<{event: ?object, stages: Array}>}
+     */
+    async getEventChallenges(gameSlug) {
+        const { data } = await axios.get(`${API_BASE}/event-challenges`, { params: { game: gameSlug } });
+        return data.data;
+    },
 };
 
 /**

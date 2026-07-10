@@ -39,6 +39,7 @@
 <script setup>
 import { computed } from 'vue';
 import AttributeCompositions from './AttributeCompositions.vue';
+import EventChallenges from './EventChallenges.vue';
 import GuideFeed from './GuideFeed.vue';
 import RaidList from './RaidList.vue';
 
@@ -61,6 +62,7 @@ const MODULES = {
   'raids': RaidList,
   'attribute-parties': AttributeCompositions,
   'guides': GuideFeed,
+  'event-challenges': EventChallenges,
 };
 
 const currentGame = computed(() => props.games.find((g) => g.slug === props.activeGame) ?? props.games[0]);
