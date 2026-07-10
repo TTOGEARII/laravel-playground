@@ -164,6 +164,22 @@
     margin-left: var(--ds-space-xs);
 }
 
+/* 대결전 장갑별 편성 그룹 헤더 — 장갑 색상은 인게임 관례(경장=빨강/중장=노랑/특수=파랑/탄력=보라) */
+.sgr-armor-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: var(--ds-space-md) 0 var(--ds-space-sm);
+    font-size: var(--ds-fs-md);
+    font-weight: var(--ds-fw-bold);
+    color: var(--text-primary);
+}
+.sgr-armor-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-secondary); }
+.sgr-armor-head.is-armor-light .sgr-armor-dot { background: #ef4444; }
+.sgr-armor-head.is-armor-heavy .sgr-armor-dot { background: #f59e0b; }
+.sgr-armor-head.is-armor-special .sgr-armor-dot { background: #3b82f6; }
+.sgr-armor-head.is-armor-elastic .sgr-armor-dot { background: #a855f7; }
+
 /* ---------------------------------- 이벤트 챌린지(블아) */
 .sgr-event-challenges { display: flex; flex-direction: column; gap: var(--ds-space-md); }
 /* 이벤트 섹션 카드(종전시 스타일) — 누르면 챌린지 내용이 펼쳐진다 */

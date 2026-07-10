@@ -111,6 +111,55 @@ class MollulogRanksClient
     }
 
     /**
+     * 대결전 전용: 장갑 타입별 상위 랭커 편성.
+     * 대결전은 보스가 장갑 3종으로 나와 장갑마다 별도 편성이 필요하다 — 총력전처럼 단일 목록로 묶으면 안 된다.
+     *
+     * @return array<string, list<array{rank: int, score: int, title: string, members: list<array>}>>|null 한글 장갑명 => 편성들
+     */
+    public function topPartiesByDefenseType(Raid $raid, int $rankersPerType = 2): ?array
+    {
+        $config = config('subculture-game-info.raids.alternative_parties');
+
+        if ((self::RAID_TYPES[$raid->raid_type] ?? null) !== 'elimination') {
+            return null;
+        }
+
+        $schedule = $this->matchSchedule($raid, 'elimination');
+        $jpSeason = data_get($schedule, 'jpSchedule.seasonIndex');
+        if ($schedule === null || $jpSeason === null) {
+            Log::warning('[SGI-ALT] 대결전 시즌 매핑 실패', ['raid_id' => $raid->id, 'external_key' => $raid->external_key]);
+
+            return null;
+        }
+
+        $codeToKo = array_flip(self::DEFENSE_TYPES);
+        $types = collect((array) data_get($schedule, 'defenseTypeSets', []))
+            ->flatMap(fn (array $set) => (array) ($set['defenseTypes'] ?? []))
+            ->unique()
+            ->values();
+        if ($types->isEmpty()) {
+            return null;
+        }
+
+        $result = [];
+        foreach ($types as $code) {
+            $decoded = $this->fetchRanks('elimination', (int) $jpSeason, (string) $code, [], [], 1, null, $config);
+            if ($decoded === null) {
+                continue;
+            }
+            $parties = collect($this->toParties($decoded['ranks']))
+                ->filter(fn (array $p) => $p['rank'] <= $rankersPerType)
+                ->values()
+                ->all();
+            if ($parties !== []) {
+                $result[$codeToKo[$code] ?? (string) $code] = $parties;
+            }
+        }
+
+        return $result === [] ? null : $result;
+    }
+
+    /**
      * 학생별 출전 통계(uid → 출전/조력 횟수) — ranks 와 같은 시즌 매핑을 거쳐 v1/stats 를 호출한다.
      * 대체 캐릭터 후보에 "이 레이드에서 실제로 얼마나 쓰였는지"를 붙이는 용도.
      *

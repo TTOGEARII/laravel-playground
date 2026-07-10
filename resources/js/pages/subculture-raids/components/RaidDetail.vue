@@ -57,20 +57,26 @@
       <p v-if="raid.parties.length === 0" class="sgr-empty">
         수집된 추천 편성이 없습니다. <b>공략글</b> 탭을 참고하세요.
       </p>
-      <div class="sgr-party-list">
-        <PartyCard
-          v-for="party in raid.parties"
-          :key="party.id"
-          :party="party"
-          :raid="raid"
-          :pool="pool"
-          :usage="usage"
-          :user-subs="userSubs"
-          :characters="allCharacters"
-          @set-substitute="$emit('set-substitute', $event)"
-          @clear-substitute="$emit('clear-substitute', $event)"
-        />
-      </div>
+      <!-- 대결전: 보스가 장갑 3종으로 나와 장갑별로 조합을 짠다 — 장갑 그룹 섹션으로 표시 -->
+      <template v-for="group in partyGroups" :key="group.label ?? '_all'">
+        <h4 v-if="group.label" class="sgr-armor-head" :class="armorClass(group.label)">
+          <i class="sgr-armor-dot" />{{ group.label }}
+        </h4>
+        <div class="sgr-party-list">
+          <PartyCard
+            v-for="party in group.parties"
+            :key="party.id"
+            :party="party"
+            :raid="raid"
+            :pool="pool"
+            :usage="usage"
+            :user-subs="userSubs"
+            :characters="allCharacters"
+            @set-substitute="$emit('set-substitute', $event)"
+            @clear-substitute="$emit('clear-substitute', $event)"
+          />
+        </div>
+      </template>
     </section>
 
     <!-- 내 풀 조합 — 핵심 캐릭터 요약 + 미보유 제외 실전 편성 (블아·니케) -->
@@ -135,6 +141,29 @@ const tabs = computed(() => [
   { key: 'guides', label: '공략글', count: props.raid.guide_posts.length },
 ]);
 const activeTab = ref('parties');
+
+// 대결전은 장갑(속성)별 편성 — 파티 note(장갑명)로 그룹핑, 그 외 레이드는 단일 그룹
+const ARMOR_ORDER = ['경장갑', '중장갑', '특수장갑', '탄력장갑'];
+const partyGroups = computed(() => {
+  const parties = props.raid.parties || [];
+  if (props.raid.raid_type !== '대결전') return [{ label: null, parties }];
+  const byArmor = new Map();
+  for (const p of parties) {
+    const label = ARMOR_ORDER.includes(p.note) ? p.note : '기타';
+    if (!byArmor.has(label)) byArmor.set(label, []);
+    byArmor.get(label).push(p);
+  }
+  return [...byArmor.entries()]
+    .sort((a, b) => (ARMOR_ORDER.indexOf(a[0]) + 99) - (ARMOR_ORDER.indexOf(b[0]) + 99))
+    .map(([label, list]) => ({ label, parties: list }));
+});
+
+function armorClass(label) {
+  return {
+    '경장갑': 'is-armor-light', '중장갑': 'is-armor-heavy',
+    '특수장갑': 'is-armor-special', '탄력장갑': 'is-armor-elastic',
+  }[label] || '';
+}
 
 // 학생별 출전 통계(블아 전용) — 대체 후보 팝오버 빈도 + 핵심 캐릭터 요약 카드
 const usage = ref({});

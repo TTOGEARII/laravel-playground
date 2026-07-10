@@ -77,7 +77,9 @@ export async function crawlRaids(page, base) {
 
     const raidType = cardText.match(/총력전|대결전|제약해제결전/)?.[0] ?? null;
     const terrain = cardText.match(/야외|시가지|실내/)?.[0] ?? null;
-    const armor = cardText.match(/경장갑|중장갑|특수장갑|탄력장갑/)?.[0] ?? null;
+    // 대결전은 장갑 3종이 동시에 나온다 — 전부 수집(armor_type 은 첫 항목으로 하위 호환)
+    const armors = [...new Set([...cardText.matchAll(/경장갑|중장갑|특수장갑|탄력장갑/g)].map((m) => m[0]))];
+    const armor = armors[0] ?? null;
     const difficulty = cardText.match(/루나틱|토먼트|TORMENT|LUNATIC|인세인|INSANE/i)?.[0] ?? null;
     // 보스명: "지형 보스명 기간" 순서에서 지형과 기간 사이 토큰
     const bossM = cardText.match(/(?:야외|시가지|실내)\s+(\S+)\s+\d{4}\./);
@@ -104,7 +106,7 @@ export async function crawlRaids(page, base) {
         name: `${raidType ?? '레이드'} #${season}${boss ? ` - ${boss}` : ''}`,
         boss_name: boss,
         raid_type: raidType,
-        tags: { terrain, armor_type: armor, difficulty },
+        tags: { terrain, armor_type: armor, armor_types: armors, difficulty },
         starts_at: startsAt,
         ends_at: endsAt,
         source_url: detailUrl,
