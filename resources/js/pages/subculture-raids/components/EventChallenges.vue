@@ -38,6 +38,17 @@
         >
           ▶ 공략 영상 보기
         </a>
+
+        <ul v-if="stage.extra_videos?.length" class="sgr-challenge-extra">
+          <li v-for="video in stage.extra_videos" :key="video.url">
+            <a :href="video.url" target="_blank" rel="noopener" class="sgr-challenge-extra-link">
+              <span class="sgr-challenge-extra-src" :class="`is-${video.source}`">
+                {{ video.source === 'dc' ? '디시' : 'YT' }}
+              </span>
+              {{ video.title }}
+            </a>
+          </li>
+        </ul>
       </article>
     </div>
 

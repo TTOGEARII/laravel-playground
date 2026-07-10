@@ -44,6 +44,7 @@ class EventChallengeController extends Controller
                     'condition' => $c->clear_condition,
                     'summary' => $c->summary,
                     'video_url' => $c->video_url,
+                    'extra_videos' => $c->extra_videos ?? [],
                     'mentioned' => $c->mentioned ?? [],
                 ]),
             ],

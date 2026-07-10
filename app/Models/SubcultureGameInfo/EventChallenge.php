@@ -23,6 +23,7 @@ class EventChallenge extends Model
         'clear_condition',
         'summary',
         'video_url',
+        'extra_videos',
         'mentioned',
         'source_url',
     ];
@@ -33,6 +34,7 @@ class EventChallenge extends Model
             'starts_at' => 'date',
             'ends_at' => 'date',
             'mentioned' => 'array',
+            'extra_videos' => 'array',
         ];
     }
 

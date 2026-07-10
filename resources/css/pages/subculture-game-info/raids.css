@@ -240,6 +240,29 @@
     letter-spacing: var(--ds-btn-tracking);
 }
 .sgr-challenge-video:hover { background: var(--ds-primary-press); }
+.sgr-challenge-extra { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sgr-challenge-extra-link {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-micro);
+    text-decoration: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.sgr-challenge-extra-link:hover { color: var(--text-primary); }
+.sgr-challenge-extra-src {
+    flex: none;
+    padding: 1px 7px;
+    border-radius: var(--ds-round-full);
+    background: var(--ds-surface-2);
+    font-weight: var(--ds-fw-bold);
+    font-size: 10px;
+}
+.sgr-challenge-extra-src.is-youtube { color: var(--ds-negative); }
+.sgr-challenge-extra-src.is-dc { color: var(--ds-text-blue, #60a5fa); }
 .sgr-challenge-source { margin: 0; color: var(--text-secondary); font-size: var(--ds-fs-micro); }
 .sgr-challenge-source a { color: var(--ds-text-accent); }
 

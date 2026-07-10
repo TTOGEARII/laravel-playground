@@ -7,6 +7,7 @@ use App\Models\SubcultureGameInfo\EventChallenge;
 use App\Models\SubcultureGameInfo\Game;
 use App\Services\SubcultureGameInfo\Sources\Concerns\FetchesWebContent;
 use App\Services\SubcultureGameInfo\Sources\Drivers\ArcaGuidePostDriver;
+use App\Services\SubcultureGameInfo\Sources\Drivers\DcGuidePostDriver;
 use App\Services\SubcultureGameInfo\Sources\DTO\GuidePostData;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\CssSelector\CssSelectorConverter;
@@ -26,6 +27,7 @@ class EventChallengeCollectorService
 
     public function __construct(
         private ArcaGuidePostDriver $arca,
+        private DcGuidePostDriver $dc,
         private CrawlerScriptRunner $browser,
     ) {}
 
@@ -63,6 +65,13 @@ class EventChallengeCollectorService
             $eventName = $this->eventNameFromTitle($post->title, (string) $cfg['search_keyword']);
             [$startsAt, $endsAt] = $this->parsePeriod($html);
 
+            // 보조 영상(유튜브 검색·디시 챌린지 글)을 스테이지에 매핑해 붙인다 — 실패해도 본 수집은 진행
+            try {
+                $stages = $this->attachExtraVideos($stages, $eventName, $game, $cfg, $startsAt);
+            } catch (\Throwable $e) {
+                Log::warning('[SGI-EVENT] 보조 영상 수집 실패(본 수집은 진행)', ['error' => $e->getMessage()]);
+            }
+
             foreach ($stages as $stage) {
                 EventChallenge::updateOrCreate(
                     [
@@ -78,6 +87,7 @@ class EventChallengeCollectorService
                         'clear_condition' => $stage['condition'],
                         'summary' => $stage['summary'],
                         'video_url' => $stage['video'],
+                        'extra_videos' => $stage['extra_videos'] ?? [],
                         'mentioned' => $stage['mentioned'],
                         'source_url' => $post->url,
                     ],
@@ -253,6 +263,175 @@ class EventChallengeCollectorService
         }
 
         return $roster;
+    }
+
+    // ─── 보조 영상 소스: 유튜브 검색 · 디시 챌린지 글 ─────────────────────
+
+    /**
+     * 유튜브 검색·디시 글에서 모은 관련 영상을 제목의 스테이지 표기('챌린지 3'/'챌 EX')로
+     * 각 스테이지에 매핑해 extra_videos 로 붙인다. 주 영상과 중복(같은 영상 ID)은 제외.
+     */
+    private function attachExtraVideos(array $stages, string $eventName, Game $game, array $cfg, ?string $startsAt): array
+    {
+        $labels = array_column($stages, 'label');
+        $maxPerStage = (int) ($cfg['max_extra_videos_per_stage'] ?? 3);
+
+        // 커뮤니티(디시) 글을 유튜브 검색보다 앞에 둔다 — 상한에 걸릴 때 큐레이션된 쪽 우선
+        $candidates = [];
+        if (($cfg['dc']['enabled'] ?? false) === true) {
+            foreach ($this->dcChallengeVideos($game, $cfg, $startsAt) as $video) {
+                $candidates[] = $video + ['source' => 'dc'];
+            }
+        }
+        if (($cfg['youtube']['enabled'] ?? false) === true) {
+            $query = str_replace('{event}', $eventName, (string) $cfg['youtube']['query_template']);
+            foreach ($this->youtubeSearchVideos($query) as $video) {
+                $candidates[] = $video + ['source' => 'youtube'];
+            }
+        }
+
+        foreach ($stages as &$stage) {
+            $primaryId = $this->youtubeId((string) ($stage['video'] ?? ''));
+            $picked = [];
+            $seen = $primaryId !== null ? [$primaryId => true] : [];
+
+            foreach ($candidates as $candidate) {
+                if (count($picked) >= $maxPerStage) {
+                    break;
+                }
+                if (! in_array($stage['label'], $this->stageLabelsFromTitle($candidate['title'], $labels), true)) {
+                    continue;
+                }
+                $id = $this->youtubeId($candidate['url']);
+                if ($id === null || isset($seen[$id])) {
+                    continue;
+                }
+                $seen[$id] = true;
+                $picked[] = [
+                    'url' => $candidate['url'],
+                    'title' => mb_substr($candidate['title'], 0, 120),
+                    'source' => $candidate['source'],
+                ];
+            }
+            $stage['extra_videos'] = $picked;
+        }
+
+        return $stages;
+    }
+
+    /**
+     * 유튜브 검색 결과(ytInitialData JSON) 파싱 — API 키 없이 검색 페이지 HTML 에서 추출.
+     *
+     * @return array<int, array{url: string, title: string}>
+     */
+    private function youtubeSearchVideos(string $query): array
+    {
+        $html = $this->getHtml('https://www.youtube.com/results', ['search_query' => $query]);
+        if ($html === null || ! preg_match('/var ytInitialData = (\{.+?\});<\/script>/s', $html, $m)) {
+            Log::info('[SGI-EVENT] 유튜브 검색 결과 파싱 실패', ['query' => $query]);
+
+            return [];
+        }
+
+        $data = json_decode($m[1], true);
+        if (! is_array($data)) {
+            return [];
+        }
+
+        $videos = [];
+        $this->collectVideoRenderers($data, $videos);
+
+        return array_slice($videos, 0, 20);
+    }
+
+    /** ytInitialData 트리에서 videoRenderer(영상 ID·제목)를 재귀 수집한다. */
+    private function collectVideoRenderers(array $node, array &$videos): void
+    {
+        foreach ($node as $key => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+            if ($key === 'videoRenderer' && isset($value['videoId'])) {
+                $title = implode('', array_column($value['title']['runs'] ?? [], 'text'));
+                if ($title !== '') {
+                    $videos[] = [
+                        'url' => 'https://www.youtube.com/watch?v='.$value['videoId'],
+                        'title' => $title,
+                    ];
+                }
+
+                continue;
+            }
+            $this->collectVideoRenderers($value, $videos);
+        }
+    }
+
+    /**
+     * 디시에서 이벤트 기간 내 챌린지 글을 찾아 본문의 유튜브 링크를 모은다.
+     * 글 제목에 스테이지 표기가 있어야 매핑 가능하므로 그런 글만 사용한다.
+     *
+     * @return array<int, array{url: string, title: string}>
+     */
+    private function dcChallengeVideos(Game $game, array $cfg, ?string $startsAt): array
+    {
+        $posts = collect($this->dc->searchPosts($game->slug, (string) $cfg['dc']['search_keyword']))
+            ->filter(fn (GuidePostData $p) => $startsAt === null
+                || ($p->postedAt !== null && $p->postedAt->toDateString() >= $startsAt))
+            ->filter(fn (GuidePostData $p) => preg_match('/(?:챌린지|챌|challenge)\s*[.\-]?\s*(?:EX|이엑스|\d+)/iu', $p->title) === 1)
+            ->sortByDesc(fn (GuidePostData $p) => $p->rate)
+            ->take((int) ($cfg['dc']['max_posts'] ?? 8));
+
+        $videos = [];
+        foreach ($posts as $post) {
+            usleep(500_000); // 연속 요청 간격
+            $body = $this->getHtml($post->url);
+            if ($body === null) {
+                continue;
+            }
+            if (preg_match_all('~(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})~', $body, $m)) {
+                foreach (array_unique($m[1]) as $id) {
+                    $videos[] = [
+                        'url' => 'https://www.youtube.com/watch?v='.$id,
+                        'title' => $post->title, // 영상 자체 제목은 알 수 없어 글 제목으로 표기
+                    ];
+                }
+            }
+        }
+
+        return $videos;
+    }
+
+    /**
+     * 제목에서 스테이지 표기를 찾아 라벨 목록으로 변환. "챌린지 1,2 & EX" 처럼 여러 개면 전부 반환.
+     *
+     * @param  string[]  $labels  존재하는 스테이지 라벨들
+     * @return string[]
+     */
+    private function stageLabelsFromTitle(string $title, array $labels): array
+    {
+        if (! preg_match_all('/(?:챌린지|챌|challenge)\s*[.\-]?\s*(EX|이엑스|\d+)/iu', $title, $m)) {
+            return [];
+        }
+
+        $found = [];
+        foreach ($m[1] as $token) {
+            $label = in_array(mb_strtoupper($token), ['EX', '이엑스'], true)
+                ? 'Challenge EX'
+                : 'Challenge '.str_pad((string) (int) $token, 2, '0', STR_PAD_LEFT);
+            if (in_array($label, $labels, true)) {
+                $found[$label] = true;
+            }
+        }
+
+        return array_keys($found);
+    }
+
+    /** 유튜브 URL → 영상 ID (중복 제거용). */
+    private function youtubeId(string $url): ?string
+    {
+        return preg_match('~(?:youtube(?:-nocookie)?\.com/(?:watch\?v=|embed/)|youtu\.be/)([A-Za-z0-9_-]{6,})~', $url, $m)
+            ? $m[1]
+            : null;
     }
 
     /**

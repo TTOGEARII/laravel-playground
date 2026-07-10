@@ -389,6 +389,20 @@ return [
             'search_keyword' => '올인원',
             'require_title_words' => ['저장용', '올인원'],
             'fetch_delay_seconds' => (float) env('SGI_EVENT_CHALLENGE_FETCH_DELAY', 1.0),
+            // 보조 영상 소스 — 스테이지당 최대 저장 수(주 영상 외 관련 영상 목록)
+            'max_extra_videos_per_stage' => (int) env('SGI_EVENT_CHALLENGE_MAX_VIDEOS', 3),
+            // ① 유튜브 검색: "{게임 한글명} {이벤트명} 챌린지 공략" 결과에서 제목의 '챌린지 N/EX'로 스테이지 매핑
+            'youtube' => [
+                'enabled' => (bool) env('SGI_EVENT_CHALLENGE_YOUTUBE', true),
+                'query_template' => '블루아카이브 {event} 챌린지 공략',
+            ],
+            // ② 디시 챌린지 글: 제목에 스테이지 번호('챌린지 3'/'챌 EX')가 있는 글의 본문 유튜브 링크를 붙인다.
+            // 디시 제목 검색은 구문 일치라 단어 하나만 쓴다('챌린지 공략'은 0건).
+            'dc' => [
+                'enabled' => (bool) env('SGI_EVENT_CHALLENGE_DC', true),
+                'search_keyword' => '챌린지',
+                'max_posts' => 8,
+            ],
         ],
 
         // 속성(성격)별 추천 조합 — 트릭컬 전용. Gemini(토큰) 없이 팀 매니저 큐레이션 크롤.
