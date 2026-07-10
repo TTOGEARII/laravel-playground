@@ -86,6 +86,15 @@ export const raidApi = {
         const { data } = await axios.get(`${API_BASE}/event-challenges`, { params: { game: gameSlug } });
         return data.data;
     },
+    /**
+     * 이벤트 챌린지 내 풀 조합 — 미보유를 보유 목록에서 Gemini 대체.
+     * @param {number} challengeId
+     * @param {string[]} ownedKeys
+     */
+    async getEventChallengeMyParty(challengeId, ownedKeys) {
+        const { data } = await axios.post(`${API_BASE}/event-challenges/${challengeId}/my-party`, { owned: ownedKeys });
+        return data.data.party;
+    },
 };
 
 /**

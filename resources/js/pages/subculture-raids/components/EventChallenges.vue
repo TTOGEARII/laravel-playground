@@ -3,6 +3,15 @@
     <h3 class="sgr-feed-title">
       🎯 이벤트 챌린지 — {{ event?.name }}
       <small v-if="period" class="sgr-feed-hint">{{ period }}</small>
+      <button
+        v-if="hasPool && anyMissing && !myPartyLoaded"
+        type="button"
+        class="sgr-challenge-mypool-btn"
+        :disabled="myPartyLoading"
+        @click="loadMyParties"
+      >
+        {{ myPartyLoading ? '조합 계산 중…' : '🎒 내 풀로 조합 만들기' }}
+      </button>
     </h3>
 
     <div class="sgr-challenge-grid">
@@ -25,7 +34,38 @@
           {{ opened.has(stage.label) ? '접기 ▲' : '더 보기 ▼' }}
         </button>
 
-        <div v-if="stage.mentioned.length" class="sgr-challenge-chars">
+        <!-- ① 공략글 정리 추천 조합 — 보유는 강조, 미보유는 흐림 -->
+        <div v-if="stage.best_party?.length" class="sgr-challenge-party">
+          <span class="sgr-challenge-party-tag">🏆 추천 조합</span>
+          <div class="sgr-challenge-chars">
+            <span
+              v-for="member in stage.best_party"
+              :key="member.key"
+              class="sgr-challenge-char"
+              :class="{ 'is-owned': isOwned(member.key), 'is-missing': hasPool && !isOwned(member.key) }"
+            >
+              {{ member.name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- ② 내 풀 조합 — 미보유를 내 보유에서 Gemini 대체 -->
+        <div v-if="myParties[stage.id]" class="sgr-challenge-party">
+          <span class="sgr-challenge-party-tag">🎒 내 풀 조합</span>
+          <div class="sgr-challenge-chars">
+            <span
+              v-for="(member, i) in myParties[stage.id]"
+              :key="`${member.key}-${i}`"
+              class="sgr-challenge-char"
+              :class="{ 'is-owned': member.owned, 'is-missing': !member.owned, 'is-sub': member.replaced_from }"
+              :title="member.replaced_from ? `${member.replaced_from} 대신` : (member.owned ? '' : '보유 목록에 적절한 대체 없음')"
+            >
+              {{ member.name }}<template v-if="member.replaced_from">*</template>
+            </span>
+          </div>
+        </div>
+
+        <div v-else-if="stage.mentioned.length && !stage.best_party?.length" class="sgr-challenge-chars">
           <span v-for="name in stage.mentioned" :key="name" class="sgr-challenge-char">{{ name }}</span>
         </div>
 
@@ -65,6 +105,7 @@ import { raidApi } from '../api';
 
 const props = defineProps({
   gameSlug: { type: String, required: true },
+  pool: { type: Object, default: () => ({}) }, // 내 풀: { [external_key]: { owned, ... } }
 });
 
 const event = ref(null);
@@ -72,6 +113,40 @@ const stages = ref([]);
 const loaded = ref(false);
 const opened = ref(new Set());
 const cache = new Map();
+
+// === 내 풀 조합 ===
+const myParties = ref({}); // stage.id → party[]
+const myPartyLoading = ref(false);
+const myPartyLoaded = ref(false);
+
+const ownedKeys = computed(() => Object.entries(props.pool)
+  .filter(([, v]) => v?.owned)
+  .map(([k]) => k));
+const hasPool = computed(() => ownedKeys.value.length > 0);
+const anyMissing = computed(() => stages.value.some(
+  (s) => (s.best_party || []).some((m) => !props.pool[m.key]?.owned),
+));
+
+function isOwned(key) {
+  return !!props.pool[key]?.owned;
+}
+
+async function loadMyParties() {
+  myPartyLoading.value = true;
+  try {
+    const result = {};
+    for (const stage of stages.value) {
+      if (!stage.best_party?.length) continue;
+      result[stage.id] = await raidApi.getEventChallengeMyParty(stage.id, ownedKeys.value);
+    }
+    myParties.value = result;
+    myPartyLoaded.value = true;
+  } catch (e) {
+    console.error('내 풀 조합 계산 실패', e);
+  } finally {
+    myPartyLoading.value = false;
+  }
+}
 
 const period = computed(() => {
   if (!event.value?.starts_at) return '';
@@ -86,6 +161,8 @@ function toggle(label) {
 
 async function load() {
   loaded.value = false;
+  myParties.value = {};
+  myPartyLoaded.value = false;
   try {
     if (!cache.has(props.gameSlug)) {
       cache.set(props.gameSlug, await raidApi.getEventChallenges(props.gameSlug));

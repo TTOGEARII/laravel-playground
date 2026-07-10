@@ -5,6 +5,8 @@ namespace App\Services\SubcultureGameInfo\Raids;
 use App\Models\SubcultureGameInfo\Character;
 use App\Models\SubcultureGameInfo\EventChallenge;
 use App\Models\SubcultureGameInfo\Game;
+use App\Services\Gemini\GeminiResponseParser;
+use App\Services\Gemini\GeminiService;
 use App\Services\SubcultureGameInfo\Sources\Concerns\FetchesWebContent;
 use App\Services\SubcultureGameInfo\Sources\Drivers\ArcaGuidePostDriver;
 use App\Services\SubcultureGameInfo\Sources\Drivers\DcGuidePostDriver;
@@ -29,6 +31,7 @@ class EventChallengeCollectorService
         private ArcaGuidePostDriver $arca,
         private DcGuidePostDriver $dc,
         private CrawlerScriptRunner $browser,
+        private GeminiService $gemini,
     ) {}
 
     /**
@@ -72,6 +75,13 @@ class EventChallengeCollectorService
                 Log::warning('[SGI-EVENT] 보조 영상 수집 실패(본 수집은 진행)', ['error' => $e->getMessage()]);
             }
 
+            // 공략 재료(요약·영상 제목·언급)를 Gemini 로 정리해 스테이지별 추천 조합 추출
+            try {
+                $stages = $this->extractBestParties($stages, $game);
+            } catch (\Throwable $e) {
+                Log::warning('[SGI-EVENT] 추천 조합 추출 실패(본 수집은 진행)', ['error' => $e->getMessage()]);
+            }
+
             foreach ($stages as $stage) {
                 EventChallenge::updateOrCreate(
                     [
@@ -88,6 +98,7 @@ class EventChallengeCollectorService
                         'summary' => $stage['summary'],
                         'video_url' => $stage['video'],
                         'extra_videos' => $stage['extra_videos'] ?? [],
+                        'best_party' => $stage['best_party'] ?? [],
                         'mentioned' => $stage['mentioned'],
                         'source_url' => $post->url,
                     ],
@@ -263,6 +274,77 @@ class EventChallengeCollectorService
         }
 
         return $roster;
+    }
+
+    // ─── 추천 조합 추출(Gemini) ──────────────────────────────────────────
+
+    /**
+     * 공략 재료(스테이지 요약·영상 제목·언급 캐릭터)를 Gemini 로 정리해 스테이지별
+     * 추천 조합을 뽑는다. 캐릭터는 마스터 이름 닫힌 어휘로 강제하고, 키 없음/실패 시
+     * 언급 캐릭터를 조합으로 폴백한다(기능 자체는 항상 동작).
+     */
+    private function extractBestParties(array $stages, Game $game): array
+    {
+        $nameToKey = Character::where('subculture_game_id', $game->id)
+            ->where('active_flg', true)
+            ->pluck('external_key', 'name')
+            ->all();
+
+        $toParty = fn (array $names) => collect($names)
+            ->filter(fn ($n) => is_string($n) && isset($nameToKey[$n]))
+            ->unique()
+            ->take(6)
+            ->map(fn (string $n) => ['name' => $n, 'key' => $nameToKey[$n]])
+            ->values()
+            ->all();
+
+        // 폴백(키 없음/실패 대비): 언급 캐릭터를 조합으로
+        foreach ($stages as &$stage) {
+            $stage['best_party'] = $toParty($stage['mentioned']);
+        }
+        unset($stage);
+
+        if (! $this->gemini->hasApiKey()) {
+            return $stages;
+        }
+
+        $material = collect($stages)->map(fn (array $s) => [
+            'label' => $s['label'],
+            'condition' => $s['condition'],
+            'summary' => mb_substr((string) $s['summary'], 0, 400),
+            'video_titles' => collect($s['extra_videos'] ?? [])->pluck('title')->filter()->values()->all(),
+            'mentioned' => $s['mentioned'],
+        ])->all();
+
+        $prompt = "블루 아카이브 이벤트 챌린지 공략 자료를 정리해 스테이지별 추천 편성(최대 6명)을 뽑아라.\n"
+            ."규칙:\n"
+            ."- 캐릭터 이름은 반드시 아래 [캐릭터 목록]에 있는 표기 그대로만 사용한다(목록에 없는 이름 금지).\n"
+            ."- 공략 요약·영상 제목에서 실제 사용/추천된 캐릭터를 우선하고, 부족한 자리는 클리어 조건과 기믹에 맞는 대중적인 픽으로 채운다.\n"
+            ."- 응답은 JSON 배열만: [{\"label\": \"Challenge 01\", \"party\": [\"이름\", ...]}]\n\n"
+            .'[캐릭터 목록] '.implode(', ', array_keys($nameToKey))."\n\n"
+            .'[공략 자료] '.json_encode($material, JSON_UNESCAPED_UNICODE);
+
+        // maxOutputTokens 를 걸면 thinking 토큰까지 포함돼 JSON 이 잘릴 수 있다 — 모델 기본값 사용
+        $raw = $this->gemini->generate($prompt, temperature: 0.3, json: true);
+        $parsed = $raw !== null ? GeminiResponseParser::parseJson($raw) : null;
+        if (! is_array($parsed)) {
+            Log::warning('[SGI-EVENT] 추천 조합 Gemini 응답 파싱 실패 — 언급 캐릭터로 폴백');
+
+            return $stages;
+        }
+
+        $byLabel = collect($parsed)
+            ->filter(fn ($row) => is_array($row) && isset($row['label']) && is_array($row['party'] ?? null))
+            ->keyBy('label');
+
+        foreach ($stages as &$stage) {
+            $party = $toParty($byLabel[$stage['label']]['party'] ?? []);
+            if ($party !== []) {
+                $stage['best_party'] = $party;
+            }
+        }
+
+        return $stages;
     }
 
     // ─── 보조 영상 소스: 유튜브 검색 · 디시 챌린지 글 ─────────────────────

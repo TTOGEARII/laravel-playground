@@ -63,6 +63,10 @@ Route::prefix('subculture-game-info')->group(function () {
     Route::get('guide-posts', [SubcultureGuidePostController::class, 'index']);
     // 진행 중 이벤트 챌린지 공략(블아) — ?game=
     Route::get('event-challenges', [SubcultureEventChallengeController::class, 'index']);
+    // 이벤트 챌린지 내 풀 조합 — Gemini 대체 추천(1일 캐시)이라 스로틀 빡빡하게
+    Route::post('event-challenges/{challenge}/my-party', [SubcultureEventChallengeController::class, 'myParty'])
+        ->whereNumber('challenge')
+        ->middleware('throttle:10,1');
 });
 
 /*

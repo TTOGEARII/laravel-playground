@@ -24,6 +24,7 @@ class EventChallenge extends Model
         'summary',
         'video_url',
         'extra_videos',
+        'best_party',
         'mentioned',
         'source_url',
     ];
@@ -35,6 +36,7 @@ class EventChallenge extends Model
             'ends_at' => 'date',
             'mentioned' => 'array',
             'extra_videos' => 'array',
+            'best_party' => 'array',
         ];
     }
 

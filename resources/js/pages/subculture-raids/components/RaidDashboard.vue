@@ -76,6 +76,10 @@ function moduleProps(module) {
     // 보유 하이라이트 + 대체 지정(피커·Gemini 추천은 최신 레이드를 컨텍스트로 사용)
     return { gameSlug: currentGame.value.slug, pool: props.pool, userSubs: props.userSubs, raids: gameRaids };
   }
+  if (module === 'event-challenges') {
+    // 내 풀 조합(미보유 → 보유 대체) 계산에 보유 풀 사용
+    return { gameSlug: currentGame.value.slug, pool: props.pool };
+  }
   return { gameSlug: currentGame.value.slug };
 }
 

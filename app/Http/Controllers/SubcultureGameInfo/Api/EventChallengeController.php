@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SubcultureGameInfo\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SubcultureGameInfo\EventChallenge;
 use App\Models\SubcultureGameInfo\Game;
+use App\Services\SubcultureGameInfo\Raids\EventChallengePartyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -39,15 +40,30 @@ class EventChallengeController extends Controller
                     'source_url' => $first->source_url,
                 ],
                 'stages' => $stages->map(fn (EventChallenge $c) => [
+                    'id' => $c->id,
                     'label' => $c->stage_label,
                     'name' => $c->stage_name,
                     'condition' => $c->clear_condition,
                     'summary' => $c->summary,
                     'video_url' => $c->video_url,
                     'extra_videos' => $c->extra_videos ?? [],
+                    'best_party' => $c->best_party ?? [],
                     'mentioned' => $c->mentioned ?? [],
                 ]),
             ],
+        ]);
+    }
+
+    /** 내 풀 조합 — 추천 조합의 미보유를 보유 목록에서 Gemini 대체(1일 캐시). */
+    public function myParty(Request $request, EventChallenge $challenge, EventChallengePartyService $service): JsonResponse
+    {
+        $validated = $request->validate([
+            'owned' => ['array', 'max:400'],
+            'owned.*' => ['string', 'max:100'],
+        ]);
+
+        return response()->json([
+            'data' => ['party' => $service->myParty($challenge, $validated['owned'] ?? [])],
         ]);
     }
 }

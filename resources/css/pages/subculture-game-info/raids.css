@@ -218,7 +218,35 @@
     cursor: pointer;
 }
 .sgr-challenge-more:hover { color: var(--text-primary); }
+.sgr-challenge-party { display: flex; flex-direction: column; gap: 4px; }
+.sgr-challenge-party-tag {
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+    color: var(--text-secondary);
+}
+.sgr-challenge-mypool-btn {
+    margin-left: var(--ds-space-sm);
+    padding: 4px 12px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid rgba(243, 114, 127, 0.5);
+    background: transparent;
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-semibold);
+    cursor: pointer;
+}
+.sgr-challenge-mypool-btn:hover { background: rgba(243, 114, 127, 0.12); }
+.sgr-challenge-mypool-btn:disabled { opacity: 0.55; cursor: default; }
 .sgr-challenge-chars { display: flex; flex-wrap: wrap; gap: 6px; }
+.sgr-challenge-char.is-owned {
+    background: rgba(52, 211, 153, 0.14);
+    color: var(--ds-text-green, #34d399);
+}
+.sgr-challenge-char.is-missing { opacity: 0.45; }
+.sgr-challenge-char.is-sub {
+    background: rgba(243, 114, 127, 0.14);
+    color: var(--ds-text-accent);
+}
 .sgr-challenge-char {
     padding: 2px 10px;
     border-radius: var(--ds-round-full);
