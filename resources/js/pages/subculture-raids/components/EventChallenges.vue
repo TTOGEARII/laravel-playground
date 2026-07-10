@@ -34,18 +34,20 @@
           {{ opened.has(stage.label) ? '접기 ▲' : '더 보기 ▼' }}
         </button>
 
-        <!-- ① 공략글 정리 추천 조합 — 보유는 강조, 미보유는 흐림 -->
+        <!-- ① 공략글 정리 추천 조합 — 보유는 강조, 미보유는 흐림. 스트라이커 먼저, 스페셜 뒤 -->
         <div v-if="stage.best_party?.length" class="sgr-challenge-party">
-          <span class="sgr-challenge-party-tag">🏆 추천 조합</span>
+          <span class="sgr-challenge-party-tag">🏆 추천 조합 <small class="sgr-role-legend"><i class="is-striker" />스트라이커 <i class="is-special" />스페셜</small></span>
           <div class="sgr-challenge-chars">
-            <span
-              v-for="member in stage.best_party"
-              :key="member.key"
-              class="sgr-challenge-char"
-              :class="{ 'is-owned': isOwned(member.key), 'is-missing': hasPool && !isOwned(member.key) }"
-            >
-              {{ member.name }}
-            </span>
+            <template v-for="(member, i) in sortedParty(stage.best_party)" :key="member.key">
+              <span v-if="isRoleBoundary(sortedParty(stage.best_party), i)" class="sgr-role-divider" />
+              <span
+                class="sgr-challenge-char"
+                :class="[roleClass(member.key), { 'is-owned': isOwned(member.key), 'is-missing': hasPool && !isOwned(member.key) }]"
+              >
+                <img v-if="charImage(member.key)" :src="charImage(member.key)" :alt="member.name" loading="lazy" />
+                {{ member.name }}
+              </span>
+            </template>
           </div>
         </div>
 
@@ -53,15 +55,17 @@
         <div v-if="myParties[stage.id]" class="sgr-challenge-party">
           <span class="sgr-challenge-party-tag">🎒 내 풀 조합</span>
           <div class="sgr-challenge-chars">
-            <span
-              v-for="(member, i) in myParties[stage.id]"
-              :key="`${member.key}-${i}`"
-              class="sgr-challenge-char"
-              :class="{ 'is-owned': member.owned, 'is-missing': !member.owned, 'is-sub': member.replaced_from }"
-              :title="member.replaced_from ? `${member.replaced_from} 대신` : (member.owned ? '' : '보유 목록에 적절한 대체 없음')"
-            >
-              {{ member.name }}<template v-if="member.replaced_from">*</template>
-            </span>
+            <template v-for="(member, i) in sortedParty(myParties[stage.id])" :key="`${member.key}-${i}`">
+              <span v-if="isRoleBoundary(sortedParty(myParties[stage.id]), i)" class="sgr-role-divider" />
+              <span
+                class="sgr-challenge-char"
+                :class="[roleClass(member.key), { 'is-owned': member.owned, 'is-missing': !member.owned, 'is-sub': member.replaced_from }]"
+                :title="member.replaced_from ? `${member.replaced_from} 대신` : (member.owned ? '' : '보유 목록에 적절한 대체 없음')"
+              >
+                <img v-if="charImage(member.key)" :src="charImage(member.key)" :alt="member.name" loading="lazy" />
+                {{ member.name }}<template v-if="member.replaced_from">*</template>
+              </span>
+            </template>
           </div>
         </div>
 
@@ -131,6 +135,48 @@ function isOwned(key) {
   return !!props.pool[key]?.owned;
 }
 
+// === 캐릭터 마스터 참조(이미지·스트라이커/스페셜) ===
+const charMap = ref({});
+const charCache = new Map();
+
+async function loadCharacters() {
+  try {
+    if (!charCache.has(props.gameSlug)) {
+      const { data } = await raidApi.getCharacters(props.gameSlug); // { data: [...], meta }
+      charCache.set(props.gameSlug, Object.fromEntries((data || []).map((c) => [c.external_key, c])));
+    }
+    charMap.value = charCache.get(props.gameSlug);
+  } catch (e) {
+    console.error('캐릭터 목록 로드 실패', e);
+    charMap.value = {};
+  }
+}
+
+function charImage(key) {
+  const c = charMap.value[key];
+  return c?.display_image_url || c?.image_url || null;
+}
+
+function roleOf(key) {
+  return charMap.value[key]?.traits?.role || null;
+}
+
+function roleClass(key) {
+  const role = roleOf(key);
+  return role ? `is-role-${role}` : '';
+}
+
+// 스트라이커 → 스페셜 → 미상 순 정렬
+function sortedParty(party) {
+  const order = { striker: 0, special: 1 };
+  return [...party].sort((a, b) => (order[roleOf(a.key)] ?? 2) - (order[roleOf(b.key)] ?? 2));
+}
+
+// 스트라이커 그룹과 스페셜 그룹 사이 구분선 위치
+function isRoleBoundary(sorted, i) {
+  return i > 0 && roleOf(sorted[i].key) === 'special' && roleOf(sorted[i - 1].key) === 'striker';
+}
+
 async function loadMyParties() {
   myPartyLoading.value = true;
   try {
@@ -178,6 +224,6 @@ async function load() {
   }
 }
 
-watch(() => props.gameSlug, load);
-onMounted(load);
+watch(() => props.gameSlug, () => { load(); loadCharacters(); });
+onMounted(() => { load(); loadCharacters(); });
 </script>

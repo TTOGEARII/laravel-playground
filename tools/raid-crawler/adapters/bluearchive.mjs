@@ -19,6 +19,19 @@ export async function crawlCharacters(page, base) {
         alt: (img.getAttribute('alt') ?? '').trim(),
     })));
 
+    // 스트라이커/스페셜 구분 — baql GraphQL 의 uid→role (몰루로그 DOM 에는 없음)
+    let roles = {};
+    try {
+        const res = await page.request.post('https://api.baql.net/graphql', {
+            data: { query: '{ students { uid role } }' },
+        });
+        const students = (await res.json())?.data?.students ?? [];
+        roles = Object.fromEntries(students.map((s) => [s.uid, s.role]));
+        log(`bluearchive role ${Object.keys(roles).length}건 (baql)`);
+    } catch (e) {
+        log(`bluearchive role 조회 실패(traits 없이 진행): ${e.message}`);
+    }
+
     const items = new Map();
     for (const { src, alt } of raw) {
         const m = src.match(/collection\/(\d+)\.webp/);
@@ -27,7 +40,7 @@ export async function crawlCharacters(page, base) {
             external_key: m[1],
             name: alt,
             rarity: null,
-            traits: null,
+            traits: roles[m[1]] ? { role: roles[m[1]] } : null,
             image_url: absUrl(base, src),
             source_url: `${base}/students`,
         });
