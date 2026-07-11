@@ -411,8 +411,11 @@ class OtakuShopRematchCommand extends Command
         OtakuProduct::query()
             ->whereNotNull('ok_product_match_sig')
             ->where('ok_product_match_sig', '!=', '')
-            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_match_sig'])
-            ->groupBy(fn (OtakuProduct $p) => ($p->ok_product_ip_id ?? 'x').'|'.$p->ok_product_match_sig)
+            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_match_sig', 'ok_product_title'])
+            // 세트 식별자("세트 D" / "세트 2.0 & 2.1")는 1글자·숫자라 시그니처에서 탈락한다 —
+            // 식별자가 다르면 다른 구성이므로 식별자까지 그룹 키에 포함해 분리한다.
+            ->groupBy(fn (OtakuProduct $p) => ($p->ok_product_ip_id ?? 'x').'|'.$p->ok_product_match_sig
+                .'|'.self::setVariantOf((string) $p->ok_product_title))
             ->each(function ($products) use (&$groups) {
                 if ($products->count() > 1) {
                     $groups[] = $products->pluck('ok_product_id')->map(fn ($id) => (int) $id)->all();
@@ -420,6 +423,16 @@ class OtakuShopRematchCommand extends Command
             });
 
         return $groups;
+    }
+
+    /** 제목에서 세트 식별자("세트 D", "세트 2.0 & 2.1")를 뽑는다. 없으면 빈 문자열. */
+    private static function setVariantOf(string $title): string
+    {
+        if (preg_match('/세트\s*([a-z0-9][a-z0-9.&\s]{0,12})/iu', $title, $m)) {
+            return mb_strtolower(preg_replace('/\s+/', '', $m[1]) ?? '');
+        }
+
+        return '';
     }
 
     private function containmentGroups(): array
