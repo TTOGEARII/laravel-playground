@@ -7,6 +7,7 @@ use App\Services\SubcultureGameInfo\CodeSyncService;
 use App\Services\SubcultureGameInfo\Raids\CrawlerScriptRunner;
 use App\Services\SubcultureGameInfo\Raids\EliminationPartyService;
 use App\Services\SubcultureGameInfo\Raids\RaidSyncService;
+use App\Services\SubcultureGameInfo\Raids\TrickcalLoungeRaidService;
 use Illuminate\Console\Command;
 
 class CrawlRaidsCommand extends Command
@@ -16,7 +17,7 @@ class CrawlRaidsCommand extends Command
 
     protected $description = '서드파티 사이트에서 게임별 레이드 일정·추천 편성을 Playwright 사이드카로 크롤·동기화';
 
-    public function handle(CodeSyncService $codeSync, CrawlerScriptRunner $runner, RaidSyncService $sync, EliminationPartyService $elimination): int
+    public function handle(CodeSyncService $codeSync, CrawlerScriptRunner $runner, RaidSyncService $sync, EliminationPartyService $elimination, TrickcalLoungeRaidService $trickcalLounge): int
     {
         $codeSync->ensureGames();
 
@@ -56,6 +57,16 @@ class CrawlRaidsCommand extends Command
                 $n = $elimination->sync($game);
                 if ($n > 0) {
                     $this->line("  ↳ 대결전 {$n}건 — 장갑 타입별 편성으로 보정");
+                }
+            }
+
+            // 트릭컬: 트릭컬 레코드는 시즌 종료 후에야 게시되는 특성 — 진행 중 시즌은
+            // 라운지 공지 일정으로 보완하고, 정식 회차가 올라오면 라운지 일정을 정리한다.
+            if ($slug === 'trickcal') {
+                $pruned = $trickcalLounge->pruneCovered($game);
+                $added = $trickcalLounge->sync($game);
+                if ($added > 0 || $pruned > 0) {
+                    $this->line("  ↳ 라운지 공지 일정: 추가/갱신 {$added} · 정리 {$pruned}");
                 }
             }
         }

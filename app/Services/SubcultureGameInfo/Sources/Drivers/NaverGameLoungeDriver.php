@@ -124,6 +124,35 @@ class NaverGameLoungeDriver extends AbstractSourceDriver implements CodeSearchDr
     }
 
     /**
+     * 특정 게시판의 최근 글(제목·본문 텍스트·작성일) — 레이드 일정 등 쿠폰 외 용도의 공개 조회.
+     *
+     * @return array<int, array{title: string, body: string, date: string}>
+     */
+    public function boardPosts(string $loungeId, int $boardId, int $limit = 15): array
+    {
+        $base = rtrim((string) config('subculture-game-info.drivers.naver.base'), '/');
+        $feeds = $this->getJson("{$base}/community/lounge/{$loungeId}/feed", [
+            'boardId' => $boardId,
+            'buffFilteringYN' => 'N',
+            'limit' => $limit,
+            'offset' => 0,
+            'order' => 'NEW',
+        ]);
+
+        $posts = [];
+        foreach ($feeds['content']['feeds'] ?? [] as $item) {
+            $feed = $item['feed'] ?? [];
+            $posts[] = [
+                'title' => (string) ($feed['title'] ?? ''),
+                'body' => $this->extractDocumentText((string) ($feed['contents'] ?? '')),
+                'date' => (string) ($feed['createdDate'] ?? ($feed['createdAt'] ?? '')),
+            ];
+        }
+
+        return $posts;
+    }
+
+    /**
      * 라운지 쿠폰/공지 게시판 글을 받아 (게시판ID, 제목, 본문, 작성일)로 정리한다.
      * 게임당 1회만 받아 캐시하므로 수집·검증이 같은 글을 중복 요청하지 않는다.
      *
