@@ -121,6 +121,21 @@ export const raidApi = {
         const { data } = await axios.get(`${API_BASE}/schedule`, { params: { game: gameSlug } });
         return data.data;
     },
+    /**
+     * 게임 위키 항목 목록(wiki-dex 모듈) — menu 미지정 시 첫 카테고리.
+     * @param {string} gameSlug
+     * @param {string} [menu]
+     * @returns {Promise<{data: Array, meta: {menus: Array, menu: string}}>}
+     */
+    async getWikiEntries(gameSlug, menu) {
+        const { data } = await axios.get(`${API_BASE}/wiki-entries`, { params: { game: gameSlug, ...(menu ? { menu } : {}) } });
+        return data;
+    },
+    /** 위키 항목 상세(정규화 섹션). */
+    async getWikiEntry(id) {
+        const { data } = await axios.get(`${API_BASE}/wiki-entries/${id}`);
+        return data.data;
+    },
 };
 
 /**

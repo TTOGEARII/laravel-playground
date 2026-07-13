@@ -8,6 +8,7 @@ use App\Http\Controllers\SubcultureGameInfo\Api\EventChallengeController as Subc
 use App\Http\Controllers\SubcultureGameInfo\Api\GuidePostController as SubcultureGuidePostController;
 use App\Http\Controllers\SubcultureGameInfo\Api\InfoController as SubcultureInfoController;
 use App\Http\Controllers\SubcultureGameInfo\Api\RaidController as SubcultureRaidController;
+use App\Http\Controllers\SubcultureGameInfo\Api\WikiEntryController as SubcultureWikiEntryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -63,6 +64,10 @@ Route::prefix('subculture-game-info')->group(function () {
     Route::get('banners', [SubcultureInfoController::class, 'banners']);
     Route::get('events', [SubcultureInfoController::class, 'events']);
     Route::get('schedule', [SubcultureInfoController::class, 'schedule']);
+
+    // 게임 위키 항목(호요랩 위키·wuthering.gg) — 위키 정보 탭
+    Route::get('wiki-entries', [SubcultureWikiEntryController::class, 'index']);
+    Route::get('wiki-entries/{entry}', [SubcultureWikiEntryController::class, 'show'])->whereNumber('entry');
     // 속성(성격)별 추천 조합(트릭컬) — ?game=trickcal
     Route::get('attribute-parties', [SubcultureAttributePartyController::class, 'index']);
     // 게임 단위 최근 공략글 피드 — ?game=&limit=

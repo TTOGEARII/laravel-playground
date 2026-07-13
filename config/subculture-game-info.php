@@ -395,10 +395,21 @@ return [
                 'main' => ['raids', 'guides'],
                 'tabs' => ['student-dex'],
             ],
-            // 호요버스 — 학정보(도감)만 우선. 레이드·공략 미수집이라 서브탭 없이 도감이 메인.
+            // 호요버스 — 캐릭터정보(도감·보유) + 위키 정보(공식 호요랩 위키 전체 카테고리)
             'genshin' => ['student-dex'],
-            'starrail' => ['student-dex'],
-            'zenless' => ['student-dex'],
+            'starrail' => [
+                'main' => ['student-dex'],
+                'tabs' => ['wiki-dex'],
+            ],
+            'zenless' => [
+                'main' => ['student-dex'],
+                'tabs' => ['wiki-dex'],
+            ],
+            // 명조 — wuthering.gg 소스: 캐릭터정보(도감·보유) + 위키 정보(무기)
+            'wuthering' => [
+                'main' => ['student-dex'],
+                'tabs' => ['wiki-dex'],
+            ],
         ],
 
         /*
@@ -463,6 +474,11 @@ return [
                 ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
                     'labels' => ['Physical' => '물리', 'Fire' => '화염', 'Ice' => '빙결', 'Thunder' => '전기', 'Wind' => '바람', 'Quantum' => '양자', 'Imaginary' => '허수']],
             ],
+            // 명조 — traits: element(속성)/weapon(무기) (wuthering.gg 소스, 한글 원문). rarity(5성 등)는 상위 컬럼.
+            'wuthering' => [
+                ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true],
+                ['key' => 'weapon', 'label' => '무기', 'type' => 'badge', 'filter' => true],
+            ],
             // 젠레스 — traits: element(속성)/profession(특성) (Enka 소스). rarity(S/A)는 상위 컬럼 표시.
             'zenless' => [
                 ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
@@ -485,6 +501,34 @@ return [
             'timeout' => (int) env('SGI_SCHALEDB_TIMEOUT', 20),
             // 픽업 카드용 전신 일러(몰루로그와 동일 소스 baql.net collection) — {id}.webp
             'collection_image_base' => env('SGI_BA_COLLECTION_BASE', 'https://assets.baql.net/images/students/collection'),
+        ],
+
+        /*
+        | 호요랩 공식 위키(HoYoWiki) — 젠존제/스타레일의 카테고리(메뉴)별 항목 전체 수집.
+        | 목록: POST {base}/hoyowiki/{app}/wapi/get_entry_page_list (menu_id·페이지네이션)
+        | 상세: GET  {base}/hoyowiki/{app}/wapi/entry_page?entry_page_id= (모듈 구조 JSON, ko-kr)
+        | exclude_menus 는 노이즈 카테고리(NPC/적 등) 제외용.
+        */
+        'hoyowiki' => [
+            'base' => env('SGI_HOYOWIKI_BASE', 'https://sg-act-public-api.hoyolab.com'),
+            'static_base' => env('SGI_HOYOWIKI_STATIC_BASE', 'https://sg-act-public-api-static.hoyolab.com'),
+            'lang' => 'ko-kr',
+            'timeout' => (int) env('SGI_HOYOWIKI_TIMEOUT', 20),
+            'fetch_delay_ms' => (int) env('SGI_HOYOWIKI_DELAY_MS', 250),
+            'apps' => [
+                'zenless' => ['app' => 'zzz', 'exclude_menus' => []],
+                'starrail' => ['app' => 'hsr', 'exclude_menus' => ['105', '112']], // NPC·적 제외(수백 건 노이즈)
+            ],
+        ],
+
+        /*
+        | wuthering.gg(명조) — SSR DOM 파싱. 캐릭터(공명자)는 Character(도감·보유)로,
+        | 무기는 위키 항목으로 저장. 상세 페이지도 항목별로 순회 수집한다.
+        */
+        'wutheringgg' => [
+            'base' => env('SGI_WUTHERINGGG_BASE', 'https://wuthering.gg'),
+            'timeout' => (int) env('SGI_WUTHERINGGG_TIMEOUT', 20),
+            'fetch_delay_ms' => (int) env('SGI_WUTHERINGGG_DELAY_MS', 300),
         ],
 
         /*

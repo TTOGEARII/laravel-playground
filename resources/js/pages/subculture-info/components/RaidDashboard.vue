@@ -84,6 +84,7 @@ import OngoingContent from './OngoingContent.vue';
 import PickupBanners from './PickupBanners.vue';
 import RaidList from './RaidList.vue';
 import StudentDex from './StudentDex.vue';
+import WikiDex from './WikiDex.vue';
 
 const props = defineProps({
   games: { type: Array, required: true },
@@ -111,12 +112,14 @@ const MODULES = {
   'guides': GuideFeed,
   'future-timeline': FutureTimeline,
   'student-dex': StudentDex,
+  'wiki-dex': WikiDex,
 };
 
 // 서브탭 라벨(아이콘 포함)
 const TAB_META = {
   'future-timeline': '🔮 미래시',
   'student-dex': '📖 캐릭터정보',
+  'wiki-dex': '📚 위키 정보',
 };
 function tabLabel(key) {
   return TAB_META[key] ?? key;

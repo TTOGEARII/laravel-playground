@@ -104,6 +104,13 @@ Schedule::command('subculture:sync-zenless')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// 게임 위키 동기화 — 호요랩 위키(젠존제·스타레일 전 카테고리)+wuthering.gg(명조), 항목별 상세 포함(신규만). 매주 화 06:30.
+Schedule::command('subculture:sync-wiki')
+    ->weeklyOn(2, '06:30')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(60)
+    ->runInBackground();
+
 // 블아 종합전술시험(종전시) — 새 차수 글만 가볍게 확인(아카 HTML 파싱, Gemini 없음). 매일 1회.
 Schedule::command('subculture:collect-jfd')
     ->dailyAt('06:10')
