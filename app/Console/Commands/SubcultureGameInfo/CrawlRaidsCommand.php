@@ -68,6 +68,11 @@ class CrawlRaidsCommand extends Command
                 if ($added > 0 || $pruned > 0) {
                     $this->line("  ↳ 라운지 공지 일정: 추가/갱신 {$added} · 정리 {$pruned}");
                 }
+                // 진행 중 시즌: 커뮤니티(디시·아카) 공략글에서 편성 추출(Gemini) + 보스명 보강
+                $withParties = $trickcalLounge->enrichParties($game);
+                if ($withParties > 0) {
+                    $this->line("  ↳ 커뮤니티 공략 편성 보강: {$withParties}건");
+                }
             }
         }
 
