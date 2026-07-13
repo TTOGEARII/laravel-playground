@@ -4,6 +4,10 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    /* PC 전체화면에서 과도하게 퍼지지 않게 중앙 고정 칼럼(몰루로그식) */
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 /* ---------------------------------- 상단 뷰 전환 */
