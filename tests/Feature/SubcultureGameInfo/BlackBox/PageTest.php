@@ -12,8 +12,9 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * 블랙박스: 웹 페이지 GET /subculture-game-info 의 동작 계약.
+ * 블랙박스: 리딤코드 웹 페이지 GET /subculture-game-info/codes 의 동작 계약.
  * 200 응답 / 코드 노출 / game 필터 / 잘못된 slug 폴백을 렌더된 HTML 로만 검증한다.
+ * (/subculture-game-info 는 허브 랜딩이며, 리딤코드는 /codes 로 이동함)
  */
 class PageTest extends TestCase
 {
@@ -58,7 +59,7 @@ class PageTest extends TestCase
         $g = $this->game('genshin', ['name' => '원신']);
         $this->activeCode($g, 'GENSHOWN11');
 
-        $res = $this->get('/subculture-game-info');
+        $res = $this->get('/subculture-game-info/codes');
 
         $res->assertOk();
         $res->assertSee('GENSHOWN11');
@@ -69,8 +70,9 @@ class PageTest extends TestCase
     {
         $this->game('genshin', ['name' => '원신']);
 
-        $res = $this->get(route('subculture-game-info.index'));
-        $res->assertOk();
+        // 허브 랜딩(index) + 리딤코드(codes) 둘 다 200 으로 열려야 한다
+        $this->get(route('subculture-game-info.index'))->assertOk();
+        $this->get(route('subculture-game-info.codes'))->assertOk();
     }
 
     public function test_game_filter_shows_only_selected_game(): void
@@ -80,7 +82,7 @@ class PageTest extends TestCase
         $this->activeCode($genshin, 'GENSONLY11');
         $this->activeCode($starrail, 'STARONLY22');
 
-        $res = $this->get('/subculture-game-info?game=genshin');
+        $res = $this->get('/subculture-game-info/codes?game=genshin');
 
         $res->assertOk();
         $res->assertSee('GENSONLY11');
@@ -94,7 +96,7 @@ class PageTest extends TestCase
         $this->activeCode($genshin, 'GENSALL111');
         $this->activeCode($starrail, 'STARALL222');
 
-        $res = $this->get('/subculture-game-info?game=does-not-exist');
+        $res = $this->get('/subculture-game-info/codes?game=does-not-exist');
 
         $res->assertOk();
         // 폴백 시 전체 게임 코드가 모두 노출

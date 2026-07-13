@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\SubcultureAgent;
+namespace App\Models\SubcultureGameInfo\Agent;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;

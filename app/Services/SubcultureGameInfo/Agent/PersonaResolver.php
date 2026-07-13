@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\SubcultureAgent;
+namespace App\Services\SubcultureGameInfo\Agent;
 
 use App\Models\ChatCharacter;
-use App\Models\SubcultureAgent\AgentSession;
+use App\Models\SubcultureGameInfo\Agent\AgentSession;
 use Illuminate\Support\Str;
 
 /**

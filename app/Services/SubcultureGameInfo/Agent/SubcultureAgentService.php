@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\SubcultureAgent;
+namespace App\Services\SubcultureGameInfo\Agent;
 
-use App\Models\SubcultureAgent\AgentMessage;
-use App\Models\SubcultureAgent\AgentSession;
+use App\Models\SubcultureGameInfo\Agent\AgentMessage;
+use App\Models\SubcultureGameInfo\Agent\AgentSession;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Prism\Prism\Facades\Prism;

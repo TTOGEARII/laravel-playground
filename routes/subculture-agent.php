@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\SubcultureAgent\AgentController;
+use App\Http\Controllers\SubcultureGameInfo\Agent\AgentController;
 
 Route::get('/', [AgentController::class, 'index'])->name('subculture-agent.index');
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\SubcultureAgent;
+namespace App\Models\SubcultureGameInfo\Agent;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

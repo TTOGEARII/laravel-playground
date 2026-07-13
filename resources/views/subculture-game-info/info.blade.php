@@ -3,7 +3,7 @@
 @section('title', '서브컬쳐 게임 레이드 정보')
 
 @section('vite_extra')
-    @vite(['resources/js/pages/subculture-raids.js'])
+    @vite(['resources/js/pages/subculture-info.js'])
 @endsection
 
 @section('header')
@@ -21,7 +21,7 @@
 @endsection
 
 @section('content')
-    <div id="subculture-raids-app"
+    <div id="subculture-info-app"
          data-games='@json($games)'
          data-logged-in="{{ Auth::check() ? 1 : 0 }}"></div>
 

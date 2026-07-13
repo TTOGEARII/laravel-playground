@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\SubcultureAgent;
+namespace App\Http\Controllers\SubcultureGameInfo\Agent;
 
 use App\Http\Controllers\Controller;
-use App\Models\SubcultureAgent\AgentSession;
-use App\Services\SubcultureAgent\PersonaResolver;
-use App\Services\SubcultureAgent\SubcultureAgentService;
+use App\Models\SubcultureGameInfo\Agent\AgentSession;
+use App\Services\SubcultureGameInfo\Agent\PersonaResolver;
+use App\Services\SubcultureGameInfo\Agent\SubcultureAgentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;

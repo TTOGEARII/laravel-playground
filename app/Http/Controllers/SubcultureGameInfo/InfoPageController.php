@@ -7,9 +7,9 @@ use App\Models\SubcultureGameInfo\Game;
 use Illuminate\Contracts\View\View;
 
 /**
- * 레이드 정보 페이지(Vue 마운트). 데이터는 API 로 로드한다.
+ * 정보검색 페이지(mollulog 스타일 대시보드, Vue 마운트). 데이터는 API 로 로드한다.
  */
-class RaidPageController extends Controller
+class InfoPageController extends Controller
 {
     public function index(): View
     {
@@ -28,6 +28,6 @@ class RaidPageController extends Controller
             ])
             ->values();
 
-        return view('subculture-game-info.raids', ['games' => $games]);
+        return view('subculture-game-info.info', ['games' => $games]);
     }
 }

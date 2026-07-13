@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\SubcultureGameInfo\HubController;
+use App\Http\Controllers\SubcultureGameInfo\InfoPageController;
 use App\Http\Controllers\SubcultureGameInfo\MainController;
-use App\Http\Controllers\SubcultureGameInfo\RaidPageController;
 use App\Http\Controllers\SubcultureGameInfo\RedemptionController;
 use App\Http\Controllers\SubcultureGameInfo\UserCharacterController;
 use App\Http\Controllers\SubcultureGameInfo\UserSubstituteController;
@@ -15,7 +15,7 @@ Route::get('/', [HubController::class, 'index'])->name('subculture-game-info.ind
 Route::get('codes', [MainController::class, 'index'])->name('subculture-game-info.codes');
 
 // 정보검색 — mollulog 스타일 대시보드(진행중·모집중·레이드·공략 + 미래시·학정보 + AI 물어보기)
-Route::get('info', [RaidPageController::class, 'index'])->name('subculture-game-info.info');
+Route::get('info', [InfoPageController::class, 'index'])->name('subculture-game-info.info');
 
 // 옛 URL 호환 — /raids 는 정보검색으로 통합됨(북마크·PWA 바로가기 보전)
 Route::redirect('raids', 'info', 301)->name('subculture-game-info.raids.index');

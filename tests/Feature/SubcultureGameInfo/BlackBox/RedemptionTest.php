@@ -110,7 +110,7 @@ class RedemptionTest extends TestCase
         CodeRedemption::create(['user_id' => $user->id, 'redeem_code_id' => $code->id, 'redeemed_at' => now()]);
 
         $this->actingAs($user)
-            ->get('/subculture-game-info')
+            ->get('/subculture-game-info/codes')
             ->assertOk()
             ->assertSee('sgi-redeemed-toggle', false)
             ->assertSee((string) $code->id);

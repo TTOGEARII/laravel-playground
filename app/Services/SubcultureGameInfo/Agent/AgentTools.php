@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\SubcultureAgent;
+namespace App\Services\SubcultureGameInfo\Agent;
 
 use App\Models\SubcultureGameInfo\Character;
 use App\Models\SubcultureGameInfo\EventChallenge;
