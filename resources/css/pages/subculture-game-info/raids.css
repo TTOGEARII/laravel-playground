@@ -1827,3 +1827,24 @@
     flex-wrap: wrap;
     gap: 8px;
 }
+
+/* AI 에이전트 진입 링크 — 클릭 탐색으로 안 되는 복합 질문은 에이전트가 보조 */
+.sgr-ask-ai {
+    margin-bottom: var(--ds-space-md);
+    text-align: right;
+}
+.sgr-ask-ai a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid rgba(243, 114, 127, 0.4);
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-semibold);
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.sgr-ask-ai a:hover { background: rgba(243, 114, 127, 0.12); }
+.sgr-ask-ai small { color: var(--text-secondary); font-weight: var(--ds-fw-regular); }

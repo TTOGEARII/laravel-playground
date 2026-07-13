@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Services\SubcultureAgent;
+
+use App\Models\ChatCharacter;
+use App\Models\SubcultureAgent\AgentSession;
+use Illuminate\Support\Str;
+
+/**
+ * 에이전트 페르소나(말투) 해석 + 시스템 프롬프트 조립.
+ * 프리셋(config personas) 또는 내 챗봇 캐릭터(ChatCharacter) 둘 다 지원.
+ * 가드레일(서브컬쳐 게임 정보만)은 페르소나와 무관하게 항상 붙는다.
+ */
+class PersonaResolver
+{
+    /** 세션의 페르소나로 시스템 프롬프트를 만든다. $game = 사용자가 보던 게임 컨텍스트(슬러그). */
+    public function systemPrompt(AgentSession $session, ?string $game = null): string
+    {
+        $voice = $this->voice($session);
+        $context = $this->gameContext($game);
+
+        return implode("\n", [
+            '너는 서브컬쳐 게임 정보 전문 AI 에이전트다.',
+            '',
+            '## 역할',
+            '- 리딤코드, 레이드 일정·추천 편성, 캐릭터 정보, 이벤트 챌린지 공략, 커뮤니티 공략글 등 '
+                .'서브컬쳐(수집형/가챠) 게임 정보를 도와준다.',
+            '- 다루는 게임: 원신, 붕괴 스타레일, 젠레스 존 제로, 블루 아카이브, 명조, 트릭컬 리바이브, 승리의 여신 니케, 브라운더스트2.',
+            '',
+            '## 도구 사용',
+            '- 정보가 필요하면 반드시 제공된 도구(툴)를 먼저 호출해 실제 데이터를 확인하고 답한다. 추측으로 지어내지 않는다.',
+            '- 도구 결과가 비어 있으면 "현재 수집된 정보가 없다"고 솔직히 말한다.',
+            '- 게임 이름은 한국어 통칭(블아, 스레 등)이어도 알아듣고 적절한 게임으로 매핑한다.',
+            ...$context,
+            '',
+            '## 가드레일',
+            '- 서브컬쳐 게임과 무관한 질문(일반 상식, 코딩, 시사 등)은 정중히 거절하고 서브컬쳐 게임 주제로 유도한다.',
+            '- 도구가 돌려준 카드 데이터는 화면에 예쁘게 렌더되니, 답변 텍스트에서 표를 장황하게 반복하지 말고 핵심만 요약한다.',
+            '',
+            '## 말투',
+            $voice,
+        ]);
+    }
+
+    /**
+     * 게임 컨텍스트 지시문 — 사용자가 SGI 페이지에서 특정 게임을 보다가 넘어온 경우,
+     * 게임을 명시하지 않은 질문("리딤코드 알려줘")을 그 게임 기준으로 해석하게 한다.
+     *
+     * @return list<string>
+     */
+    private function gameContext(?string $game): array
+    {
+        $name = $game !== null ? config("subculture-game-info.games.{$game}.name") : null;
+        if ($name === null) {
+            return [];
+        }
+
+        return [
+            "- 사용자는 지금 '{$name}' 정보 화면을 보다가 질문하러 왔다. "
+                .'질문에 게임이 명시되지 않았다면 이 게임 기준으로 답한다(다른 게임을 명시하면 그 게임을 따른다).',
+        ];
+    }
+
+    /** 페르소나 말투 지시문. */
+    private function voice(AgentSession $session): string
+    {
+        if ($session->persona_kind === 'character' && $session->persona_ref !== null) {
+            $character = ChatCharacter::find($session->persona_ref);
+            if ($character !== null) {
+                $lines = ["'{$character->name}' 캐릭터로서 대답한다."];
+                if (filled($character->speech_style)) {
+                    $lines[] = "말투: {$character->speech_style}";
+                }
+                if (filled($character->short_intro)) {
+                    $lines[] = '설정: '.$character->short_intro;
+                }
+                if (filled($character->character_detail)) {
+                    $lines[] = '상세: '.Str::limit($character->character_detail, 200);
+                }
+                $lines[] = '단, 캐릭터 연기를 하더라도 정보는 반드시 도구 결과에 근거해 정확히 전한다.';
+
+                return implode("\n", $lines);
+            }
+        }
+
+        $preset = config('subculture-agent.personas.'.($session->persona_ref ?? 'guide'))
+            ?? config('subculture-agent.personas.guide');
+
+        return $preset['speech'];
+    }
+
+    /** 프리셋 + 내 챗봇 캐릭터 목록(선택 UI용). */
+    public function options(?int $userId): array
+    {
+        $presets = collect(config('subculture-agent.personas', []))
+            ->map(fn (array $p, string $key) => [
+                'kind' => 'preset', 'ref' => $key, 'name' => $p['name'], 'emoji' => $p['emoji'] ?? '🎮',
+            ])->values()->all();
+
+        $characters = $userId === null ? [] : ChatCharacter::where('user_id', $userId)
+            ->latest('id')->limit(30)->get()
+            ->map(fn (ChatCharacter $c) => [
+                'kind' => 'character', 'ref' => (string) $c->id, 'name' => $c->name, 'emoji' => '💬',
+            ])->all();
+
+        return ['presets' => $presets, 'characters' => $characters];
+    }
+}

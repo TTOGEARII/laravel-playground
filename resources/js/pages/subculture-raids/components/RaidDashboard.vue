@@ -18,6 +18,13 @@
       </button>
     </nav>
 
+    <!-- 복합 질문(조합·추천·요약)은 AI 에이전트가 보조 — 현재 게임 컨텍스트를 갖고 넘어간다 -->
+    <div v-if="currentGame" class="sgr-ask-ai">
+      <a :href="`/subculture-agent?game=${currentGame.slug}`">
+        🤖 클릭으로 못 찾는 건 AI에게 물어보세요 <small>{{ currentGame.name }} 기준</small>
+      </a>
+    </div>
+
     <p v-if="loading" class="sgr-empty">레이드 정보를 불러오는 중...</p>
 
     <!-- 선택된 게임 패널: 서버 config(modules)가 정한 순서대로 정보 모듈을 렌더 -->
