@@ -89,21 +89,13 @@ class PersonaResolver
         return $preset['speech'];
     }
 
-    /** 프리셋 + 내 챗봇 캐릭터 목록(선택 카드 UI용 — 설명·이미지 포함). */
+    /**
+     * 페르소나 선택지 = 챗봇 캐릭터 전체(MyWifeBot 캐릭터 모아보기와 동일하게 모든 사용자 공개).
+     * 내 캐릭터를 앞에 두고, 카드 UI용 설명·이미지·내 챗봇 여부를 포함한다.
+     */
     public function options(?int $userId): array
     {
-        $presets = collect(config('subculture-agent.personas', []))
-            ->map(fn (array $p, string $key) => [
-                'kind' => 'preset',
-                'ref' => $key,
-                'name' => $p['name'],
-                'emoji' => $p['emoji'] ?? '🎮',
-                'description' => $p['description'] ?? '',
-                'image' => null,
-            ])->values()->all();
-
-        $characters = $userId === null ? [] : ChatCharacter::where('user_id', $userId)
-            ->latest('id')->limit(30)->get()
+        $characters = ChatCharacter::latest('created_at')->limit(60)->get()
             ->map(fn (ChatCharacter $c) => [
                 'kind' => 'character',
                 'ref' => (string) $c->id,
@@ -111,8 +103,12 @@ class PersonaResolver
                 'emoji' => '💬',
                 'description' => (string) ($c->short_intro ?? ''),
                 'image' => $c->image_url,
-            ])->all();
+                'is_mine' => $userId !== null && $c->user_id === $userId,
+            ])
+            ->sortByDesc('is_mine') // 내 챗봇 먼저(안정 정렬이라 나머지는 최신순 유지)
+            ->values()
+            ->all();
 
-        return ['presets' => $presets, 'characters' => $characters];
+        return ['presets' => [], 'characters' => $characters];
     }
 }

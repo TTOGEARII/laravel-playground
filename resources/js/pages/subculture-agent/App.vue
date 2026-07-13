@@ -2,16 +2,16 @@
   <div class="sga">
     <p v-if="!enabled" class="sga-disabled">지금은 AI 기능이 꺼져 있어요(서버 설정 필요). 잠시 후 다시 들러주세요.</p>
 
-    <!-- 페르소나 선택 — 챗봇 캐릭터창처럼 카드로 고른다 -->
+    <!-- 페르소나 선택 — 챗봇 캐릭터창처럼 카드로 고른다(모든 사용자의 챗봇 캐릭터) -->
     <div v-else-if="view === 'select'" class="sga-select">
       <h2 class="sga-select-title">누구와 대화할까요?</h2>
-      <p class="sga-select-lead">페르소나를 고르면 대화가 시작돼요. 내 챗봇 캐릭터도 페르소나로 쓸 수 있어요.</p>
-      <section class="sga-persona-grid">
+      <p class="sga-select-lead">챗봇 캐릭터를 고르면 그 캐릭터의 말투로 서브컬쳐 게임 정보를 알려드려요.</p>
+      <section v-if="personaOptions.length" class="sga-persona-grid">
         <article
           v-for="p in personaOptions"
           :key="`${p.kind}-${p.ref}`"
           class="sga-persona-card"
-          :class="{ 'is-current': persona.kind === p.kind && persona.ref === p.ref }"
+          :class="{ 'is-current': persona && persona.kind === p.kind && persona.ref === p.ref }"
         >
           <div class="sga-persona-image">
             <img v-if="p.image" :src="p.image" :alt="p.name" loading="lazy" />
@@ -19,13 +19,18 @@
           </div>
           <h3 class="sga-persona-name">
             {{ p.name }}
-            <span v-if="p.kind === 'character'" class="sga-persona-kind">내 챗봇</span>
+            <span v-if="p.is_mine" class="sga-persona-kind">내 챗봇</span>
           </h3>
           <p class="sga-persona-desc">{{ p.description || '서브컬쳐 게임 정보를 알려드려요.' }}</p>
           <button type="button" class="sga-persona-start" @click="selectPersona(p)">대화하기</button>
         </article>
       </section>
-      <p v-if="!loggedIn" class="sga-select-hint">로그인하면 내가 만든 챗봇 캐릭터도 페르소나로 쓸 수 있어요.</p>
+      <p v-else class="sga-select-hint">
+        아직 챗봇 캐릭터가 없어요. <a href="/my-wife-bot/characters">챗봇 만들기</a>에서 첫 캐릭터를 만들어 보세요.
+      </p>
+      <p v-if="personaOptions.length && !loggedIn" class="sga-select-hint">
+        로그인하면 내가 만든 챗봇에 '내 챗봇' 표시가 붙고, 대화 기록도 계정에 저장돼요.
+      </p>
     </div>
 
     <!-- 채팅 뷰 -->
@@ -116,7 +121,7 @@ const input = ref('');
 const streaming = ref(false);
 const scroller = ref(null);
 const personaOptions = ref([]);
-const persona = ref(JSON.parse(localStorage.getItem(PERSONA_KEY) ?? 'null') ?? { kind: 'preset', ref: 'guide' });
+const persona = ref(JSON.parse(localStorage.getItem(PERSONA_KEY) ?? 'null')); // 선택 전에는 null — 카드에서 고른다
 const sessionUuid = ref(localStorage.getItem(SESSION_KEY));
 
 // SGI 화면 → ?game= 딥링크로 넘어온 게임 컨텍스트 (알려진 슬러그만 인정)
@@ -138,8 +143,9 @@ const suggestions = [
 // 뷰: select(페르소나 카드 선택) ↔ chat(대화). 복원된 세션이 있으면 chat 으로 시작.
 const view = ref('select');
 
-const currentPersona = computed(() => personaOptions.value
-  .find((p) => p.kind === persona.value.kind && p.ref === persona.value.ref) ?? null);
+const currentPersona = computed(() => (persona.value
+  ? personaOptions.value.find((p) => p.kind === persona.value.kind && p.ref === persona.value.ref) ?? null
+  : null));
 const personaEmoji = computed(() => currentPersona.value?.emoji ?? '🤖');
 
 function render(text) {
@@ -191,8 +197,8 @@ async function send(preset) {
       body: JSON.stringify({
         message: text,
         session_uuid: sessionUuid.value,
-        persona_kind: persona.value.kind,
-        persona_ref: persona.value.ref,
+        persona_kind: persona.value?.kind ?? 'character',
+        persona_ref: persona.value?.ref ?? null,
         game: gameContext.value,
       }),
     });
@@ -274,7 +280,7 @@ onMounted(async () => {
   try {
     const res = await fetch('/subculture-agent/personas', { headers: { Accept: 'application/json' } });
     const { data } = await res.json();
-    personaOptions.value = [...data.presets, ...data.characters];
+    personaOptions.value = data.characters ?? []; // 페르소나 = 챗봇 캐릭터 전체(프리셋 제거)
   } catch { /* 프리셋 없이도 대화는 가능 */ }
   restoreSession();
 });
