@@ -25,30 +25,59 @@
       </a>
     </div>
 
-    <p v-if="loading" class="sgr-empty">레이드 정보를 불러오는 중...</p>
+    <p v-if="loading" class="sgr-empty">정보를 불러오는 중...</p>
 
-    <!-- 선택된 게임 패널: 서버 config(modules)가 정한 순서대로 정보 모듈을 렌더 -->
-    <section v-else-if="currentGame" :key="currentGame.slug" class="sgr-game-panel">
-      <template v-for="module in currentGame.modules" :key="module">
-        <component
-          :is="MODULES[module]"
-          v-if="MODULES[module]"
-          v-bind="moduleProps(module)"
-          @select="$emit('select', $event)"
-          @set-substitute="$emit('set-substitute', $event)"
-          @clear-substitute="$emit('clear-substitute', $event)"
-        />
-      </template>
-    </section>
+    <template v-else-if="currentGame">
+      <!-- 서브탭(메인 / 미래시 / 학정보 …) — tabs 모듈이 있는 게임만 노출 -->
+      <nav v-if="tabModules.length" class="sgr-subtabs">
+        <button
+          type="button"
+          class="sgr-subtab"
+          :class="{ 'is-active': activeTab === 'main' }"
+          @click="activeTab = 'main'"
+        >🏠 메인</button>
+        <button
+          v-for="t in tabModules"
+          :key="t"
+          type="button"
+          class="sgr-subtab"
+          :class="{ 'is-active': activeTab === t }"
+          @click="activeTab = t"
+        >{{ tabLabel(t) }}</button>
+      </nav>
+
+      <!-- 메인: 핀 고정 모듈 세로 나열 -->
+      <section v-if="activeTab === 'main'" :key="`${currentGame.slug}-main`" class="sgr-game-panel">
+        <template v-for="module in mainModules" :key="module">
+          <component
+            :is="MODULES[module]"
+            v-if="MODULES[module]"
+            v-bind="moduleProps(module)"
+            @select="$emit('select', $event)"
+            @set-substitute="$emit('set-substitute', $event)"
+            @clear-substitute="$emit('clear-substitute', $event)"
+          />
+        </template>
+      </section>
+
+      <!-- 서브탭 뷰: 선택한 tab 모듈 하나 -->
+      <section v-else :key="`${currentGame.slug}-${activeTab}`" class="sgr-game-panel">
+        <component :is="MODULES[activeTab]" v-if="MODULES[activeTab]" v-bind="moduleProps(activeTab)" />
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import AttributeCompositions from './AttributeCompositions.vue';
 import EventChallenges from './EventChallenges.vue';
+import FutureTimeline from './FutureTimeline.vue';
 import GuideFeed from './GuideFeed.vue';
+import OngoingContent from './OngoingContent.vue';
+import PickupBanners from './PickupBanners.vue';
 import RaidList from './RaidList.vue';
+import StudentDex from './StudentDex.vue';
 
 const props = defineProps({
   games: { type: Array, required: true },
@@ -66,28 +95,57 @@ defineEmits(['select', 'change-game', 'set-substitute', 'clear-substitute']);
  * (게임마다 다른 정보 구성을 서버가 결정하고, 프론트는 키→컴포넌트 매핑만 안다)
  */
 const MODULES = {
+  'ongoing-content': OngoingContent,
+  'pickup-banners': PickupBanners,
   'raids': RaidList,
   'attribute-parties': AttributeCompositions,
-  'guides': GuideFeed,
   'event-challenges': EventChallenges,
+  'guides': GuideFeed,
+  'future-timeline': FutureTimeline,
+  'student-dex': StudentDex,
 };
+
+// 서브탭 라벨(아이콘 포함)
+const TAB_META = {
+  'future-timeline': '🔮 미래시',
+  'student-dex': '📖 학정보',
+};
+function tabLabel(key) {
+  return TAB_META[key] ?? key;
+}
 
 const currentGame = computed(() => props.games.find((g) => g.slug === props.activeGame) ?? props.games[0]);
 
+// modules 는 평면 배열(전부 메인) 또는 { main:[...], tabs:[...] } 두 형태를 지원
+const mainModules = computed(() => {
+  const m = currentGame.value?.modules;
+  return Array.isArray(m) ? m : (m?.main ?? []);
+});
+const tabModules = computed(() => {
+  const m = currentGame.value?.modules;
+  return Array.isArray(m) ? [] : (m?.tabs ?? []);
+});
+
+const activeTab = ref('main');
+// 게임 전환 시 항상 메인 뷰로 복귀
+watch(() => currentGame.value?.slug, () => { activeTab.value = 'main'; });
+
 function moduleProps(module) {
-  const gameRaids = props.raids.filter((r) => r.game.slug === currentGame.value.slug);
-  if (module === 'raids') {
-    return { raids: gameRaids };
+  const slug = currentGame.value.slug;
+  const gameRaids = props.raids.filter((r) => r.game.slug === slug);
+  switch (module) {
+    case 'raids':
+      return { raids: gameRaids };
+    case 'attribute-parties':
+      return { gameSlug: slug, pool: props.pool, userSubs: props.userSubs, raids: gameRaids };
+    case 'event-challenges':
+      return { gameSlug: slug, pool: props.pool };
+    case 'pickup-banners':
+    case 'student-dex':
+      return { gameSlug: slug, pool: props.pool }; // 보유 하이라이트
+    default:
+      return { gameSlug: slug };
   }
-  if (module === 'attribute-parties') {
-    // 보유 하이라이트 + 대체 지정(피커·Gemini 추천은 최신 레이드를 컨텍스트로 사용)
-    return { gameSlug: currentGame.value.slug, pool: props.pool, userSubs: props.userSubs, raids: gameRaids };
-  }
-  if (module === 'event-challenges') {
-    // 내 풀 조합(미보유 → 보유 대체) 계산에 보유 풀 사용
-    return { gameSlug: currentGame.value.slug, pool: props.pool };
-  }
-  return { gameSlug: currentGame.value.slug };
 }
 
 function activeCount(slug) {

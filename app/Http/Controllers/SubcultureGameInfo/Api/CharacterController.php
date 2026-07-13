@@ -28,6 +28,8 @@ class CharacterController extends Controller
             'meta' => [
                 'total' => $data->count(),
                 'growth_schema' => config("subculture-game-info.raids.growth_fields.{$game->slug}", []),
+                // 학정보(도감) 렌더 스키마 — StudentDex 가 이 정의대로 traits 필드를 동적 표시
+                'student_schema' => config("subculture-game-info.raids.student_schema.{$game->slug}", []),
             ],
         ]);
     }

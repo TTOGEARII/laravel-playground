@@ -6,6 +6,7 @@ use App\Http\Controllers\SubcultureGameInfo\Api\CharacterController as Subcultur
 use App\Http\Controllers\SubcultureGameInfo\Api\CodeController as SubcultureCodeController;
 use App\Http\Controllers\SubcultureGameInfo\Api\EventChallengeController as SubcultureEventChallengeController;
 use App\Http\Controllers\SubcultureGameInfo\Api\GuidePostController as SubcultureGuidePostController;
+use App\Http\Controllers\SubcultureGameInfo\Api\InfoController as SubcultureInfoController;
 use App\Http\Controllers\SubcultureGameInfo\Api\RaidController as SubcultureRaidController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +58,11 @@ Route::prefix('subculture-game-info')->group(function () {
         ->whereNumber('raid')
         ->middleware('throttle:10,1');
     Route::get('characters', [SubcultureCharacterController::class, 'index']);
+
+    // 정보검색 대시보드 — 모집중 학생(배너)·진행중 컨텐츠(이벤트)·미래시
+    Route::get('banners', [SubcultureInfoController::class, 'banners']);
+    Route::get('events', [SubcultureInfoController::class, 'events']);
+    Route::get('schedule', [SubcultureInfoController::class, 'schedule']);
     // 속성(성격)별 추천 조합(트릭컬) — ?game=trickcal
     Route::get('attribute-parties', [SubcultureAttributePartyController::class, 'index']);
     // 게임 단위 최근 공략글 피드 — ?game=&limit=

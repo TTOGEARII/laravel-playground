@@ -95,6 +95,30 @@ export const raidApi = {
         const { data } = await axios.post(`${API_BASE}/event-challenges/${challengeId}/my-party`, { owned: ownedKeys });
         return data.data.party;
     },
+    /**
+     * 모집중 학생(픽업 배너, pickup-banners 모듈).
+     * @param {string} gameSlug
+     */
+    async getBanners(gameSlug) {
+        const { data } = await axios.get(`${API_BASE}/banners`, { params: { game: gameSlug } });
+        return data.data;
+    },
+    /**
+     * 진행중 컨텐츠(이벤트, ongoing-content 모듈). 기본 kind=event.
+     * @param {string} gameSlug
+     */
+    async getEvents(gameSlug) {
+        const { data } = await axios.get(`${API_BASE}/events`, { params: { game: gameSlug } });
+        return data.data;
+    },
+    /**
+     * 미래시(future-timeline 모듈) — 예정 배너+이벤트 통합 타임라인.
+     * @param {string} gameSlug
+     */
+    async getSchedule(gameSlug) {
+        const { data } = await axios.get(`${API_BASE}/schedule`, { params: { game: gameSlug } });
+        return data.data;
+    },
 };
 
 /**

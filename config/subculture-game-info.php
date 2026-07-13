@@ -373,11 +373,52 @@ return [
         // 새 정보 유형 추가 = 프론트 모듈 컴포넌트 등록 + 여기 키 추가(게임마다 다른 구성 가능).
         //   raids: 레이드 일정·편성 카드 / attribute-parties: 속성별 추천 조합 / guides: 최근 공략글 피드
         //   event-challenges: 진행 중 이벤트 챌린지 공략(블아 — 아카 올인원 글)
+        // 모듈 구성은 두 형태를 지원한다:
+        //   - 평면 배열 ['raids','guides']            → 전부 메인에 세로 나열(서브탭 없음)
+        //   - 구조화 ['main'=>[...], 'tabs'=>[...]]   → 메인(핀 고정) + 서브탭(미래시/학정보)
+        //   신규 모듈: ongoing-content(진행중 이벤트) · pickup-banners(모집중 학생) ·
+        //             future-timeline(미래시) · student-dex(학정보 도감)
         'modules' => [
-            'bluearchive' => ['raids', 'event-challenges', 'guides'],
+            'bluearchive' => [
+                'main' => ['ongoing-content', 'pickup-banners', 'raids', 'event-challenges', 'guides'],
+                'tabs' => ['future-timeline', 'student-dex'],
+            ],
             'nikke' => ['raids', 'guides'],
             'trickcal' => ['attribute-parties', 'raids', 'guides'],
             'browndust2' => ['raids', 'guides'],
+        ],
+
+        /*
+        | 학정보(도감) 렌더 스키마 — traits JSON 의 어떤 필드를 어떻게 보여줄지 정의.
+        | growth_fields 와 같은 계약 방식(프론트 StudentDex 가 이 정의대로 동적 렌더).
+        | type: stars(성급 별) · badge(코랄 pill) · text(라벨:값)
+        */
+        // 키는 traits JSON 의 필드명. 기존 크롤(mollulog)이 쓰는 'role'(스쿼드값) 과 겹치지 않게
+        // SchaleDB 도감 필드는 tactic/squad/… 별도 키로 저장한다.
+        'student_schema' => [
+            'bluearchive' => [
+                ['key' => 'star', 'label' => '성급', 'type' => 'stars', 'filter' => true],
+                ['key' => 'tactic', 'label' => '역할', 'type' => 'badge', 'filter' => true],
+                ['key' => 'squad', 'label' => '구분', 'type' => 'badge', 'filter' => true],
+                ['key' => 'school', 'label' => '학교', 'type' => 'text', 'filter' => true],
+                ['key' => 'weapon', 'label' => '무기', 'type' => 'text', 'filter' => false],
+                ['key' => 'bullet', 'label' => '공격', 'type' => 'text', 'filter' => false],
+                ['key' => 'armor', 'label' => '방어', 'type' => 'text', 'filter' => false],
+                ['key' => 'position', 'label' => '위치', 'type' => 'text', 'filter' => false],
+            ],
+        ],
+
+        /*
+        | SchaleDB(블아 정보 소스) — students(학정보)·config(현재/미래시 배너·이벤트).
+        | 지역 매핑: 현재=Global(KR 근사), 미래시=Jp(JP 서버가 앞서는 BA 미래시 관례).
+        */
+        'schaledb' => [
+            'base' => env('SGI_SCHALEDB_BASE', 'https://schaledb.com'),
+            'lang' => 'kr',
+            'region_current' => 'Global',
+            'region_forecast' => 'Jp',
+            'games' => ['bluearchive'],
+            'timeout' => (int) env('SGI_SCHALEDB_TIMEOUT', 20),
         ],
 
         // 이벤트 챌린지 공략(블아) — 아카 채널의 이벤트 '올인원' 글에서 챌린지 섹션을 파싱.

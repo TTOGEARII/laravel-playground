@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '서브컬쳐 게임 레이드 정보')
+@section('title', '서브컬쳐 게임 정보검색')
 
 @section('vite_extra')
     @vite(['resources/js/pages/subculture-info.js'])

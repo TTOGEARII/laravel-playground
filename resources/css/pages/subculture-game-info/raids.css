@@ -1848,3 +1848,257 @@
 }
 .sgr-ask-ai a:hover { background: rgba(243, 114, 127, 0.12); }
 .sgr-ask-ai small { color: var(--text-secondary); font-weight: var(--ds-fw-regular); }
+
+/* ============================================================
+   정보검색 신규 모듈 (mollulog 스타일) — 진행중·모집중·미래시·학정보
+   ============================================================ */
+
+/* 서브탭(메인 / 미래시 / 학정보) */
+.sgr-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-space-xs);
+    margin-bottom: var(--ds-space-md);
+}
+.sgr-subtab {
+    padding: 7px 16px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-sm);
+    font-weight: var(--ds-fw-semibold);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.sgr-subtab:hover { color: var(--text-primary); border-color: rgba(243, 114, 127, 0.6); }
+.sgr-subtab.is-active { background: var(--ds-primary); border-color: var(--ds-primary); color: var(--ds-on-accent); }
+
+/* 모듈 공통 헤더 */
+.sgr-module { display: flex; flex-direction: column; }
+.sgr-module-title {
+    margin: 0 0 var(--ds-space-sm);
+    font-size: var(--ds-fs-lg);
+    font-weight: var(--ds-fw-bold);
+    color: var(--text-primary);
+}
+
+/* 상태 칩(진행중/예정/종료) */
+.sgi-chip {
+    flex: none;
+    padding: 3px 11px;
+    border-radius: var(--ds-round-full);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+    background: var(--ds-surface);
+    color: var(--text-secondary);
+}
+.sgi-chip.is-active { background: rgba(243, 114, 127, 0.15); color: var(--ds-text-accent); }
+.sgi-chip.is-upcoming { background: rgba(59, 130, 246, 0.15); color: var(--ds-text-blue, #60a5fa); }
+.sgi-chip.is-ended { opacity: 0.7; }
+
+/* ---- 진행중 컨텐츠(이벤트) ---- */
+.sgi-event-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ds-space-xs); }
+.sgi-event {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    padding: 10px 14px;
+    border-radius: var(--ds-round-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+}
+.sgi-event.is-ended { opacity: 0.6; }
+.sgi-event-icon { font-size: 1.2rem; flex: none; }
+.sgi-event-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.sgi-event-name { color: var(--text-primary); font-weight: var(--ds-fw-semibold); font-size: var(--ds-fs-md); }
+.sgi-event-range { color: var(--text-secondary); font-size: var(--ds-fs-micro); }
+
+/* ---- 모집중 학생(픽업 배너) ---- */
+.sgi-banner-list { display: flex; flex-direction: column; gap: var(--ds-space-sm); }
+.sgi-banner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    border-radius: var(--ds-round-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--ds-primary);
+}
+.sgi-banner.is-ended { opacity: 0.6; border-left-color: var(--ds-separator); }
+.sgi-banner-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-sm); }
+.sgi-banner-title { color: var(--text-primary); font-weight: var(--ds-fw-bold); font-size: var(--ds-fs-md); }
+.sgi-banner-students { display: flex; flex-wrap: wrap; gap: var(--ds-space-sm); }
+.sgi-banner-student {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 72px;
+    text-align: center;
+}
+.sgi-banner-student img {
+    width: 60px; height: 60px;
+    border-radius: var(--ds-round-md);
+    object-fit: cover;
+    border: 2px solid var(--border-color);
+    background: var(--ds-surface-2);
+}
+.sgi-banner-student.is-owned img { border-color: var(--ds-primary); }
+.sgi-banner-student-name { font-size: 11px; color: var(--text-secondary); line-height: 1.2; }
+.sgi-banner-star { font-size: 10px; color: var(--ds-text-amber, #fbbf24); }
+.sgi-banner-range { color: var(--text-secondary); font-size: var(--ds-fs-micro); }
+
+/* ---- 미래시(타임라인) ---- */
+.sgi-future-note {
+    margin: 0 0 var(--ds-space-md);
+    font-size: var(--ds-fs-micro);
+    color: var(--text-secondary);
+}
+.sgi-timeline { list-style: none; margin: 0; padding: 0; }
+.sgi-tl-item {
+    position: relative;
+    display: flex;
+    gap: var(--ds-space-md);
+    padding: 0 0 var(--ds-space-lg) 0;
+}
+.sgi-tl-date { flex: none; width: 42px; text-align: right; color: var(--text-secondary); font-size: var(--ds-fs-micro); font-weight: var(--ds-fw-bold); padding-top: 2px; }
+.sgi-tl-marker {
+    flex: none;
+    width: 12px; height: 12px;
+    margin-top: 3px;
+    border-radius: 50%;
+    background: var(--ds-primary);
+    box-shadow: 0 0 0 3px var(--ds-canvas), 0 0 0 4px var(--border-color);
+    position: relative;
+}
+.sgi-tl-marker.is-banner { background: var(--ds-primary); }
+.sgi-tl-marker.is-raid { background: var(--ds-text-amber, #fbbf24); }
+.sgi-tl-marker.is-event { background: var(--ds-text-blue, #60a5fa); }
+/* 마커 세로 연결선 */
+.sgi-tl-item:not(:last-child) .sgi-tl-marker::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 12px;
+    transform: translateX(-50%);
+    width: 2px; height: calc(100% + var(--ds-space-lg));
+    background: var(--border-color);
+}
+.sgi-tl-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-bottom: 2px; }
+.sgi-tl-kind {
+    align-self: flex-start;
+    padding: 1px 9px;
+    border-radius: var(--ds-round-full);
+    font-size: 10px;
+    font-weight: var(--ds-fw-bold);
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+}
+.sgi-tl-kind.is-banner { background: rgba(243, 114, 127, 0.15); color: var(--ds-text-accent); }
+.sgi-tl-kind.is-raid { background: rgba(251, 191, 36, 0.15); color: var(--ds-text-amber, #fbbf24); }
+.sgi-tl-kind.is-event { background: rgba(59, 130, 246, 0.15); color: var(--ds-text-blue, #60a5fa); }
+.sgi-tl-title { color: var(--text-primary); font-weight: var(--ds-fw-semibold); font-size: var(--ds-fs-md); }
+.sgi-tl-students { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.sgi-tl-students img { width: 34px; height: 34px; border-radius: var(--ds-round-sm); object-fit: cover; border: 1px solid var(--border-color); }
+.sgi-tl-range { color: var(--text-secondary); font-size: var(--ds-fs-micro); }
+
+/* ---- 학정보(도감) ---- */
+.sgi-dex-controls { display: flex; flex-wrap: wrap; gap: var(--ds-space-sm); margin-bottom: var(--ds-space-sm); }
+.sgi-dex-search {
+    flex: 1; min-width: 140px;
+    padding: 8px 16px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: var(--ds-fs-sm);
+    outline: none;
+}
+.sgi-dex-search:focus { border-color: rgba(243, 114, 127, 0.7); }
+.sgi-dex-filter {
+    padding: 8px 14px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: var(--ds-fs-sm);
+    cursor: pointer;
+}
+.sgi-dex-owned-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: var(--ds-fs-sm); }
+.sgi-dex-count { color: var(--text-secondary); font-size: var(--ds-fs-micro); margin: 0 0 var(--ds-space-sm); }
+.sgi-dex-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: var(--ds-space-sm);
+}
+.sgi-dex-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px 8px;
+    border-radius: var(--ds-round-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.15s;
+}
+.sgi-dex-card:hover { transform: translateY(-2px); border-color: rgba(243, 114, 127, 0.6); }
+.sgi-dex-card.is-owned { border-color: var(--ds-primary); }
+.sgi-dex-portrait { position: relative; width: 100%; }
+.sgi-dex-portrait img { width: 100%; aspect-ratio: 1; border-radius: var(--ds-round-sm); object-fit: cover; background: var(--ds-surface-2); }
+.sgi-dex-owned-badge {
+    position: absolute; top: 4px; left: 4px;
+    padding: 1px 6px;
+    border-radius: var(--ds-round-full);
+    background: var(--ds-primary);
+    color: var(--ds-on-accent);
+    font-size: 9px;
+    font-weight: var(--ds-fw-bold);
+}
+.sgi-dex-name { font-size: 11px; color: var(--text-primary); font-weight: var(--ds-fw-semibold); text-align: center; line-height: 1.2; }
+.sgi-dex-stars { font-size: 10px; color: var(--ds-text-amber, #fbbf24); }
+
+/* 도감 상세 모달 */
+.sgi-dex-modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: var(--ds-space-lg);
+    background: rgba(0, 0, 0, 0.7);
+}
+.sgi-dex-modal-card {
+    position: relative;
+    width: 100%; max-width: 360px;
+    max-height: 88vh; overflow-y: auto;
+    padding: var(--ds-space-xl);
+    border-radius: var(--ds-round-xl);
+    background: var(--ds-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--ds-shadow-heavy);
+}
+.sgi-dex-modal-close {
+    position: absolute; top: 12px; right: 12px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+}
+.sgi-dex-modal-close:hover { color: var(--text-primary); }
+.sgi-dex-modal-img { width: 160px; height: 160px; margin: 0 auto var(--ds-space-md); display: block; border-radius: var(--ds-round-lg); object-fit: cover; background: var(--ds-surface-2); }
+.sgi-dex-modal-name { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 var(--ds-space-md); color: var(--text-primary); font-size: var(--ds-fs-xl); }
+.sgi-dex-fields { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
+.sgi-dex-field { display: contents; }
+.sgi-dex-fields dt { color: var(--text-secondary); font-size: var(--ds-fs-sm); }
+.sgi-dex-fields dd { margin: 0; color: var(--text-primary); font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-semibold); }
+.sgi-dex-badge {
+    padding: 1px 10px;
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.15);
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+}

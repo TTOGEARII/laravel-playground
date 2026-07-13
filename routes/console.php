@@ -76,6 +76,13 @@ Schedule::command('subculture:crawl-raids')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// 블아 SchaleDB 동기화 — 학정보(도감)·모집중 학생(배너)·진행중/미래시 이벤트(정적 JSON, Gemini 없음). 매일 1회.
+Schedule::command('subculture:sync-schaledb')
+    ->dailyAt('05:40')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
 // 블아 종합전술시험(종전시) — 새 차수 글만 가볍게 확인(아카 HTML 파싱, Gemini 없음). 매일 1회.
 Schedule::command('subculture:collect-jfd')
     ->dailyAt('06:10')
