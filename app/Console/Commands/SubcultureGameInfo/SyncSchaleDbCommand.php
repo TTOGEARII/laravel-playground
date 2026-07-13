@@ -12,7 +12,7 @@ class SyncSchaleDbCommand extends Command
     protected $signature = 'subculture:sync-schaledb
         {--game= : 특정 게임 슬러그만 동기화(현재 bluearchive)}';
 
-    protected $description = 'SchaleDB(정적 JSON)에서 학정보(도감)·모집중 학생(배너)·진행중/미래시 이벤트를 동기화';
+    protected $description = 'SchaleDB(정적 JSON)에서 블아 캐릭터정보(도감) 필드를 동기화 — 일정은 subculture:sync-mollulog-futures 담당';
 
     public function handle(CodeSyncService $codeSync, SchaleDbSyncService $sync): int
     {
@@ -39,10 +39,10 @@ class SyncSchaleDbCommand extends Command
 
             $this->info("[{$slug}] SchaleDB 동기화 중...");
             $stats = $sync->sync($game);
-            $rows[] = [$slug, $stats['students'], $stats['banners'], $stats['events']];
+            $rows[] = [$slug, $stats['students']];
         }
 
-        $this->table(['게임', '학생', '배너', '이벤트'], $rows);
+        $this->table(['게임', '학생'], $rows);
         $this->info('완료.');
 
         return self::SUCCESS;

@@ -4,46 +4,52 @@
       수집된 레이드 일정이 없습니다. 아래 커뮤니티 공략글 피드를 참고해 주세요.
     </p>
 
-    <!-- 종류(총력전/대결전/종전시)를 나누지 않고 진행중·예정·최근을 한 목록으로(몰루로그 방식) -->
-    <div class="sgr-raid-grid">
+    <!-- 종류를 나누지 않고 진행중 → 다음 회차 → 최근 종료를 한 목록으로(몰루로그 홈 방식) -->
+    <div class="sgr-raid-list">
       <button
         v-for="raid in visibleRaids"
         :key="raid.id"
-        class="sgr-raid-card"
-        :class="`is-${raid.status}`"
+        class="sgr-raid-hero"
+        :class="[`is-${raid.status}`, { 'has-image': !!bossImage(raid) }]"
+        :style="heroStyle(raid)"
         @click="$emit('select', raid)"
       >
-        <div class="sgr-raid-top">
-          <span class="sgr-status-badge" :class="`is-${raid.status}`">{{ statusLabel(raid) }}</span>
-          <span v-if="raid.raid_type" class="sgr-type-badge">{{ typeLabel(raid.raid_type) }}</span>
+        <span class="sgr-rh-status" :class="`is-${raid.status}`">{{ statusLabel(raid) }}</span>
+
+        <div class="sgr-rh-bottom">
+          <div class="sgr-rh-left">
+            <span class="sgr-rh-meta">{{ metaLine(raid) }}</span>
+            <span class="sgr-rh-name">{{ raid.boss_name || raid.name }}</span>
+            <span class="sgr-rh-sub">
+              {{ formatPeriod(raid) }}
+              <template v-if="raid.parties_count || raid.guide_posts_count">
+                · 편성 {{ raid.parties_count }} · 공략 {{ raid.guide_posts_count }}</template>
+              <template v-if="raid.substitutes_count > 0"> · 대체 {{ raid.substitutes_count }}</template>
+            </span>
+          </div>
+
+          <!-- 장갑별 난이도(몰루로그 카드 스타일) — 없으면 기존 태그 pill 로 폴백 -->
+          <div v-if="armors(raid).length" class="sgr-rh-armors">
+            <span v-for="(a, i) in armors(raid)" :key="i" class="sgr-rh-armor">
+              <b class="sgr-rh-armor-pill" :class="armorClass(a.type)">{{ a.type }}</b>
+              <i v-if="a.difficulty" class="sgr-rh-difficulty">{{ a.difficulty }}</i>
+            </span>
+          </div>
+          <div v-else class="sgr-tag-row sgr-rh-tags">
+            <span v-for="(value, key) in scalarTags(raid)" :key="key" class="sgr-tag">{{ value }}</span>
+          </div>
         </div>
-        <h3 class="sgr-raid-name">{{ raid.name }}</h3>
-        <div class="sgr-tag-row">
-          <span v-for="(value, key) in raid.tags ?? {}" v-show="value" :key="key" class="sgr-tag">
-            {{ value }}
-          </span>
-        </div>
-        <p class="sgr-raid-period">
-          {{ formatPeriod(raid) }}
-          <strong v-if="raid.status === 'active' && raid.ends_at" class="sgr-countdown">
-            · {{ remaining(raid.ends_at) }} 남음
-          </strong>
-        </p>
-        <p class="sgr-raid-counts">
-          추천 편성 {{ raid.parties_count }} · 공략글 {{ raid.guide_posts_count }}
-          <span v-if="raid.substitutes_count > 0" class="sgr-sub-count-badge">대체정보 {{ raid.substitutes_count }}</span>
-        </p>
       </button>
     </div>
 
-    <!-- 지난 회차 열람 — 기본은 최근 몇 개만, 펼치면 전체 -->
+    <!-- 지난 회차·먼 미래 회차 열람 — 기본은 핵심만, 펼치면 전체 -->
     <button
       v-if="hiddenCount > 0 || expanded"
       type="button"
       class="sgr-btn sgr-raid-more"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '지난 회차 접기' : `지난 회차 ${hiddenCount}개 더 보기` }}
+      {{ expanded ? '접기' : `지난·예정 회차 ${hiddenCount}개 더 보기` }}
     </button>
   </div>
 </template>
@@ -57,32 +63,101 @@ const props = defineProps({
 
 defineEmits(['select']);
 
-const ENDED_PREVIEW = 4;
+const UPCOMING_PREVIEW = 3; // 다음 회차 미리보기 수(몰루로그 홈처럼 임박한 것만)
+const ENDED_PREVIEW = 3;
 const expanded = ref(false);
 
 const TYPE_LABELS = { 종합전술시험: '종전시' };
-function typeLabel(type) {
-  return TYPE_LABELS[type] ?? type;
-}
 
-// 진행중 → 예정 → 종료(최근순) 로 정렬한 전체 목록
+// 진행중(종료 임박순) → 예정(임박순) → 종료(최근순)
 const orderedRaids = computed(() => {
-  const order = { active: 0, upcoming: 1, ended: 2 };
-  return [...props.raids].sort((a, b) => (order[a.status] - order[b.status])
-    || new Date(b.starts_at ?? 0) - new Date(a.starts_at ?? 0));
+  const rank = { active: 0, upcoming: 1, ended: 2 };
+  return [...props.raids].sort((a, b) => {
+    if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+    if (a.status === 'ended') return new Date(b.starts_at ?? 0) - new Date(a.starts_at ?? 0);
+    return new Date(a.starts_at ?? 0) - new Date(b.starts_at ?? 0);
+  });
 });
 
-const endedTotal = computed(() => orderedRaids.value.filter((r) => r.status === 'ended').length);
-const hiddenCount = computed(() => Math.max(0, endedTotal.value - ENDED_PREVIEW));
+const hiddenCount = computed(() => {
+  const upcoming = orderedRaids.value.filter((r) => r.status === 'upcoming').length;
+  const ended = orderedRaids.value.filter((r) => r.status === 'ended').length;
+  return Math.max(0, upcoming - UPCOMING_PREVIEW) + Math.max(0, ended - ENDED_PREVIEW);
+});
 
 const visibleRaids = computed(() => {
   if (expanded.value) return orderedRaids.value;
+  let up = 0;
   let ended = 0;
-  return orderedRaids.value.filter((r) => r.status !== 'ended' || ++ended <= ENDED_PREVIEW);
+  return orderedRaids.value.filter((r) => {
+    if (r.status === 'upcoming') return ++up <= UPCOMING_PREVIEW;
+    if (r.status === 'ended') return ++ended <= ENDED_PREVIEW;
+    return true;
+  });
 });
 
+/* ---- 카드 데이터 헬퍼 ---- */
+
+function ml(raid) {
+  return raid.tags?.mollulog ?? null;
+}
+
+function bossImage(raid) {
+  return ml(raid)?.boss_image ?? null;
+}
+
+function armors(raid) {
+  return ml(raid)?.armors ?? [];
+}
+
+const ARMOR_CLASSES = { 경장갑: 'is-red', 중장갑: 'is-amber', 특수장갑: 'is-blue', 탄력장갑: 'is-purple' };
+function armorClass(type) {
+  return ARMOR_CLASSES[type] ?? '';
+}
+
+function heroStyle(raid) {
+  const img = bossImage(raid);
+  if (!img) return null;
+  // 우측 보스 아트 + 좌측 가독성용 어두운 그라데이션(몰루로그 카드)
+  return {
+    backgroundImage: `linear-gradient(90deg, rgba(10,10,12,0.92) 18%, rgba(10,10,12,0.45) 55%, rgba(10,10,12,0.25)), url('${img}')`,
+  };
+}
+
+/** "대결전 #31 · 시가지" — 회차·지형 메타 라인 */
+function metaLine(raid) {
+  const type = TYPE_LABELS[raid.raid_type] ?? raid.raid_type ?? '';
+  const season = ml(raid)?.season_index ?? raid.name?.match(/#(\d+)/)?.[1] ?? null;
+  const terrain = raid.tags?.terrain ?? raid.tags?.['지형'] ?? null;
+  return [type + (season ? ` #${season}` : ''), terrain].filter(Boolean).join(' · ');
+}
+
+/** 몰루로그식 스칼라 태그만(중첩 mollulog 블록·긴 설명 제외) */
+function scalarTags(raid) {
+  const out = {};
+  for (const [k, v] of Object.entries(raid.tags ?? {})) {
+    if (v && typeof v !== 'object' && String(v).length <= 20) out[k] = v;
+  }
+  return out;
+}
+
+/* ---- 상태·기간 라벨 ---- */
+
+function daysUntil(iso) {
+  return Math.ceil((new Date(iso) - Date.now()) / 86400000);
+}
+
 function statusLabel(raid) {
-  return { active: '진행 중', upcoming: '예정', ended: '종료' }[raid.status] ?? raid.status;
+  if (raid.status === 'upcoming' && raid.starts_at) {
+    const d = daysUntil(raid.starts_at);
+    return d <= 0 ? '오늘 시작' : d === 1 ? '내일 시작' : `${d}일 후 시작`;
+  }
+  if (raid.status === 'active') {
+    if (!raid.ends_at) return '진행 중';
+    const d = daysUntil(raid.ends_at);
+    return d <= 0 ? '오늘 종료' : d === 1 ? '내일 종료' : `${d}일 후 종료`;
+  }
+  return { upcoming: '예정', ended: '종료' }[raid.status] ?? raid.status;
 }
 
 function formatDate(iso) {
@@ -94,13 +169,5 @@ function formatDate(iso) {
 function formatPeriod(raid) {
   if (!raid.starts_at && !raid.ends_at) return '기간 미상';
   return `${formatDate(raid.starts_at)} ~ ${formatDate(raid.ends_at)}`;
-}
-
-function remaining(endIso) {
-  const diff = new Date(endIso) - Date.now();
-  if (diff <= 0) return '곧 종료';
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  return days > 0 ? `${days}일 ${hours}시간` : `${hours}시간`;
 }
 </script>

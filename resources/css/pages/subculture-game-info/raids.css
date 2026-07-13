@@ -2243,3 +2243,94 @@
 }
 .sgi-hero-name { color: var(--text-primary); font-size: var(--ds-fs-lg); font-weight: var(--ds-fw-bold); line-height: 1.25; }
 .sgi-hero-range { color: var(--text-secondary); font-size: var(--ds-fs-micro); }
+
+/* ============================================================
+   레이드 히어로 카드 (몰루로그 홈 스타일) — 보스 아트 배경 + 장갑별 난이도
+   ============================================================ */
+.sgr-raid-list { display: flex; flex-direction: column; gap: var(--ds-space-sm); }
+.sgr-raid-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 150px;
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    border-radius: var(--ds-round-lg);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    background-size: cover;
+    background-position: right center;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.1s ease, border-color 0.15s ease;
+}
+.sgr-raid-hero:hover { transform: translateY(-2px); border-color: rgba(243, 114, 127, 0.6); }
+.sgr-raid-hero.is-ended { opacity: 0.62; }
+
+/* 상태 칩(좌상단) — 진행 중은 빨간 도트 */
+.sgr-rh-status {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: var(--ds-round-pill);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+}
+.sgr-rh-status.is-active::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
+.sgr-rh-status.is-ended { opacity: 0.8; }
+
+.sgr-rh-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--ds-space-md); margin-top: var(--ds-space-md); }
+.sgr-rh-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sgr-rh-meta { color: var(--text-secondary); font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-semibold); }
+.sgr-rh-name { color: var(--text-primary); font-size: var(--ds-fs-2xl, 22px); font-weight: var(--ds-fw-bold); line-height: 1.2; }
+.sgr-rh-sub { color: var(--text-secondary); font-size: var(--ds-fs-micro); margin-top: 4px; }
+/* 보스 아트 위에서는 가독성 위해 밝은 텍스트 고정(라이트 테마 포함) */
+.sgr-raid-hero.has-image .sgr-rh-meta { color: rgba(255, 255, 255, 0.78); }
+.sgr-raid-hero.has-image .sgr-rh-name { color: #fff; }
+.sgr-raid-hero.has-image .sgr-rh-sub { color: rgba(255, 255, 255, 0.62); }
+
+/* 장갑별 난이도(우하단) — 흰 pill + 장갑색 바 + 난이도 텍스트 */
+.sgr-rh-armors { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex: none; }
+.sgr-rh-armor { display: flex; align-items: center; gap: 8px; }
+.sgr-rh-armor-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 11px 3px 8px;
+    border-radius: var(--ds-round-pill);
+    background: #fff;
+    color: #17171b;
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-bold);
+    font-style: normal;
+}
+.sgr-rh-armor-pill::before { content: ''; width: 6px; height: 14px; border-radius: 3px; background: #9ca3af; }
+.sgr-rh-armor-pill.is-red::before { background: #ef4444; }
+.sgr-rh-armor-pill.is-amber::before { background: #f59e0b; }
+.sgr-rh-armor-pill.is-blue::before { background: #3b82f6; }
+.sgr-rh-armor-pill.is-purple::before { background: #a855f7; }
+.sgr-rh-difficulty { color: rgba(255, 255, 255, 0.85); font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-semibold); font-style: normal; }
+.sgr-raid-hero:not(.has-image) .sgr-rh-difficulty { color: var(--text-secondary); }
+.sgr-rh-tags { justify-content: flex-end; max-width: 45%; }
+
+@media (max-width: 560px) {
+    .sgr-rh-bottom { flex-direction: column; align-items: flex-start; }
+    .sgr-rh-armors { flex-direction: row; flex-wrap: wrap; align-items: center; }
+}
+
+/* 픽업 복각 배지(일러 우상단, 몰루로그 스타일) */
+.sgi-pickup-rerun {
+    position: absolute; top: 4px; right: 4px;
+    padding: 1px 8px;
+    border-radius: var(--ds-round-full);
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 10px; font-weight: var(--ds-fw-bold);
+}
+/* 복각 배지와 겹치지 않게 보유 표시는 좌하단으로 */
+.sgi-pickup-owned { top: auto; right: auto; bottom: 4px; left: 4px; }

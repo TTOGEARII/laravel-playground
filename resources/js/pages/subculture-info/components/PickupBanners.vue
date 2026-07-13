@@ -17,6 +17,7 @@
           >
             <div class="sgi-pickup-portrait">
               <img :src="f.image" :alt="f.name" loading="lazy" />
+              <span v-if="f.rerun" class="sgi-pickup-rerun">복각</span>
               <span v-if="isOwned(f.external_key)" class="sgi-pickup-owned">보유</span>
             </div>
             <span v-if="costumeOf(f.name)" class="sgi-pickup-costume">{{ costumeOf(f.name) }}</span>

@@ -485,11 +485,18 @@ return [
             'timeout' => (int) env('SGI_SCHALEDB_TIMEOUT', 20),
             // 픽업 카드용 전신 일러(몰루로그와 동일 소스 baql.net collection) — {id}.webp
             'collection_image_base' => env('SGI_BA_COLLECTION_BASE', 'https://assets.baql.net/images/students/collection'),
-            // 진행중 이벤트 히어로 배너 이미지 — SchaleDB 이벤트 ID → 이미지 URL(수동 등록).
-            // 이벤트 배너 이미지는 자동 소스가 없어(몰루로그도 자체 슬러그로 수동 호스팅) 현재 이벤트만 등록한다.
-            'event_images' => [
-                855 => 'https://assets.mollulog.net/assets/images/events/game-development-department-cleaning.jpg',
-            ],
+        ],
+
+        /*
+        | 몰루로그 미래시(블아 KR 일정 소스) — /futures SSR loaderData(turbo-stream)를 디코드해
+        | KR 픽업(모집중 학생·복각)·이벤트(배너 이미지 포함)·레이드 일정(장갑별 난이도)을 동기화한다.
+        | SchaleDB(Global/Jp)보다 KR 기준이 정확해 블아 배너·이벤트는 이 소스가 단일 출처.
+        */
+        'mollulog_futures' => [
+            'url' => env('SGI_MOLLULOG_FUTURES_URL', 'https://mollulog.net/futures'),
+            'boss_image_base' => 'https://assets.mollulog.net/assets/images/boss',
+            'games' => ['bluearchive'],
+            'timeout' => (int) env('SGI_MOLLULOG_TIMEOUT', 20),
         ],
 
         /*

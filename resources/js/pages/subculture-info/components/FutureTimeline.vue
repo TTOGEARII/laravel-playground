@@ -1,7 +1,7 @@
 <template>
   <section class="sgr-module sgi-future">
-    <h3 class="sgr-module-title">🔮 미래시 <small class="sgr-feed-hint">일본 서버 기준 예고</small></h3>
-    <p class="sgi-future-note">일본 서버(앞선 일정)를 기준으로 한 미리보기예요. 한국 서버 실제 일정·명칭과 다를 수 있어요.</p>
+    <h3 class="sgr-module-title">🔮 미래시 <small class="sgr-feed-hint">예정 픽업·이벤트</small></h3>
+    <p class="sgi-future-note">예정 일정 미리보기예요. 실제 일정·명칭과 다를 수 있어요.</p>
 
     <ol v-if="loaded && items.length" class="sgi-timeline">
       <li v-for="it in items" :key="`${it.row}-${it.id}`" class="sgi-tl-item" :class="`is-${it.row} is-${it.kind}`">

@@ -89,7 +89,8 @@ class ScheduleService
             return [
                 'external_key' => $key,
                 'name' => $f['name'] ?? null,
-                'rarity' => $f['rarity'] ?? null,
+                'rarity' => $f['rarity'] ?? ($traits['star'] ?? null), // 성급은 캐릭터 마스터로 폴백
+                'rerun' => (bool) ($f['rerun'] ?? false), // 복각 배지(몰루로그 소스)
                 // 픽업 카드용 전신 일러(몰루로그와 동일 collection 소스), 폴백은 캐시/소스 이미지
                 'image' => ($key !== null && $collectionBase !== '')
                     ? "{$collectionBase}/{$key}.webp"

@@ -76,9 +76,16 @@ Schedule::command('subculture:crawl-raids')
     ->withoutOverlapping(30)
     ->runInBackground();
 
-// 블아 SchaleDB 동기화 — 학정보(도감)·모집중 학생(배너)·진행중/미래시 이벤트(정적 JSON, Gemini 없음). 매일 1회.
+// 블아 SchaleDB 동기화 — 캐릭터정보(도감) 필드 보강(정적 JSON, Gemini 없음). 매일 1회.
 Schedule::command('subculture:sync-schaledb')
     ->dailyAt('05:40')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
+// 블아 몰루로그 미래시 동기화 — KR 픽업(복각)·이벤트(배너 이미지)·레이드 일정(장갑별 난이도). 매일 2회(픽업 교체 대응).
+Schedule::command('subculture:sync-mollulog-futures')
+    ->twiceDaily(5, 17)
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(30)
     ->runInBackground();
