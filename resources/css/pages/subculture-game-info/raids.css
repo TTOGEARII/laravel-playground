@@ -2152,3 +2152,86 @@
 .sgi-dex-own-btn.is-on { background: var(--ds-primary); border-color: var(--ds-primary); color: var(--ds-on-accent); }
 /* 성장도 폼은 모달 안에서는 떠 있지 않고 인라인으로 흐른다 */
 .sgi-dex-modal .sgr-growth { position: static; bottom: auto; box-shadow: none; border-color: var(--border-color); }
+
+/* ============================================================
+   모집중 학생(픽업) 상세 카드 + 진행중 컨텐츠 히어로 (몰루로그 스타일)
+   ============================================================ */
+
+/* ---- 모집중 학생: 학생별 속성 배지 ---- */
+.sgi-pickup-list { display: flex; flex-wrap: wrap; gap: var(--ds-space-md); }
+.sgi-pickup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 96px;
+    text-align: center;
+}
+.sgi-pickup-portrait { position: relative; width: 76px; height: 76px; }
+.sgi-pickup-portrait img {
+    width: 76px; height: 76px;
+    border-radius: var(--ds-round-md);
+    object-fit: cover;
+    border: 2px solid var(--border-color);
+    background: var(--ds-surface-2);
+}
+.sgi-pickup.is-owned .sgi-pickup-portrait img { border-color: var(--ds-primary); }
+.sgi-pickup-owned {
+    position: absolute; top: 3px; left: 3px;
+    padding: 0 6px;
+    border-radius: var(--ds-round-full);
+    background: var(--ds-primary); color: var(--ds-on-accent);
+    font-size: 9px; font-weight: var(--ds-fw-bold);
+}
+.sgi-pickup-costume {
+    padding: 0 7px;
+    border-radius: var(--ds-round-full);
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+    font-size: 10px; font-weight: var(--ds-fw-semibold);
+}
+.sgi-pickup-name { color: var(--text-primary); font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-bold); line-height: 1.2; }
+.sgi-pickup-star { font-size: 10px; color: var(--ds-text-amber, #fbbf24); }
+.sgi-pickup-attrs { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 2px; }
+
+/* 속성 배지 — BA 인게임 상성 색(기존 장갑 도트 색과 동일 규칙) */
+.sgi-attr {
+    padding: 1px 7px;
+    border-radius: var(--ds-round-full);
+    font-size: 10px;
+    font-weight: var(--ds-fw-bold);
+    background: var(--ds-surface-2);
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+}
+.sgi-attr.is-red { background: rgba(239, 68, 68, 0.16); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+.sgi-attr.is-amber { background: rgba(245, 158, 11, 0.16); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+.sgi-attr.is-blue { background: rgba(59, 130, 246, 0.16); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); }
+.sgi-attr.is-purple { background: rgba(168, 85, 247, 0.16); color: #c084fc; border-color: rgba(168, 85, 247, 0.4); }
+
+/* ---- 진행중 컨텐츠 히어로 ---- */
+.sgi-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-md);
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    margin-bottom: var(--ds-space-sm);
+    border-radius: var(--ds-round-lg);
+    background: linear-gradient(120deg, rgba(243, 114, 127, 0.18), rgba(243, 114, 127, 0.04));
+    border: 1px solid rgba(243, 114, 127, 0.4);
+    text-decoration: none;
+    transition: transform 0.1s ease, border-color 0.15s ease;
+}
+.sgi-hero[href]:hover { transform: translateY(-1px); border-color: rgba(243, 114, 127, 0.7); }
+.sgi-hero-img { width: 120px; height: 64px; border-radius: var(--ds-round-md); object-fit: cover; flex: none; }
+.sgi-hero-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.sgi-hero-kind {
+    align-self: flex-start;
+    padding: 1px 9px;
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.2);
+    color: var(--ds-text-accent);
+    font-size: 10px; font-weight: var(--ds-fw-bold);
+}
+.sgi-hero-name { color: var(--text-primary); font-size: var(--ds-fs-lg); font-weight: var(--ds-fw-bold); line-height: 1.25; }
+.sgi-hero-range { color: var(--text-secondary); font-size: var(--ds-fs-micro); }

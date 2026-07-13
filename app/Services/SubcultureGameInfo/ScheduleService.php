@@ -3,6 +3,7 @@
 namespace App\Services\SubcultureGameInfo;
 
 use App\Models\SubcultureGameInfo\Banner;
+use App\Models\SubcultureGameInfo\Character;
 use App\Models\SubcultureGameInfo\GameEvent;
 use Illuminate\Support\Collection;
 
@@ -15,12 +16,37 @@ class ScheduleService
     /** 모집중 학생(배너) — 기본 현재 scope. 진행중·예정 먼저. */
     public function banners(int $gameId, string $scope = 'current'): Collection
     {
-        return Banner::forGame($gameId)
+        $rows = Banner::forGame($gameId)
             ->where('scope', $scope)
             ->orderByRaw('(ends_at IS NOT NULL AND ends_at < ?)', [now()]) // 종료된 건 뒤로(DB 무관)
             ->orderBy('starts_at')
+            ->get();
+
+        $chars = $this->characterIndex($gameId, $rows);
+
+        return $rows->map(fn (Banner $b) => $this->bannerData($b, $chars));
+    }
+
+    /**
+     * 배너 featured 학생을 캐릭터 마스터로 보강하기 위한 (external_key → Character) 인덱스.
+     * 픽업 카드에 속성(공격/방어/구분) 배지와 몰루로그 캐시 이미지를 붙인다.
+     *
+     * @param  Collection<int, Banner>  $rows
+     * @return Collection<string, Character>
+     */
+    private function characterIndex(int $gameId, Collection $rows): Collection
+    {
+        $keys = $rows->flatMap(fn (Banner $b) => collect($b->featured ?? [])->pluck('external_key'))
+            ->filter()->unique()->values();
+
+        if ($keys->isEmpty()) {
+            return collect();
+        }
+
+        return Character::where('subculture_game_id', $gameId)
+            ->whereIn('external_key', $keys)
             ->get()
-            ->map(fn (Banner $b) => $this->bannerData($b));
+            ->keyBy('external_key');
     }
 
     /** 진행중 컨텐츠(이벤트) — 기본 현재 scope. kind 필터(예: event 만). */
@@ -38,8 +64,9 @@ class ScheduleService
     /** 미래시 — forecast 배너 + 이벤트를 시작일 기준 통합 타임라인. */
     public function futureTimeline(int $gameId): Collection
     {
-        $banners = Banner::forGame($gameId)->where('scope', 'forecast')->get()
-            ->map(fn (Banner $b) => ['row' => 'banner'] + $this->bannerData($b));
+        $bannerRows = Banner::forGame($gameId)->where('scope', 'forecast')->get();
+        $chars = $this->characterIndex($gameId, $bannerRows);
+        $banners = $bannerRows->map(fn (Banner $b) => ['row' => 'banner'] + $this->bannerData($b, $chars));
 
         $events = GameEvent::forGame($gameId)->where('scope', 'forecast')->get()
             ->map(fn (GameEvent $e) => ['row' => 'event'] + $this->eventData($e));
@@ -49,14 +76,34 @@ class ScheduleService
             ->values();
     }
 
-    private function bannerData(Banner $b): array
+    /** @param  Collection<string, Character>  $chars */
+    private function bannerData(Banner $b, Collection $chars): array
     {
+        $featured = collect($b->featured ?? [])->map(function (array $f) use ($chars) {
+            $c = $chars->get($f['external_key'] ?? null);
+            $traits = $c ? (array) $c->traits : [];
+
+            return [
+                'external_key' => $f['external_key'] ?? null,
+                'name' => $f['name'] ?? null,
+                'rarity' => $f['rarity'] ?? null,
+                // 몰루로그 캐시 이미지 우선(없으면 소스 이미지 폴백)
+                'image' => $c?->display_image_url ?? ($f['image'] ?? null),
+                // 픽업 카드용 속성 배지(공격/방어/구분)
+                'attributes' => array_values(array_filter([
+                    $traits['bullet'] ?? null,
+                    $traits['armor'] ?? null,
+                    $traits['squad'] ?? null,
+                ])),
+            ];
+        })->all();
+
         return [
             'id' => $b->id,
             'scope' => $b->scope,
             'kind' => $b->kind,
             'title' => $b->title,
-            'featured' => $b->featured ?? [],
+            'featured' => $featured,
             'starts_at' => $b->starts_at?->toIso8601String(),
             'ends_at' => $b->ends_at?->toIso8601String(),
             'status' => $b->status,
