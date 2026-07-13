@@ -395,16 +395,10 @@ return [
                 'main' => ['raids', 'guides'],
                 'tabs' => ['student-dex'],
             ],
-            // 호요버스 — 캐릭터정보(도감·보유) + 위키 정보(공식 호요랩 위키 전체 카테고리)
+            // 호요버스 — 캐릭터정보만(도감·보유 + 호요랩 위키 캐릭터 상세를 모달에 통합)
             'genshin' => ['student-dex'],
-            'starrail' => [
-                'main' => ['student-dex'],
-                'tabs' => ['wiki-dex'],
-            ],
-            'zenless' => [
-                'main' => ['student-dex'],
-                'tabs' => ['wiki-dex'],
-            ],
+            'starrail' => ['student-dex'],
+            'zenless' => ['student-dex'],
             // 명조 — wuthering.gg 소스: 캐릭터정보(도감·보유) + 위키 정보(무기)
             'wuthering' => [
                 'main' => ['student-dex'],
@@ -504,10 +498,11 @@ return [
         ],
 
         /*
-        | 호요랩 공식 위키(HoYoWiki) — 젠존제/스타레일의 카테고리(메뉴)별 항목 전체 수집.
+        | 호요랩 공식 위키(HoYoWiki) — 젠존제/스타레일의 캐릭터 카테고리만 수집(사용자 결정: 캐릭터 정보만).
         | 목록: POST {base}/hoyowiki/{app}/wapi/get_entry_page_list (menu_id·페이지네이션)
         | 상세: GET  {base}/hoyowiki/{app}/wapi/entry_page?entry_page_id= (모듈 구조 JSON, ko-kr)
-        | exclude_menus 는 노이즈 카테고리(NPC/적 등) 제외용.
+        | include_menus 에 있는 메뉴만 수집하고, 그 외 기존 수집분은 sync 때 정리한다.
+        | character_menu 는 캐릭터정보 도감 모달에 위키 상세를 붙일 때 쓰는 메뉴 키.
         */
         'hoyowiki' => [
             'base' => env('SGI_HOYOWIKI_BASE', 'https://sg-act-public-api.hoyolab.com'),
@@ -516,8 +511,8 @@ return [
             'timeout' => (int) env('SGI_HOYOWIKI_TIMEOUT', 20),
             'fetch_delay_ms' => (int) env('SGI_HOYOWIKI_DELAY_MS', 250),
             'apps' => [
-                'zenless' => ['app' => 'zzz', 'exclude_menus' => []],
-                'starrail' => ['app' => 'hsr', 'exclude_menus' => ['105', '112']], // NPC·적 제외(수백 건 노이즈)
+                'zenless' => ['app' => 'zzz', 'include_menus' => ['8'], 'character_menu' => '8'],
+                'starrail' => ['app' => 'hsr', 'include_menus' => ['104'], 'character_menu' => '104'],
             ],
         ],
 

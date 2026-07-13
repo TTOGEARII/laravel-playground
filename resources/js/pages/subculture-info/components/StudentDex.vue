@@ -90,6 +90,21 @@
           @save="saveGrowth"
           @close="closeModal"
         />
+
+        <!-- 위키 상세(호요랩 위키 캐릭터 매칭 시 — 스킬·이야기 등) -->
+        <p v-if="wikiLoading" class="sgr-empty">위키 상세 불러오는 중…</p>
+        <template v-else-if="wikiDetail">
+          <section v-for="(s, i) in wikiDetail" :key="i" class="sgi-wiki-section">
+            <h5 v-if="s.title" class="sgi-wiki-section-title">{{ s.title }}</h5>
+            <dl v-if="s.rows?.length" class="sgi-dex-fields">
+              <div v-for="(r, ri) in s.rows" :key="ri" class="sgi-dex-field">
+                <dt>{{ r.label }}</dt>
+                <dd>{{ r.value }}</dd>
+              </div>
+            </dl>
+            <p v-for="(p, pi) in s.paragraphs ?? []" :key="pi" class="sgi-wiki-para">{{ p }}</p>
+          </section>
+        </template>
       </div>
     </div>
   </section>
@@ -99,6 +114,11 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { raidApi } from '../api';
 import GrowthForm from './GrowthForm.vue';
+
+// 위키 상세(호요랩 위키 매칭 캐릭터) 상태
+const wikiDetail = ref(null);
+const wikiLoading = ref(false);
+const wikiCache = new Map();
 
 const props = defineProps({
   gameSlug: { type: String, required: true },
@@ -157,6 +177,23 @@ const filtered = computed(() => {
 function closeModal() {
   selected.value = null;
 }
+
+// 선택 캐릭터가 위키에 매칭돼 있으면 상세(스킬·이야기)를 지연 로드
+watch(selected, async (c) => {
+  wikiDetail.value = null;
+  if (!c?.wiki_entry_id) return;
+  wikiLoading.value = true;
+  try {
+    if (!wikiCache.has(c.wiki_entry_id)) {
+      wikiCache.set(c.wiki_entry_id, (await raidApi.getWikiEntry(c.wiki_entry_id)).detail ?? []);
+    }
+    wikiDetail.value = wikiCache.get(c.wiki_entry_id);
+  } catch (e) {
+    console.error('위키 상세 로드 실패', e);
+  } finally {
+    wikiLoading.value = false;
+  }
+});
 
 /** 보유 토글 — 낙관적 반영(emit) 후 저장, 실패 시 롤백. */
 async function toggleOwned(c) {

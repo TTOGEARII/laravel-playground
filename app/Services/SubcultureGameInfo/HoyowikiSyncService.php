@@ -31,13 +31,19 @@ class HoyowikiSyncService
         }
 
         $app = (string) $appCfg['app'];
-        $exclude = array_map('strval', (array) ($appCfg['exclude_menus'] ?? []));
+        $include = array_map('strval', (array) ($appCfg['include_menus'] ?? []));
         $menus = $this->fetchMenus($cfg, $app);
         $stats = ['menus' => 0, 'entries' => 0, 'details' => 0];
 
+        // 수집 대상 외 카테고리(과거 수집분 포함) 정리 — 사용자 결정: 호요는 캐릭터 정보만
+        if ($include !== [] && $menus !== []) {
+            WikiEntry::forGame($game->id)->where('source', self::SOURCE)
+                ->whereNotIn('menu_key', $include)->delete();
+        }
+
         foreach ($menus as $menu) {
             $menuId = (string) $menu['menu_id'];
-            if ($menuId === '0' || in_array($menuId, $exclude, true)) {
+            if ($menuId === '0' || ($include !== [] && ! in_array($menuId, $include, true))) {
                 continue;
             }
             $stats['menus']++;
