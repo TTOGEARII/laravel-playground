@@ -84,6 +84,19 @@
         </div>
       </template>
 
+      <!-- 유튜브 영상(공략 영상 검색) -->
+      <template v-else-if="card.type === 'videos'">
+        <div class="sga-card-head">🎬 유튜브 영상 <small>{{ card.data.query }}</small></div>
+        <ul class="sga-video-list">
+          <li v-for="v in card.data.items" :key="v.url">
+            <a :href="v.url" target="_blank" rel="noopener" class="sga-video">
+              <img v-if="v.thumbnail" :src="v.thumbnail" :alt="v.title" loading="lazy" />
+              <span class="sga-video-title">{{ v.title }}</span>
+            </a>
+          </li>
+        </ul>
+      </template>
+
       <!-- 실시간 페이지 출처 -->
       <template v-else-if="card.type === 'live_page'">
         <a :href="card.data.url" target="_blank" rel="noopener" class="sga-link">🌐 출처 페이지 열기</a>

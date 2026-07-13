@@ -31,6 +31,7 @@ class SubcultureAgentService
         'get_guide_posts' => '📰 커뮤니티 공략글 수집 중…',
         'get_attribute_parties' => '🎭 속성별 조합 조회 중…',
         'search_community' => '🔍 커뮤니티 실시간 검색 중…',
+        'search_youtube_videos' => '🎬 유튜브 영상 검색 중…',
         'fetch_live_page' => '🌐 최신 페이지 확인 중…',
     ];
 

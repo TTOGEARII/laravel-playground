@@ -398,3 +398,28 @@
     overflow: hidden;
 }
 .sga-current-face img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 아바타에 캐릭터 이미지 */
+.sga-avatar { overflow: hidden; }
+.sga-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* 유튜브 영상 카드 */
+.sga-video-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sga-video {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: var(--ds-fs-sm);
+}
+.sga-video:hover .sga-video-title { color: var(--ds-text-accent); }
+.sga-video img {
+    width: 96px;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--ds-round-sm);
+    object-fit: cover;
+    flex: none;
+    background: var(--ds-surface-2);
+}
+.sga-video-title { line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

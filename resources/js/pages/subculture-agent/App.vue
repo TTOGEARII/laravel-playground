@@ -68,7 +68,10 @@
       <!-- 대화 -->
       <div ref="scroller" class="sga-messages">
       <div v-for="(m, i) in messages" :key="i" class="sga-msg" :class="`is-${m.role}`">
-        <div v-if="m.role === 'assistant'" class="sga-avatar">{{ personaEmoji }}</div>
+        <div v-if="m.role === 'assistant'" class="sga-avatar">
+          <img v-if="currentPersona?.image" :src="currentPersona.image" :alt="currentPersona?.name" />
+          <template v-else>{{ personaEmoji }}</template>
+        </div>
         <div class="sga-msg-body">
           <!-- 툴 진행 칩 -->
           <div v-if="m.tools?.length" class="sga-tools">

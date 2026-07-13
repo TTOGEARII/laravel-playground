@@ -39,6 +39,7 @@ class AgentTools
         private DcGuidePostDriver $dc,
         private ArcaGuidePostDriver $arca,
         private CrawlerScriptRunner $browser,
+        private \App\Services\SubcultureGameInfo\Sources\YoutubeSearchClient $youtube,
     ) {}
 
     /** @return list<\Prism\Prism\Tool> */
@@ -52,8 +53,43 @@ class AgentTools
             $this->guidePostsTool(),
             $this->attributePartiesTool(),
             $this->communitySearchTool(),
+            $this->youtubeVideosTool(),
             $this->livePageTool(),
         ];
+    }
+
+    /** 유튜브 영상 검색 — 공략/가이드 영상 요청에 사용(링크 카드 제공). */
+    private function youtubeVideosTool(): \Prism\Prism\Tool
+    {
+        return Tool::as('search_youtube_videos')
+            ->for('유튜브에서 공략·가이드 영상을 검색해 제목과 링크를 돌려준다. '
+                .'query 에는 게임명과 보스/컨텐츠명을 함께 넣는다(예: "블루아카이브 예로니무스 대결전 공략").')
+            ->withStringParameter('query', '유튜브 검색어(게임명 포함 권장)')
+            ->using(function (string $query) {
+                $query = mb_substr(trim($query), 0, 100);
+                if ($query === '') {
+                    return '검색어가 비어 있습니다.';
+                }
+                $this->track('search_youtube_videos', "유튜브 영상 검색 · {$query}");
+
+                $videos = array_slice($this->youtube->search($query, 6), 0, 6);
+                if ($videos === []) {
+                    return "'{$query}' 유튜브 검색 결과가 없습니다.";
+                }
+
+                $this->card('videos', [
+                    'query' => $query,
+                    'items' => array_map(fn (array $v) => [
+                        'title' => $v['title'],
+                        'url' => $v['url'],
+                        'thumbnail' => "https://i.ytimg.com/vi/{$v['video_id']}/mqdefault.jpg",
+                    ], $videos),
+                ]);
+
+                $lines = array_map(fn (array $v) => "- {$v['title']} ({$v['url']})", $videos);
+
+                return '유튜브 영상 '.count($videos)."개(카드로도 표시됨):\n".implode("\n", $lines);
+            });
     }
 
     private function redeemCodesTool(): \Prism\Prism\Tool
