@@ -1,18 +1,5 @@
 <template>
   <div class="sgr-page">
-    <!-- 뷰 전환: 레이드 대시보드 / 내 캐릭터 -->
-    <nav class="sgr-nav">
-      <button class="sgr-nav-tab" :class="{ 'is-active': view === 'dashboard' }" @click="showDashboard">
-        ⚔️ 레이드 대시보드
-      </button>
-      <button class="sgr-nav-tab" :class="{ 'is-active': view === 'my' }" @click="view = 'my'">
-        🎒 내 캐릭터
-      </button>
-      <span v-if="!loggedIn" class="sgr-guest-hint">
-        비로그인 상태 — 내 캐릭터는 이 브라우저(localStorage)에만 저장됩니다.
-      </span>
-    </nav>
-
     <!-- 레이드 상세 -->
     <RaidDetail
       v-if="view === 'detail' && detail"
@@ -24,27 +11,21 @@
       @clear-substitute="onClearSubstitute"
     />
 
-    <!-- 레이드 대시보드 (게임 탭 + 게임별 정보 모듈) -->
+    <!-- 대시보드 (게임 탭 + 게임별 정보 모듈; 캐릭터정보 도감에 내 보유·성장도 통합) -->
     <RaidDashboard
-      v-else-if="view === 'dashboard'"
+      v-else
       :games="games"
       :raids="raids"
       :loading="loadingRaids"
       :active-game="activeGame"
       :pool="poolFor(activeGame)"
       :user-subs="userSubsFor(activeGame)"
+      :store="store"
+      :logged-in="loggedIn"
       @select="openDetail"
       @change-game="selectGame"
       @set-substitute="onSetSubstitute"
       @clear-substitute="onClearSubstitute"
-    />
-
-    <!-- 내 캐릭터 관리 -->
-    <MyCharacters
-      v-else-if="view === 'my'"
-      :games="games"
-      :logged-in="loggedIn"
-      :store="store"
       @pool-changed="onPoolChanged"
     />
   </div>
@@ -55,7 +36,6 @@ import { onMounted, reactive, ref } from 'vue';
 import { createPoolStore, createSubstituteStore, raidApi } from './api';
 import RaidDashboard from './components/RaidDashboard.vue';
 import RaidDetail from './components/RaidDetail.vue';
-import MyCharacters from './components/MyCharacters.vue';
 
 const props = defineProps({
   games: { type: Array, required: true },

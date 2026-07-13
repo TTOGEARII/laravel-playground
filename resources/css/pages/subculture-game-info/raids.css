@@ -2026,13 +2026,36 @@
     cursor: pointer;
 }
 .sgi-dex-owned-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: var(--ds-fs-sm); }
-.sgi-dex-count { color: var(--text-secondary); font-size: var(--ds-fs-micro); margin: 0 0 var(--ds-space-sm); }
+/* 보유 현황 + 관리 도구(내 캐릭터 통합) */
+.sgi-dex-status { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ds-space-sm); margin-bottom: var(--ds-space-sm); }
+.sgi-dex-count { color: var(--text-secondary); font-size: var(--ds-fs-sm); }
+.sgi-dex-count strong { color: var(--ds-text-accent); }
+.sgi-dex-manage { display: flex; flex-wrap: wrap; gap: 6px; }
+.sgi-dex-mini {
+    padding: 5px 12px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-micro);
+    font-weight: var(--ds-fw-semibold);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+.sgi-dex-mini:hover:not(:disabled) { color: var(--text-primary); border-color: rgba(243, 114, 127, 0.6); }
+.sgi-dex-mini:disabled { opacity: 0.5; cursor: default; }
+.sgi-dex-file { display: none; }
+.sgi-dex-guest { color: var(--text-secondary); font-size: var(--ds-fs-micro); margin: 0 0 var(--ds-space-sm); }
+.sgi-dex-message { margin: var(--ds-space-sm) 0 0; color: var(--ds-text-accent); font-size: var(--ds-fs-sm); }
+
+/* 그리드 — 몰루로그처럼 큼직한 초상, 미보유는 흐리게 */
 .sgi-dex-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: var(--ds-space-sm);
 }
 .sgi-dex-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2041,23 +2064,33 @@
     border-radius: var(--ds-round-md);
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    cursor: pointer;
     transition: transform 0.1s, border-color 0.15s;
 }
 .sgi-dex-card:hover { transform: translateY(-2px); border-color: rgba(243, 114, 127, 0.6); }
-.sgi-dex-card.is-owned { border-color: var(--ds-primary); }
-.sgi-dex-portrait { position: relative; width: 100%; }
-.sgi-dex-portrait img { width: 100%; aspect-ratio: 1; border-radius: var(--ds-round-sm); object-fit: cover; background: var(--ds-surface-2); }
-.sgi-dex-owned-badge {
-    position: absolute; top: 4px; left: 4px;
-    padding: 1px 6px;
-    border-radius: var(--ds-round-full);
-    background: var(--ds-primary);
-    color: var(--ds-on-accent);
-    font-size: 9px;
-    font-weight: var(--ds-fw-bold);
+.sgi-dex-card.is-owned { border-color: var(--ds-primary); box-shadow: inset 0 0 0 1px var(--ds-primary); }
+.sgi-dex-portrait { display: block; width: 100%; padding: 0; border: none; background: none; cursor: pointer; }
+.sgi-dex-portrait img { display: block; width: 100%; aspect-ratio: 1; border-radius: var(--ds-round-sm); object-fit: cover; background: var(--ds-surface-2); }
+.sgi-dex-card:not(.is-owned) .sgi-dex-portrait img { opacity: 0.72; filter: grayscale(0.2); }
+/* 빠른 보유 토글(코너) */
+.sgi-dex-own {
+    position: absolute; top: 8px; left: 8px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 12px; font-weight: var(--ds-fw-bold);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
 }
-.sgi-dex-name { font-size: 11px; color: var(--text-primary); font-weight: var(--ds-fw-semibold); text-align: center; line-height: 1.2; }
+.sgi-dex-own:hover { border-color: var(--ds-primary); }
+.sgi-dex-own.is-on { background: var(--ds-primary); border-color: var(--ds-primary); color: var(--ds-on-accent); }
+.sgi-dex-name {
+    padding: 0; border: none; background: none; cursor: pointer;
+    font-size: 11px; color: var(--text-primary); font-weight: var(--ds-fw-semibold); text-align: center; line-height: 1.2;
+}
+.sgi-dex-name:hover { color: var(--ds-text-accent); }
 .sgi-dex-stars { font-size: 10px; color: var(--ds-text-amber, #fbbf24); }
 .sgi-dex-rarity { font-size: 10px; font-weight: var(--ds-fw-bold); color: var(--ds-text-accent); }
 
@@ -2089,17 +2122,33 @@
     font-size: 14px;
 }
 .sgi-dex-modal-close:hover { color: var(--text-primary); }
-.sgi-dex-modal-img { width: 160px; height: 160px; margin: 0 auto var(--ds-space-md); display: block; border-radius: var(--ds-round-lg); object-fit: cover; background: var(--ds-surface-2); }
-.sgi-dex-modal-name { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 var(--ds-space-md); color: var(--text-primary); font-size: var(--ds-fs-xl); }
-.sgi-dex-fields { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
-.sgi-dex-field { display: contents; }
-.sgi-dex-fields dt { color: var(--text-secondary); font-size: var(--ds-fs-sm); }
-.sgi-dex-fields dd { margin: 0; color: var(--text-primary); font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-semibold); }
+.sgi-dex-modal-img { width: 200px; height: 200px; margin: 0 auto var(--ds-space-md); display: block; border-radius: var(--ds-round-lg); object-fit: cover; background: var(--ds-surface-2); }
+.sgi-dex-modal-name { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 var(--ds-space-sm); color: var(--text-primary); font-size: var(--ds-fs-xl); }
+/* 속성 배지 행(몰루로그 스타일) */
+.sgi-dex-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 0 0 var(--ds-space-lg); }
 .sgi-dex-badge {
-    padding: 1px 10px;
+    padding: 3px 12px;
     border-radius: var(--ds-round-full);
     background: rgba(243, 114, 127, 0.15);
     color: var(--ds-text-accent);
     font-size: var(--ds-fs-micro);
     font-weight: var(--ds-fw-bold);
 }
+/* 내 보유 토글(상세) */
+.sgi-dex-own-btn {
+    width: 100%;
+    padding: 11px;
+    margin-bottom: var(--ds-space-md);
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-sm);
+    font-weight: var(--ds-fw-bold);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.sgi-dex-own-btn:hover { border-color: rgba(243, 114, 127, 0.6); color: var(--text-primary); }
+.sgi-dex-own-btn.is-on { background: var(--ds-primary); border-color: var(--ds-primary); color: var(--ds-on-accent); }
+/* 성장도 폼은 모달 안에서는 떠 있지 않고 인라인으로 흐른다 */
+.sgi-dex-modal .sgr-growth { position: static; bottom: auto; box-shadow: none; border-color: var(--border-color); }

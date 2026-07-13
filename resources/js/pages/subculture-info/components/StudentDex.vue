@@ -1,8 +1,8 @@
 <template>
   <section class="sgr-module sgi-dex">
-    <h3 class="sgr-module-title">📖 캐릭터정보 <small class="sgr-feed-hint">도감</small></h3>
+    <h3 class="sgr-module-title">📖 캐릭터정보 <small class="sgr-feed-hint">도감 · 내 보유 관리</small></h3>
 
-    <!-- 검색 + 스키마 기반 동적 필터 -->
+    <!-- 도구줄: 검색 + 스키마 필터 + 보유 현황/관리 -->
     <div class="sgi-dex-controls">
       <input v-model.trim="q" type="search" class="sgi-dex-search" placeholder="캐릭터 이름 검색" />
       <select v-for="f in filterFields" :key="f.key" v-model="filters[f.key]" class="sgi-dex-filter">
@@ -14,51 +14,82 @@
       <label class="sgi-dex-owned-toggle"><input v-model="ownedOnly" type="checkbox" /> 보유만</label>
     </div>
 
-    <p v-if="loaded" class="sgi-dex-count">{{ filtered.length }}명</p>
+    <div class="sgi-dex-status">
+      <span class="sgi-dex-count">보유 <strong>{{ ownedCount }}</strong> / {{ characters.length }}</span>
+      <div class="sgi-dex-manage">
+        <button type="button" class="sgi-dex-mini" :disabled="!characters.length" @click="setAllOwned(true)">전체 보유</button>
+        <button type="button" class="sgi-dex-mini" :disabled="!ownedCount" @click="setAllOwned(false)">전체 해제</button>
+        <button type="button" class="sgi-dex-mini" @click="exportJson">내보내기</button>
+        <button type="button" class="sgi-dex-mini" @click="fileInput?.click()">가져오기</button>
+        <input ref="fileInput" type="file" accept="application/json" class="sgi-dex-file" @change="importJson" />
+      </div>
+    </div>
+    <p v-if="!loggedIn" class="sgi-dex-guest">비로그인 상태 — 내 보유는 이 브라우저(localStorage)에만 저장돼요. 로그인 후 가져오기로 옮길 수 있어요.</p>
 
     <div class="sgi-dex-grid">
-      <button
+      <div
         v-for="c in filtered"
         :key="c.id"
-        type="button"
         class="sgi-dex-card"
-        :class="{ 'is-owned': isOwned(c.external_key) }"
-        @click="selected = c"
+        :class="{ 'is-owned': isOwned(c) }"
       >
-        <span class="sgi-dex-portrait">
+        <button type="button" class="sgi-dex-portrait" @click="selected = c">
           <img :src="c.image_url" :alt="c.name" loading="lazy" />
-          <span v-if="isOwned(c.external_key)" class="sgi-dex-owned-badge">보유</span>
-        </span>
-        <span class="sgi-dex-name">{{ c.name }}</span>
+        </button>
+        <!-- 빠른 보유 토글(모달 열지 않고) -->
+        <button
+          type="button"
+          class="sgi-dex-own"
+          :class="{ 'is-on': isOwned(c) }"
+          :title="isOwned(c) ? '보유 해제' : '보유 표시'"
+          @click="toggleOwned(c)"
+        >{{ isOwned(c) ? '✓' : '＋' }}</button>
+        <button type="button" class="sgi-dex-name" @click="selected = c">{{ c.name }}</button>
         <span v-if="c.traits.star" class="sgi-dex-stars">{{ '★'.repeat(c.traits.star) }}</span>
         <span v-else-if="c.rarity" class="sgi-dex-rarity">{{ c.rarity }}</span>
-      </button>
+      </div>
     </div>
 
     <p v-if="loaded && !filtered.length" class="sgr-empty">조건에 맞는 캐릭터가 없어요.</p>
+    <p v-if="message" class="sgi-dex-message">{{ message }}</p>
 
-    <!-- 상세 모달 -->
-    <div v-if="selected" class="sgi-dex-modal" @click.self="selected = null">
+    <!-- 상세 모달: 큰 일러 + 속성 배지 + 보유/성장도 편집 -->
+    <div v-if="selected" class="sgi-dex-modal" @click.self="closeModal">
       <div class="sgi-dex-modal-card">
-        <button type="button" class="sgi-dex-modal-close" @click="selected = null">✕</button>
+        <button type="button" class="sgi-dex-modal-close" @click="closeModal">✕</button>
         <img class="sgi-dex-modal-img" :src="selected.image_url" :alt="selected.name" />
         <h4 class="sgi-dex-modal-name">
           {{ selected.name }}
           <span v-if="selected.traits.star" class="sgi-dex-stars">{{ '★'.repeat(selected.traits.star) }}</span>
           <span v-else-if="selected.rarity" class="sgi-dex-rarity">{{ selected.rarity }}</span>
-          <span v-if="isOwned(selected.external_key)" class="sgi-dex-owned-badge">보유</span>
         </h4>
-        <dl class="sgi-dex-fields">
+
+        <div class="sgi-dex-badges">
           <template v-for="f in schema" :key="f.key">
-            <div v-if="f.type !== 'stars' && selected.traits[f.key] != null" class="sgi-dex-field">
-              <dt>{{ f.label }}</dt>
-              <dd>
-                <span v-if="f.type === 'badge'" class="sgi-dex-badge">{{ fieldVal(f, selected.traits[f.key]) }}</span>
-                <template v-else>{{ fieldVal(f, selected.traits[f.key]) }}</template>
-              </dd>
-            </div>
+            <span v-if="f.type !== 'stars' && selected.traits[f.key] != null" class="sgi-dex-badge">
+              {{ fieldVal(f, selected.traits[f.key]) }}
+            </span>
           </template>
-        </dl>
+        </div>
+
+        <!-- 내 보유 -->
+        <button
+          type="button"
+          class="sgi-dex-own-btn"
+          :class="{ 'is-on': isOwned(selected) }"
+          @click="toggleOwned(selected)"
+        >{{ isOwned(selected) ? '✓ 보유 중' : '＋ 미보유 (탭해서 보유 표시)' }}</button>
+
+        <!-- 성장도(성장 필드 있는 게임 + 보유 시) -->
+        <GrowthForm
+          v-if="isOwned(selected) && growthSchema.length"
+          :key="selected.id"
+          :character="selected"
+          :schema="growthSchema"
+          :growth="pool[selected.external_key]?.growth ?? {}"
+          @save="saveGrowth"
+          @close="closeModal"
+        />
       </div>
     </div>
   </section>
@@ -67,26 +98,35 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { raidApi } from '../api';
+import GrowthForm from './GrowthForm.vue';
 
 const props = defineProps({
   gameSlug: { type: String, required: true },
-  pool: { type: Object, default: () => ({}) },
+  pool: { type: Object, default: () => ({}) }, // App 이 소유(보유 맵) — 편집은 emit 으로 반영
+  store: { type: Object, default: null }, // createPoolStore(loggedIn)
+  loggedIn: { type: Boolean, default: false },
 });
+
+const emit = defineEmits(['pool-changed']);
 
 const characters = ref([]);
 const schema = ref([]);
+const growthSchema = ref([]);
 const loaded = ref(false);
 const q = ref('');
 const ownedOnly = ref(false);
 const filters = reactive({});
 const selected = ref(null);
+const message = ref('');
+const fileInput = ref(null);
 const cache = new Map();
 
 const filterFields = computed(() => schema.value.filter((f) => f.filter));
 
-function isOwned(key) {
-  return !!props.pool[key]?.owned;
+function isOwned(c) {
+  return props.pool[c.external_key]?.owned === true;
 }
+const ownedCount = computed(() => characters.value.filter(isOwned).length);
 
 // 스키마 필드의 선택적 labels 맵으로 원시값(WIND/Mad/fire…)을 한글로 표시
 function fieldVal(field, raw) {
@@ -99,7 +139,6 @@ function optionsFor(key) {
     const v = c.traits?.[key];
     if (v != null && v !== '') set.add(v);
   }
-  // 성급은 숫자 내림차순, 나머지는 사전순
   return [...set].sort((a, b) => (typeof a === 'number' ? b - a : String(a).localeCompare(String(b), 'ko')));
 }
 
@@ -107,7 +146,7 @@ const filtered = computed(() => {
   const kw = q.value.toLowerCase();
   return characters.value.filter((c) => {
     if (kw && !c.name.toLowerCase().includes(kw)) return false;
-    if (ownedOnly.value && !isOwned(c.external_key)) return false;
+    if (ownedOnly.value && !isOwned(c)) return false;
     for (const [key, val] of Object.entries(filters)) {
       if (val !== '' && String(c.traits?.[key] ?? '') !== String(val)) return false;
     }
@@ -115,23 +154,127 @@ const filtered = computed(() => {
   });
 });
 
+function closeModal() {
+  selected.value = null;
+}
+
+/** 보유 토글 — 낙관적 반영(emit) 후 저장, 실패 시 롤백. */
+async function toggleOwned(c) {
+  if (!props.store) return;
+  const owned = !isOwned(c);
+  const prev = props.pool;
+  const next = { ...prev };
+  if (owned) next[c.external_key] = { owned: true, growth: prev[c.external_key]?.growth ?? null };
+  else delete next[c.external_key];
+  emit('pool-changed', { gameSlug: props.gameSlug, pool: next });
+
+  try {
+    if (owned) await props.store.save(props.gameSlug, c, true, next[c.external_key].growth);
+    else await props.store.remove(props.gameSlug, c);
+  } catch (e) {
+    console.error('보유 저장 실패', e);
+    emit('pool-changed', { gameSlug: props.gameSlug, pool: prev });
+    flash('저장에 실패했어요.');
+  }
+}
+
+async function saveGrowth(growth) {
+  const c = selected.value;
+  if (!props.store || !c) return;
+  try {
+    await props.store.save(props.gameSlug, c, true, growth);
+    emit('pool-changed', { gameSlug: props.gameSlug, pool: { ...props.pool, [c.external_key]: { owned: true, growth } } });
+    flash(`${c.name} 성장도를 저장했어요.`);
+  } catch (e) {
+    console.error('성장도 저장 실패', e);
+    flash(e.response?.status === 422 ? '성장도 값이 올바르지 않아요.' : '저장에 실패했어요.');
+  }
+}
+
+async function setAllOwned(owned) {
+  if (!props.store) return;
+  if (!owned && !confirm('보유 체크를 모두 해제할까요? (성장도 입력값은 유지됩니다)')) return;
+  try {
+    await props.store.importData({
+      version: 1,
+      game: props.gameSlug,
+      characters: characters.value.map((c) => ({
+        external_key: c.external_key,
+        name: c.name,
+        owned,
+        growth: props.pool[c.external_key]?.growth ?? null,
+      })),
+    });
+    const pool = await props.store.load(props.gameSlug, characters.value);
+    emit('pool-changed', { gameSlug: props.gameSlug, pool });
+    flash(owned ? `전체 ${characters.value.length}명 보유 표시` : '보유 전체 해제');
+  } catch (e) {
+    console.error('일괄 변경 실패', e);
+    flash('일괄 변경에 실패했어요.');
+  }
+}
+
+async function exportJson() {
+  if (!props.store) return;
+  try {
+    const payload = await props.store.exportData(props.gameSlug);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `my-characters-${props.gameSlug}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    console.error('내보내기 실패', e);
+    flash('내보내기에 실패했어요.');
+  }
+}
+
+async function importJson(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file || !props.store) return;
+  try {
+    const payload = JSON.parse(await file.text());
+    if (payload.game && payload.game !== props.gameSlug) {
+      flash(`이 파일은 ${payload.game} 데이터예요. 해당 게임 탭에서 가져오세요.`);
+      return;
+    }
+    const stats = await props.store.importData({ ...payload, game: props.gameSlug });
+    const pool = await props.store.load(props.gameSlug, characters.value);
+    emit('pool-changed', { gameSlug: props.gameSlug, pool });
+    flash(`가져오기 완료 — ${stats.imported}건 적용${stats.missing ? `, ${stats.missing}건 매칭 실패` : ''}`);
+  } catch (e) {
+    console.error('가져오기 실패', e);
+    flash('JSON 파일을 읽지 못했어요.');
+  }
+}
+
+let messageTimer = null;
+function flash(text) {
+  message.value = text;
+  clearTimeout(messageTimer);
+  messageTimer = setTimeout(() => (message.value = ''), 4000);
+}
+
 async function load() {
   loaded.value = false;
+  selected.value = null;
   try {
     if (!cache.has(props.gameSlug)) {
       cache.set(props.gameSlug, await raidApi.getCharacters(props.gameSlug));
     }
     const res = cache.get(props.gameSlug);
-    // traits 가 null 인 캐릭터가 있어도 안전하게(도감 렌더가 traits.* 를 참조)
     characters.value = res.data.map((c) => ({ ...c, traits: c.traits ?? {} }));
     schema.value = res.meta?.student_schema ?? [];
-    // 필터 상태 초기화(게임 전환 시)
+    growthSchema.value = res.meta?.growth_schema ?? [];
     Object.keys(filters).forEach((k) => delete filters[k]);
     for (const f of filterFields.value) filters[f.key] = '';
   } catch (e) {
     console.error('캐릭터정보 로드 실패', e);
     characters.value = [];
     schema.value = [];
+    growthSchema.value = [];
   } finally {
     loaded.value = true;
   }

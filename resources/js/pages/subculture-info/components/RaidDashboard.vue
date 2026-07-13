@@ -56,13 +56,19 @@
             @select="$emit('select', $event)"
             @set-substitute="$emit('set-substitute', $event)"
             @clear-substitute="$emit('clear-substitute', $event)"
+            @pool-changed="$emit('pool-changed', $event)"
           />
         </template>
       </section>
 
       <!-- 서브탭 뷰: 선택한 tab 모듈 하나 -->
       <section v-else :key="`${currentGame.slug}-${activeTab}`" class="sgr-game-panel">
-        <component :is="MODULES[activeTab]" v-if="MODULES[activeTab]" v-bind="moduleProps(activeTab)" />
+        <component
+          :is="MODULES[activeTab]"
+          v-if="MODULES[activeTab]"
+          v-bind="moduleProps(activeTab)"
+          @pool-changed="$emit('pool-changed', $event)"
+        />
       </section>
     </template>
   </div>
@@ -84,11 +90,13 @@ const props = defineProps({
   raids: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   activeGame: { type: String, default: null },
-  pool: { type: Object, default: () => ({}) }, // 활성 게임의 내 풀(보유 하이라이트용)
+  pool: { type: Object, default: () => ({}) }, // 활성 게임의 내 풀(보유 하이라이트·편집)
   userSubs: { type: Object, default: () => ({}) }, // 활성 게임의 내 대체 매핑
+  store: { type: Object, default: null }, // 내 보유 저장소(캐릭터정보 도감 편집용)
+  loggedIn: { type: Boolean, default: false },
 });
 
-defineEmits(['select', 'change-game', 'set-substitute', 'clear-substitute']);
+defineEmits(['select', 'change-game', 'set-substitute', 'clear-substitute', 'pool-changed']);
 
 /**
  * 정보 모듈 레지스트리 — 새 정보 유형 추가 = 컴포넌트 등록 + 서버 config modules 에 키 추가.
@@ -141,8 +149,10 @@ function moduleProps(module) {
     case 'event-challenges':
       return { gameSlug: slug, pool: props.pool };
     case 'pickup-banners':
-    case 'student-dex':
       return { gameSlug: slug, pool: props.pool }; // 보유 하이라이트
+    case 'student-dex':
+      // 도감에서 보유·성장도 편집(내 캐릭터 통합) — store 로 저장, pool-changed 로 상위 동기화
+      return { gameSlug: slug, pool: props.pool, store: props.store, loggedIn: props.loggedIn };
     default:
       return { gameSlug: slug };
   }
