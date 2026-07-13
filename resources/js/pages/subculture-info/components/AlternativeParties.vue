@@ -10,8 +10,18 @@
     </p>
 
     <template v-else>
-      <!-- 난이도 필터 (블아 총력전/대결전 전용) -->
-      <div v-if="isBlueArchive" class="sgr-alt-difficulties" role="tablist" aria-label="난이도">
+      <!-- 대결전: 장갑 필터(장갑별 랭킹) / 총력전: 난이도 필터 -->
+      <div v-if="isGrandAssault" class="sgr-alt-difficulties" role="tablist" aria-label="장갑">
+        <button
+          v-for="a in armorOptions"
+          :key="a"
+          type="button"
+          class="sgr-alt-diff"
+          :class="{ 'is-active': armor === a }"
+          @click="selectArmor(a)"
+        >{{ a }}</button>
+      </div>
+      <div v-else-if="isBlueArchive" class="sgr-alt-difficulties" role="tablist" aria-label="난이도">
         <button
           v-for="d in DIFFICULTIES"
           :key="d.value"
@@ -136,18 +146,34 @@ const loading = ref(false);
 const error = ref('');
 const unsupported = ref(false);
 
-// 블아 전용 난이도 필터 — 편성 참고 가치가 있는 상위 3개 난이도만 노출
+// 블아 총력전 전용 난이도 필터 — 편성 참고 가치가 있는 상위 3개 난이도만 노출
 const DIFFICULTIES = [
   { value: 'insane', label: '인세인' },
   { value: 'torment', label: '토먼트' },
   { value: 'lunatic', label: '루나틱' },
 ];
 const isBlueArchive = computed(() => props.raid.game?.slug === 'bluearchive');
+// 대결전은 난이도 대신 장갑별 랭킹 — 몰루로그 일정의 장갑 목록(없으면 표준 3종)으로 필터
+const isGrandAssault = computed(() => isBlueArchive.value && props.raid.raid_type === '대결전');
+const ARMOR_FALLBACK = ['경장갑', '중장갑', '특수장갑'];
+const armorOptions = computed(() => {
+  const fromTags = (props.raid.tags?.mollulog?.armors ?? []).map((a) => a.type).filter(Boolean);
+  return fromTags.length ? fromTags : ARMOR_FALLBACK;
+});
 const difficulty = ref('insane');
+const armor = ref(null); // 대결전 장갑 선택(load 시 첫 장갑으로 초기화)
 
 function selectDifficulty(value) {
   if (difficulty.value === value) return;
   difficulty.value = value;
+  parties.value = [];
+  result.value = null;
+  load(1);
+}
+
+function selectArmor(value) {
+  if (armor.value === value) return;
+  armor.value = value;
   parties.value = [];
   result.value = null;
   load(1);
@@ -238,13 +264,16 @@ async function load(nextPage = 1) {
     }
     if (ownedCount.value === 0) return; // 안내 문구만 표시
 
-    const diff = isBlueArchive.value ? difficulty.value : null;
+    // 총력전=난이도 필터, 대결전=장갑 필터(장갑별 랭킹이라 난이도 개념이 없다)
+    const diff = isBlueArchive.value && !isGrandAssault.value ? difficulty.value : null;
+    if (isGrandAssault.value && armor.value === null) armor.value = armorOptions.value[0] ?? null;
+    const arm = isGrandAssault.value ? armor.value : null;
     const include = [...props.include].sort();
     const ownedKey = Object.keys(props.pool).filter((k) => props.pool[k]?.owned).sort().join(',');
-    const cacheKey = `${props.raid.id}:${nextPage}:${diff ?? 'all'}:inc=${include.join(',')}:${ownedKey}`;
+    const cacheKey = `${props.raid.id}:${nextPage}:${diff ?? 'all'}:${arm ?? '-'}:inc=${include.join(',')}:${ownedKey}`;
     let data = sessionCache.get(cacheKey);
     if (!data) {
-      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), { page: nextPage, difficulty: diff, include });
+      data = await raidApi.getAlternativeParties(props.raid.id, excludeKeys(), { page: nextPage, difficulty: diff, armor: arm, include });
       sessionCache.set(cacheKey, data);
     }
 
@@ -278,7 +307,10 @@ let reloadTimer = null;
 watch(
   () => [props.raid.id, ownedCount.value, props.include.join(',')],
   ([raidId], [prevRaidId] = []) => {
-    if (raidId !== prevRaidId) sessionCache.clear(); // 레이드가 바뀌면 캐시도 비워 메모리 증가 방지
+    if (raidId !== prevRaidId) {
+      sessionCache.clear(); // 레이드가 바뀌면 캐시도 비워 메모리 증가 방지
+      armor.value = null; // 장갑 선택도 새 레이드의 장갑 목록으로 재초기화
+    }
     clearTimeout(reloadTimer);
     reloadTimer = setTimeout(() => { parties.value = []; result.value = null; load(1); }, 500);
   },

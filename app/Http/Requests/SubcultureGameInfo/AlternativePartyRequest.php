@@ -23,15 +23,23 @@ class AlternativePartyRequest extends FormRequest
             'include' => ['nullable', 'array', 'max:6'], // 파티 슬롯 상 6명 초과 포함은 무의미
             'include.*' => ['string', 'max:40'],
             'page' => ['nullable', 'integer', 'min:1', 'max:1000'],
-            // 블아 전용 난이도 필터(인세인/토먼트/루나틱) — 그 외 게임은 무시된다
+            // 블아 총력전 전용 난이도 필터(인세인/토먼트/루나틱) — 그 외 게임은 무시된다
             'difficulty' => ['nullable', 'string', 'in:insane,torment,lunatic'],
+            // 블아 대결전 전용 장갑 필터 — 대결전 랭킹은 난이도가 아니라 장갑별로 나뉜다
+            'armor' => ['nullable', 'string', 'in:경장갑,중장갑,특수장갑,탄력장갑'],
         ];
     }
 
-    /** 난이도 필터(블아 전용). 미지정이면 null(전체). */
+    /** 난이도 필터(블아 총력전 전용). 미지정이면 null(전체). */
     public function difficulty(): ?string
     {
         return $this->validated('difficulty');
+    }
+
+    /** 장갑 필터(블아 대결전 전용). 미지정이면 null(수집된 기본 장갑). */
+    public function armor(): ?string
+    {
+        return $this->validated('armor');
     }
 
     /** @return list<string> 중복 제거한 제외 캐릭터 external_key 목록 */

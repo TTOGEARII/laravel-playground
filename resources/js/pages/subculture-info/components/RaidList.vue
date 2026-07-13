@@ -49,7 +49,7 @@
       class="sgr-btn sgr-raid-more"
       @click="expanded = !expanded"
     >
-      {{ expanded ? '접기' : `지난·예정 회차 ${hiddenCount}개 더 보기` }}
+      {{ expanded ? '접기' : `예정·지난 회차 ${hiddenCount}개 보기` }}
     </button>
   </div>
 </template>
@@ -63,8 +63,6 @@ const props = defineProps({
 
 defineEmits(['select']);
 
-const UPCOMING_PREVIEW = 3; // 다음 회차 미리보기 수(몰루로그 홈처럼 임박한 것만)
-const ENDED_PREVIEW = 3;
 const expanded = ref(false);
 
 const TYPE_LABELS = { 종합전술시험: '종전시' };
@@ -79,22 +77,17 @@ const orderedRaids = computed(() => {
   });
 });
 
-const hiddenCount = computed(() => {
-  const upcoming = orderedRaids.value.filter((r) => r.status === 'upcoming').length;
-  const ended = orderedRaids.value.filter((r) => r.status === 'ended').length;
-  return Math.max(0, upcoming - UPCOMING_PREVIEW) + Math.max(0, ended - ENDED_PREVIEW);
+// 기본 노출 = 진행 중인 레이드만. 진행 중이 하나도 없으면 임박한 다음 회차 1개만 보여준다.
+const defaultRaids = computed(() => {
+  const active = orderedRaids.value.filter((r) => r.status === 'active');
+  if (active.length) return active;
+  const next = orderedRaids.value.find((r) => r.status === 'upcoming');
+  return next ? [next] : [];
 });
 
-const visibleRaids = computed(() => {
-  if (expanded.value) return orderedRaids.value;
-  let up = 0;
-  let ended = 0;
-  return orderedRaids.value.filter((r) => {
-    if (r.status === 'upcoming') return ++up <= UPCOMING_PREVIEW;
-    if (r.status === 'ended') return ++ended <= ENDED_PREVIEW;
-    return true;
-  });
-});
+const hiddenCount = computed(() => orderedRaids.value.length - defaultRaids.value.length);
+
+const visibleRaids = computed(() => (expanded.value ? orderedRaids.value : defaultRaids.value));
 
 /* ---- 카드 데이터 헬퍼 ---- */
 

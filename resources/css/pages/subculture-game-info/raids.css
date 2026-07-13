@@ -2338,3 +2338,8 @@
 }
 /* 복각 배지와 겹치지 않게 보유 표시는 좌하단으로 */
 .sgi-pickup-owned { top: auto; right: auto; bottom: 4px; left: 4px; }
+
+/* 상세 헤더의 장갑별 난이도 — 이미지 배경이 아니므로 텍스트는 테마 색 */
+.sgr-detail-armors { margin-top: 8px; align-items: flex-start; }
+.sgr-detail-armors .sgr-rh-armor-pill { border: 1px solid var(--border-color); }
+.sgr-detail-armors .sgr-rh-difficulty { color: var(--text-secondary); }

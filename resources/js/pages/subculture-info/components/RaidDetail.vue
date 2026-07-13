@@ -9,8 +9,15 @@
         <h2 class="sgr-detail-title">{{ raid.name }}</h2>
         <div class="sgr-tag-row">
           <span v-if="raid.raid_type" class="sgr-type-badge">{{ raid.raid_type }}</span>
-          <span v-for="(value, key) in raid.tags ?? {}" :key="key" class="sgr-tag" v-show="value">{{ value }}</span>
+          <span v-for="(value, key) in scalarTags" :key="key" class="sgr-tag">{{ value }}</span>
           <span class="sgr-status-badge" :class="`is-${raid.status}`">{{ statusLabel }}</span>
+        </div>
+        <!-- 장갑별 난이도(몰루로그 일정) -->
+        <div v-if="mlArmors.length" class="sgr-rh-armors sgr-detail-armors">
+          <span v-for="(a, i) in mlArmors" :key="i" class="sgr-rh-armor">
+            <b class="sgr-rh-armor-pill" :class="armorPillClass(a.type)">{{ a.type }}</b>
+            <i v-if="a.difficulty" class="sgr-rh-difficulty">{{ a.difficulty }}</i>
+          </span>
         </div>
         <p class="sgr-raid-period">
           {{ period }}
@@ -133,6 +140,22 @@ defineEmits(['back', 'set-substitute', 'clear-substitute']);
 
 // 실전 편성(원본 랭킹 프록시)이 있는 게임 = 블아·니케
 const hasAltParties = computed(() => ['bluearchive', 'nikke'].includes(props.raid.game?.slug));
+
+// 스칼라 태그만 pill 로(중첩 객체 tags.mollulog 는 제외 — JSON 노출 방지)
+const scalarTags = computed(() => {
+  const out = {};
+  for (const [k, v] of Object.entries(props.raid.tags ?? {})) {
+    if (v && typeof v !== 'object') out[k] = v;
+  }
+  return out;
+});
+
+// 몰루로그 일정의 장갑별 난이도(대결전 3종 등) — 헤더 pill 표시용
+const mlArmors = computed(() => props.raid.tags?.mollulog?.armors ?? []);
+const ARMOR_PILL_CLASSES = { 경장갑: 'is-red', 중장갑: 'is-amber', 특수장갑: 'is-blue', 탄력장갑: 'is-purple' };
+function armorPillClass(type) {
+  return ARMOR_PILL_CLASSES[type] ?? '';
+}
 
 // 세그먼트 탭: 추천 편성 / 내 풀 조합(블아·니케) / 공략글
 const tabs = computed(() => [

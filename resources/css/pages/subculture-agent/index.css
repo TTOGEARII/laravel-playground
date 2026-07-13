@@ -294,3 +294,107 @@
 @media (max-width: 640px) {
     .sga-msg-body { max-width: 92%; }
 }
+
+/* ============================================================
+   페르소나 선택 — 챗봇 캐릭터창 스타일 카드 그리드
+   ============================================================ */
+.sga-select { text-align: center; padding-top: var(--ds-space-lg); }
+.sga-select-title { color: var(--text-primary); font-size: var(--ds-fs-2xl, 22px); font-weight: var(--ds-fw-bold); margin-bottom: var(--ds-space-xs); }
+.sga-select-lead { color: var(--text-secondary); font-size: var(--ds-fs-sm); margin-bottom: var(--ds-space-xl); }
+.sga-persona-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--ds-space-lg);
+    text-align: left;
+}
+.sga-persona-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-lg);
+    border-radius: var(--ds-round-xl);
+    background: var(--ds-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--ds-shadow-medium);
+    transition: transform 0.12s ease, border-color 0.15s ease;
+}
+.sga-persona-card:hover { transform: translateY(-3px); border-color: rgba(243, 114, 127, 0.6); }
+.sga-persona-card.is-current { border-color: var(--ds-primary); }
+.sga-persona-image {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--ds-round-lg);
+    background: var(--ds-surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.sga-persona-image img { width: 100%; height: 100%; object-fit: cover; }
+.sga-persona-emoji { font-size: 4rem; }
+.sga-persona-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--ds-fs-lg);
+    font-weight: var(--ds-fw-bold);
+}
+.sga-persona-kind {
+    padding: 1px 9px;
+    border-radius: var(--ds-round-full);
+    background: rgba(243, 114, 127, 0.15);
+    color: var(--ds-text-accent);
+    font-size: 10px;
+    font-weight: var(--ds-fw-bold);
+}
+.sga-persona-desc {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-sm);
+    line-height: 1.55;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.sga-persona-start {
+    padding: 10px;
+    border-radius: var(--ds-round-pill);
+    border: none;
+    background: var(--ds-primary);
+    color: var(--ds-on-accent);
+    font-weight: var(--ds-fw-bold);
+    letter-spacing: var(--ds-btn-tracking);
+    cursor: pointer;
+}
+.sga-persona-start:hover { background: var(--ds-primary-press); }
+.sga-select-hint { margin-top: var(--ds-space-lg); color: var(--text-secondary); font-size: var(--ds-fs-micro); }
+
+/* 채팅 상단 현재 페르소나(누르면 선택으로 복귀) */
+.sga-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px 5px 6px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: var(--ds-fs-sm);
+    font-weight: var(--ds-fw-bold);
+    cursor: pointer;
+}
+.sga-current:hover { border-color: rgba(243, 114, 127, 0.6); }
+.sga-current small { color: var(--text-secondary); font-weight: var(--ds-fw-regular); }
+.sga-current-face {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--ds-surface-2);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    overflow: hidden;
+}
+.sga-current-face img { width: 100%; height: 100%; object-fit: cover; }

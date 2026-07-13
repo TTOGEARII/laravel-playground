@@ -36,9 +36,9 @@ class LetsdoroRankingClient
      * @param  list<string>  $includeKeys  반드시 포함할 external_key 배열(AND)
      * @return array{mode: string, total_count: int, parties: list<array>, source_url: ?string}|null 실패 시 null
      */
-    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys, int $page, ?string $difficulty = null): ?array
+    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys, int $page, ?string $difficulty = null, ?string $armor = null): ?array
     {
-        // 니케 솔로 레이드는 난이도 구분이 없어 difficulty 는 무시한다(시그니처 통일용)
+        // 니케 솔로 레이드는 난이도·장갑 구분이 없어 difficulty/armor 는 무시한다(시그니처 통일용)
         $config = config('subculture-game-info.raids.alternative_parties');
 
         $season = $this->matchSeason($raid);

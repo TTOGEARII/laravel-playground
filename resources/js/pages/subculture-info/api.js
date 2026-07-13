@@ -24,17 +24,19 @@ export const raidApi = {
      * @param {string[]} exclude 미보유 캐릭터 external_key 배열 (max 500)
      * @param {object} [opts]
      * @param {number} [opts.page]
-     * @param {?string} [opts.difficulty] 블아 전용 난이도(insane|torment|lunatic), null=전체
+     * @param {?string} [opts.difficulty] 블아 총력전 전용 난이도(insane|torment|lunatic), null=전체
+     * @param {?string} [opts.armor] 블아 대결전 전용 장갑(경장갑/중장갑/특수장갑/탄력장갑)
      * @param {string[]} [opts.include] 반드시 포함할 캐릭터 external_key 배열 (max 6)
      */
-    async getAlternativeParties(raidId, exclude, { page = 1, difficulty = null, include = [] } = {}) {
+    async getAlternativeParties(raidId, exclude, { page = 1, difficulty = null, armor = null, include = [] } = {}) {
         const { data } = await axios.post(`${API_BASE}/raids/${raidId}/alternative-parties`, {
             exclude,
             page,
             ...(difficulty ? { difficulty } : {}),
+            ...(armor ? { armor } : {}),
             ...(include.length ? { include } : {}),
         });
-        return data.data; // { supported, mode, total_count, parties, has_more, difficulty, source, source_url }
+        return data.data; // { supported, mode, total_count, parties, has_more, difficulty, armor, source, source_url }
     },
     /**
      * 학생별 출전 횟수(블아 전용) — 대체 캐릭터 후보의 실전 채용 빈도.

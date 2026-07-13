@@ -1,43 +1,67 @@
 <template>
   <div class="sga">
-    <!-- 페르소나 선택 -->
-    <div class="sga-topbar">
-      <div class="sga-personas">
-        <button
-          v-for="p in personaOptions"
-          :key="`${p.kind}-${p.ref}`"
-          type="button"
-          class="sga-persona"
-          :class="{ 'is-active': persona.kind === p.kind && persona.ref === p.ref }"
-          :disabled="streaming"
-          @click="switchPersona(p)"
-        >{{ p.emoji }} {{ p.name }}</button>
-      </div>
-      <button v-if="messages.length" type="button" class="sga-new" :disabled="streaming" @click="newChat">
-        ＋ 새 대화
-      </button>
-    </div>
-
-    <!-- SGI 화면에서 넘어온 게임 컨텍스트 — 게임 미명시 질문의 기준 게임 -->
-    <div v-if="gameContext" class="sga-context">
-      🎮 <strong>{{ games[gameContext] ?? gameContext }}</strong> 기준으로 답해요
-      <button type="button" class="sga-context-off" title="게임 컨텍스트 해제" @click="clearGameContext">✕</button>
-    </div>
-
     <p v-if="!enabled" class="sga-disabled">지금은 AI 기능이 꺼져 있어요(서버 설정 필요). 잠시 후 다시 들러주세요.</p>
 
-    <!-- 빈 상태: 예시 프롬프트 -->
-    <div v-if="enabled && messages.length === 0" class="sga-empty">
-      <div class="sga-empty-icon">🤖</div>
-      <h2>무엇이 궁금하세요?</h2>
-      <p>서브컬쳐 게임의 리딤코드·레이드 편성·캐릭터·공략을 알려드려요.</p>
-      <div class="sga-suggestions">
-        <button v-for="s in suggestions" :key="s" type="button" class="sga-suggestion" @click="send(s)">{{ s }}</button>
-      </div>
+    <!-- 페르소나 선택 — 챗봇 캐릭터창처럼 카드로 고른다 -->
+    <div v-else-if="view === 'select'" class="sga-select">
+      <h2 class="sga-select-title">누구와 대화할까요?</h2>
+      <p class="sga-select-lead">페르소나를 고르면 대화가 시작돼요. 내 챗봇 캐릭터도 페르소나로 쓸 수 있어요.</p>
+      <section class="sga-persona-grid">
+        <article
+          v-for="p in personaOptions"
+          :key="`${p.kind}-${p.ref}`"
+          class="sga-persona-card"
+          :class="{ 'is-current': persona.kind === p.kind && persona.ref === p.ref }"
+        >
+          <div class="sga-persona-image">
+            <img v-if="p.image" :src="p.image" :alt="p.name" loading="lazy" />
+            <span v-else class="sga-persona-emoji">{{ p.emoji }}</span>
+          </div>
+          <h3 class="sga-persona-name">
+            {{ p.name }}
+            <span v-if="p.kind === 'character'" class="sga-persona-kind">내 챗봇</span>
+          </h3>
+          <p class="sga-persona-desc">{{ p.description || '서브컬쳐 게임 정보를 알려드려요.' }}</p>
+          <button type="button" class="sga-persona-start" @click="selectPersona(p)">대화하기</button>
+        </article>
+      </section>
+      <p v-if="!loggedIn" class="sga-select-hint">로그인하면 내가 만든 챗봇 캐릭터도 페르소나로 쓸 수 있어요.</p>
     </div>
 
-    <!-- 대화 -->
-    <div ref="scroller" class="sga-messages">
+    <!-- 채팅 뷰 -->
+    <template v-else>
+      <div class="sga-topbar">
+        <button type="button" class="sga-current" :disabled="streaming" title="페르소나 변경" @click="view = 'select'">
+          <span class="sga-current-face">
+            <img v-if="currentPersona?.image" :src="currentPersona.image" :alt="currentPersona.name" />
+            <template v-else>{{ personaEmoji }}</template>
+          </span>
+          {{ currentPersona?.name ?? '페르소나' }}
+          <small>변경 ›</small>
+        </button>
+        <button v-if="messages.length" type="button" class="sga-new" :disabled="streaming" @click="newChat(); view = 'select';">
+          ＋ 새 대화
+        </button>
+      </div>
+
+      <!-- SGI 화면에서 넘어온 게임 컨텍스트 — 게임 미명시 질문의 기준 게임 -->
+      <div v-if="gameContext" class="sga-context">
+        🎮 <strong>{{ games[gameContext] ?? gameContext }}</strong> 기준으로 답해요
+        <button type="button" class="sga-context-off" title="게임 컨텍스트 해제" @click="clearGameContext">✕</button>
+      </div>
+
+      <!-- 빈 상태: 예시 프롬프트 -->
+      <div v-if="messages.length === 0" class="sga-empty">
+        <div class="sga-empty-icon">{{ personaEmoji }}</div>
+        <h2>무엇이 궁금하세요?</h2>
+        <p>서브컬쳐 게임의 리딤코드·레이드 편성·캐릭터·공략을 알려드려요.</p>
+        <div class="sga-suggestions">
+          <button v-for="s in suggestions" :key="s" type="button" class="sga-suggestion" @click="send(s)">{{ s }}</button>
+        </div>
+      </div>
+
+      <!-- 대화 -->
+      <div ref="scroller" class="sga-messages">
       <div v-for="(m, i) in messages" :key="i" class="sga-msg" :class="`is-${m.role}`">
         <div v-if="m.role === 'assistant'" class="sga-avatar">{{ personaEmoji }}</div>
         <div class="sga-msg-body">
@@ -53,20 +77,21 @@
       </div>
     </div>
 
-    <!-- 입력 바 -->
-    <form v-if="enabled" class="sga-inputbar" @submit.prevent="send()">
-      <input
-        v-model="input"
-        type="text"
-        class="sga-input"
-        placeholder="예) 블루아카이브 리딤코드 알려줘"
-        maxlength="2000"
-        :disabled="streaming"
-      />
-      <button type="submit" class="sga-send" :disabled="streaming || !input.trim()">
-        {{ streaming ? '…' : '전송' }}
-      </button>
-    </form>
+      <!-- 입력 바 -->
+      <form class="sga-inputbar" @submit.prevent="send()">
+        <input
+          v-model="input"
+          type="text"
+          class="sga-input"
+          placeholder="예) 블루아카이브 리딤코드 알려줘"
+          maxlength="2000"
+          :disabled="streaming"
+        />
+        <button type="submit" class="sga-send" :disabled="streaming || !input.trim()">
+          {{ streaming ? '…' : '전송' }}
+        </button>
+      </form>
+    </template>
   </div>
 </template>
 
@@ -110,8 +135,12 @@ const suggestions = [
   '니케 진행 중인 레이드 뭐야?',
 ];
 
-const personaEmoji = computed(() => personaOptions.value
-  .find((p) => p.kind === persona.value.kind && p.ref === persona.value.ref)?.emoji ?? '🤖');
+// 뷰: select(페르소나 카드 선택) ↔ chat(대화). 복원된 세션이 있으면 chat 으로 시작.
+const view = ref('select');
+
+const currentPersona = computed(() => personaOptions.value
+  .find((p) => p.kind === persona.value.kind && p.ref === persona.value.ref) ?? null);
+const personaEmoji = computed(() => currentPersona.value?.emoji ?? '🤖');
 
 function render(text) {
   return md.render(text ?? '');
@@ -126,10 +155,12 @@ async function scrollDown() {
   scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: 'smooth' });
 }
 
-function switchPersona(p) {
+/** 카드에서 페르소나 선택 → 새 대화로 채팅 시작(세션의 페르소나는 생성 시 고정). */
+function selectPersona(p) {
   persona.value = { kind: p.kind, ref: p.ref };
   localStorage.setItem(PERSONA_KEY, JSON.stringify(persona.value));
-  newChat(); // 세션의 페르소나는 생성 시 고정이므로 새 대화로 시작
+  newChat();
+  view.value = 'chat';
 }
 
 function newChat() {
@@ -232,9 +263,10 @@ async function restoreSession() {
       cards: m.cards ?? [],
       tools: (m.tool_calls ?? []).map((t) => t.label),
     }));
+    if (messages.value.length) view.value = 'chat'; // 이어하던 대화가 있으면 바로 채팅으로
     scrollDown();
   } catch {
-    newChat(); // 만료·권한 없음 등 — 조용히 새 대화
+    newChat(); // 만료·권한 없음 등 — 조용히 페르소나 선택으로
   }
 }
 

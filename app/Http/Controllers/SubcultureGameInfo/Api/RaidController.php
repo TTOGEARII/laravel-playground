@@ -45,7 +45,7 @@ class RaidController extends Controller
 
     /**
      * 미보유 캐릭터 제외 실전 편성 — 원본 랭킹 사이트(몰루로그/레츠도로) 프록시.
-     * body: { exclude: [external_key...], page?, difficulty?(블아: insane|torment|lunatic) }
+     * body: { exclude: [external_key...], page?, difficulty?(블아 총력전), armor?(블아 대결전: 장갑명) }
      */
     public function alternativeParties(AlternativePartyRequest $request, Raid $raid): JsonResponse
     {
@@ -56,6 +56,7 @@ class RaidController extends Controller
                 $request->includeKeys(),
                 $request->pageNumber(),
                 $request->difficulty(),
+                $request->armor(),
             ),
         ]);
     }

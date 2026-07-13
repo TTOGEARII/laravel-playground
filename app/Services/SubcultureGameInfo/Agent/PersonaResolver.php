@@ -89,18 +89,28 @@ class PersonaResolver
         return $preset['speech'];
     }
 
-    /** 프리셋 + 내 챗봇 캐릭터 목록(선택 UI용). */
+    /** 프리셋 + 내 챗봇 캐릭터 목록(선택 카드 UI용 — 설명·이미지 포함). */
     public function options(?int $userId): array
     {
         $presets = collect(config('subculture-agent.personas', []))
             ->map(fn (array $p, string $key) => [
-                'kind' => 'preset', 'ref' => $key, 'name' => $p['name'], 'emoji' => $p['emoji'] ?? '🎮',
+                'kind' => 'preset',
+                'ref' => $key,
+                'name' => $p['name'],
+                'emoji' => $p['emoji'] ?? '🎮',
+                'description' => $p['description'] ?? '',
+                'image' => null,
             ])->values()->all();
 
         $characters = $userId === null ? [] : ChatCharacter::where('user_id', $userId)
             ->latest('id')->limit(30)->get()
             ->map(fn (ChatCharacter $c) => [
-                'kind' => 'character', 'ref' => (string) $c->id, 'name' => $c->name, 'emoji' => '💬',
+                'kind' => 'character',
+                'ref' => (string) $c->id,
+                'name' => $c->name,
+                'emoji' => '💬',
+                'description' => (string) ($c->short_intro ?? ''),
+                'image' => $c->image_url,
             ])->all();
 
         return ['presets' => $presets, 'characters' => $characters];

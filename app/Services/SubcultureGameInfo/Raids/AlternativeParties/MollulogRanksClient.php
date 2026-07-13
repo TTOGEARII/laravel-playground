@@ -74,7 +74,7 @@ class MollulogRanksClient
      * @param  list<string>  $includeKeys  반드시 포함할 uid 배열 (AND)
      * @return array{mode: string, total_count: int, parties: list<array>, source_url: ?string}|null 실패 시 null
      */
-    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys, int $page, ?string $difficulty = null): ?array
+    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys, int $page, ?string $difficulty = null, ?string $armor = null): ?array
     {
         $config = config('subculture-game-info.raids.alternative_parties');
 
@@ -93,7 +93,10 @@ class MollulogRanksClient
             return null;
         }
 
-        $defenseType = $this->resolveDefenseType($raid, $schedule);
+        // 대결전은 장갑별 랭킹 — 사용자가 고른 장갑이 있으면 우선(없으면 수집된 기본 장갑)
+        $defenseType = ($armor !== null && isset(self::DEFENSE_TYPES[$armor]))
+            ? self::DEFENSE_TYPES[$armor]
+            : $this->resolveDefenseType($raid, $schedule);
         $scoreRange = $this->scoreRangeFor($difficulty, (string) data_get($schedule, 'raidBoss.uid'));
         $decoded = $this->fetchRanks($raidType, (int) $jpSeason, $defenseType, $excludeKeys, $includeKeys, $page, $scoreRange, $config);
         if ($decoded === null) {

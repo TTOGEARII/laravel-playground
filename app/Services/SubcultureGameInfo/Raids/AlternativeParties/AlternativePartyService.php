@@ -22,9 +22,10 @@ class AlternativePartyService
     /**
      * @param  list<string>  $excludeKeys  미보유(제외) 캐릭터 external_key 배열
      * @param  list<string>  $includeKeys  반드시 포함할 캐릭터 external_key 배열(AND)
-     * @param  ?string  $difficulty  블아 전용 난이도(insane|torment|lunatic), null=전체
+     * @param  ?string  $difficulty  블아 총력전 전용 난이도(insane|torment|lunatic), null=전체
+     * @param  ?string  $armor  블아 대결전 전용 장갑(경장갑 등), null=수집된 기본 장갑
      */
-    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys = [], int $page = 1, ?string $difficulty = null): array
+    public function findParties(Raid $raid, array $excludeKeys, array $includeKeys = [], int $page = 1, ?string $difficulty = null, ?string $armor = null): array
     {
         $raid->loadMissing('game');
 
@@ -39,7 +40,7 @@ class AlternativePartyService
         }
 
         try {
-            $result = $client->findParties($raid, $excludeKeys, $includeKeys, max(1, $page), $difficulty);
+            $result = $client->findParties($raid, $excludeKeys, $includeKeys, max(1, $page), $difficulty, $armor);
         } catch (\Throwable $e) {
             Log::warning('[SGI-ALT] 실전 편성 조회 실패', ['raid_id' => $raid->id, 'error' => $e->getMessage()]);
             $result = null;
@@ -54,6 +55,7 @@ class AlternativePartyService
                 'parties' => [],
                 'has_more' => false,
                 'difficulty' => $difficulty,
+                'armor' => $armor,
                 'source' => $client->source(),
                 'source_url' => null,
             ];
@@ -66,6 +68,7 @@ class AlternativePartyService
             'parties' => $this->joinCharacters($raid, $result['parties']),
             'has_more' => (bool) ($result['has_more'] ?? false),
             'difficulty' => $difficulty,
+            'armor' => $armor,
             'source' => $client->source(),
             'source_url' => $result['source_url'],
         ];

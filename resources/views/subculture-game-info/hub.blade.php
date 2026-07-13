@@ -33,9 +33,19 @@
             <h2 class="sgh-choice-title">서브컬쳐 정보검색</h2>
             <p class="sgh-choice-desc">
                 진행중 컨텐츠·모집중 학생·레이드·공략글을 게임별로.
-                미래시·캐릭터정보 탐색과 🤖 AI 물어보기까지.
+                미래시·캐릭터정보 탐색까지 한 화면에서.
             </p>
             <span class="sgh-choice-go">정보 탐색하기 →</span>
+        </a>
+
+        <a href="{{ route('subculture-agent.index') }}" class="sgh-choice sgh-choice--agent">
+            <div class="sgh-choice-icon">🤖</div>
+            <h2 class="sgh-choice-title">서브컬쳐 AI 에이전트</h2>
+            <p class="sgh-choice-desc">
+                리딤코드·레이드 편성·공략을 대화로 물어보세요.
+                페르소나(모루·선배·집사·내 챗봇)를 골라 대화할 수 있어요.
+            </p>
+            <span class="sgh-choice-go">AI와 대화하기 →</span>
         </a>
     </div>
 @endsection
