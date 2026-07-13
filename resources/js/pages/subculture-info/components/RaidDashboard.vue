@@ -28,7 +28,7 @@
     <p v-if="loading" class="sgr-empty">정보를 불러오는 중...</p>
 
     <template v-else-if="currentGame">
-      <!-- 서브탭(메인 / 미래시 / 학정보 …) — tabs 모듈이 있는 게임만 노출 -->
+      <!-- 서브탭(메인 / 미래시 / 캐릭터정보 …) — tabs 모듈이 있는 게임만 노출 -->
       <nav v-if="tabModules.length" class="sgr-subtabs">
         <button
           type="button"
@@ -108,7 +108,7 @@ const MODULES = {
 // 서브탭 라벨(아이콘 포함)
 const TAB_META = {
   'future-timeline': '🔮 미래시',
-  'student-dex': '📖 학정보',
+  'student-dex': '📖 캐릭터정보',
 };
 function tabLabel(key) {
   return TAB_META[key] ?? key;

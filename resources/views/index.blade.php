@@ -71,7 +71,7 @@
             <div class="card-icon">🎮</div>
             <h2 class="card-title">서브컬쳐 게임 허브</h2>
             <p class="card-description">
-                리딤코드 · 미래시 · 학정보 · 레이드 · 🤖 AI 물어보기
+                리딤코드 · 미래시 · 캐릭터정보 · 레이드 · 🤖 AI 물어보기
             </p>
             <a href="{{ route('subculture-game-info.index') }}" class="card-button">
                 프로젝트 보기

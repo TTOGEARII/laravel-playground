@@ -15,7 +15,7 @@
     <h1>리딤코드 모아보기</h1>
     <p>원신·스타레일·젠레스·블루아카·명조·트릭컬의 리딤/쿠폰 코드를 한 곳에서.</p>
     <p>
-        <a href="{{ route('subculture-game-info.info') }}" class="sgi-raids-link">🔎 정보검색(미래시·학정보·레이드) →</a>
+        <a href="{{ route('subculture-game-info.info') }}" class="sgi-raids-link">🔎 정보검색(미래시·캐릭터정보·레이드) →</a>
     </p>
 @endsection
 

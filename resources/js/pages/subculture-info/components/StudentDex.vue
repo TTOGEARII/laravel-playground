@@ -1,10 +1,10 @@
 <template>
   <section class="sgr-module sgi-dex">
-    <h3 class="sgr-module-title">📖 학정보 <small class="sgr-feed-hint">캐릭터 도감</small></h3>
+    <h3 class="sgr-module-title">📖 캐릭터정보 <small class="sgr-feed-hint">도감</small></h3>
 
     <!-- 검색 + 스키마 기반 동적 필터 -->
     <div class="sgi-dex-controls">
-      <input v-model.trim="q" type="search" class="sgi-dex-search" placeholder="학생 이름 검색" />
+      <input v-model.trim="q" type="search" class="sgi-dex-search" placeholder="캐릭터 이름 검색" />
       <select v-for="f in filterFields" :key="f.key" v-model="filters[f.key]" class="sgi-dex-filter">
         <option value="">{{ f.label }} 전체</option>
         <option v-for="opt in optionsFor(f.key)" :key="opt" :value="String(opt)">
@@ -35,7 +35,7 @@
       </button>
     </div>
 
-    <p v-if="loaded && !filtered.length" class="sgr-empty">조건에 맞는 학생이 없어요.</p>
+    <p v-if="loaded && !filtered.length" class="sgr-empty">조건에 맞는 캐릭터가 없어요.</p>
 
     <!-- 상세 모달 -->
     <div v-if="selected" class="sgi-dex-modal" @click.self="selected = null">
@@ -129,7 +129,7 @@ async function load() {
     Object.keys(filters).forEach((k) => delete filters[k]);
     for (const f of filterFields.value) filters[f.key] = '';
   } catch (e) {
-    console.error('학정보 로드 실패', e);
+    console.error('캐릭터정보 로드 실패', e);
     characters.value = [];
     schema.value = [];
   } finally {

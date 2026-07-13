@@ -13,7 +13,7 @@
     </div>
     <span class="header-badge">🎮 서브컬쳐 게임 허브</span>
     <h1>무엇을 찾으세요?</h1>
-    <p>리딤코드부터 미래시·학정보·레이드 편성까지 — 원하는 걸 골라 들어가세요.</p>
+    <p>리딤코드부터 미래시·캐릭터정보·레이드 편성까지 — 원하는 걸 골라 들어가세요.</p>
 @endsection
 
 @section('content')
@@ -33,7 +33,7 @@
             <h2 class="sgh-choice-title">서브컬쳐 정보검색</h2>
             <p class="sgh-choice-desc">
                 진행중 컨텐츠·모집중 학생·레이드·공략글을 게임별로.
-                미래시·학정보 탐색과 🤖 AI 물어보기까지.
+                미래시·캐릭터정보 탐색과 🤖 AI 물어보기까지.
             </p>
             <span class="sgh-choice-go">정보 탐색하기 →</span>
         </a>
