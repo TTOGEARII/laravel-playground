@@ -65,7 +65,7 @@ class CollectCodesCommand extends Command
         $result = $push->broadcast(
             "새 리딤코드 {$total}개 등록",
             $summary.' — 지금 받으러 가기',
-            '/subculture-game-info',
+            '/subculture-game-info/codes',
         );
         $this->info("웹푸시: 발송 {$result['sent']} · 정리 {$result['pruned']} · 실패 {$result['failed']}");
     }

@@ -1,0 +1,51 @@
+/* 서브컬쳐 게임 허브 — 진입 랜딩(리딤코드 / 정보검색 2선택) */
+
+.sgh-hub {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--ds-space-lg);
+    max-width: 820px;
+    margin: var(--ds-space-xl) auto 0;
+}
+
+.sgh-choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-xl) var(--ds-space-lg);
+    border-radius: var(--ds-round-xl);
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-border);
+    box-shadow: var(--ds-shadow-medium);
+    text-decoration: none;
+    transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.sgh-choice:hover {
+    transform: translateY(-3px);
+    border-color: rgba(243, 114, 127, 0.6);
+    box-shadow: var(--ds-shadow-heavy);
+}
+
+.sgh-choice-icon {
+    font-size: 2.6rem;
+    line-height: 1;
+    margin-bottom: var(--ds-space-xs);
+}
+.sgh-choice-title {
+    color: var(--text-primary);
+    font-size: var(--ds-fs-xl);
+    font-weight: var(--ds-fw-bold);
+}
+.sgh-choice-desc {
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-sm);
+    line-height: 1.6;
+    flex: 1;
+}
+.sgh-choice-go {
+    margin-top: var(--ds-space-sm);
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-sm);
+    font-weight: var(--ds-fw-bold);
+    letter-spacing: 0.01em;
+}

@@ -33,12 +33,12 @@
     "shortcuts": [
         {
             "name": "리딤코드",
-            "url": "/subculture-game-info",
+            "url": "/subculture-game-info/codes",
             "icons": [{ "src": "/images/pwa/icon-192.png", "sizes": "192x192" }]
         },
         {
-            "name": "레이드 정보",
-            "url": "/subculture-game-info/raids",
+            "name": "정보검색",
+            "url": "/subculture-game-info/info",
             "icons": [{ "src": "/images/pwa/icon-192.png", "sizes": "192x192" }]
         },
         {

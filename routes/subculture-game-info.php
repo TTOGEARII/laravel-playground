@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SubcultureGameInfo\HubController;
 use App\Http\Controllers\SubcultureGameInfo\MainController;
 use App\Http\Controllers\SubcultureGameInfo\RaidPageController;
 use App\Http\Controllers\SubcultureGameInfo\RedemptionController;
@@ -7,10 +8,17 @@ use App\Http\Controllers\SubcultureGameInfo\UserCharacterController;
 use App\Http\Controllers\SubcultureGameInfo\UserSubstituteController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [MainController::class, 'index'])->name('subculture-game-info.index');
+// 허브 랜딩 — 리딤코드 / 정보검색 2선택 진입
+Route::get('/', [HubController::class, 'index'])->name('subculture-game-info.index');
 
-// 레이드 정보 통합(보스 일정·추천 편성·공략글·내 캐릭터) — Vue 페이지
-Route::get('raids', [RaidPageController::class, 'index'])->name('subculture-game-info.raids.index');
+// 리딤코드 (기존 index 를 /codes 로 이동)
+Route::get('codes', [MainController::class, 'index'])->name('subculture-game-info.codes');
+
+// 정보검색 — mollulog 스타일 대시보드(진행중·모집중·레이드·공략 + 미래시·학정보 + AI 물어보기)
+Route::get('info', [RaidPageController::class, 'index'])->name('subculture-game-info.info');
+
+// 옛 URL 호환 — /raids 는 정보검색으로 통합됨(북마크·PWA 바로가기 보전)
+Route::redirect('raids', 'info', 301)->name('subculture-game-info.raids.index');
 
 // 교환 완료 체크 (로그인 사용자 전용 — 세션 인증). 비로그인은 클라이언트 localStorage 사용.
 Route::middleware('auth')->controller(RedemptionController::class)->group(function () {

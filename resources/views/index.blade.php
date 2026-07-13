@@ -66,27 +66,12 @@
             </a>
         </article>
 
-        <!-- 프로젝트 5 -->
-        <article class="project-card accent-violet">
-            <div class="card-icon">🤖</div>
-            <h2 class="card-title">서브컬쳐 AI 에이전트</h2>
-            <p class="card-description">
-                리딤코드·레이드 편성·공략을 대화로 물어보세요
-            </p>
-            <a href="{{ route('subculture-agent.index') }}" class="card-button">
-                프로젝트 보기
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-            </a>
-        </article>
-
-        <!-- 프로젝트 4 -->
+        <!-- 프로젝트 4 · 서브컬쳐 게임 허브 (리딤코드 + 정보검색 + AI 통합) -->
         <article class="project-card accent-teal">
             <div class="card-icon">🎮</div>
-            <h2 class="card-title">서브컬쳐 리딤코드</h2>
+            <h2 class="card-title">서브컬쳐 게임 허브</h2>
             <p class="card-description">
-                호요버스·블아·명조·트릭컬 코드 모아보기
+                리딤코드 · 미래시 · 학정보 · 레이드 · 🤖 AI 물어보기
             </p>
             <a href="{{ route('subculture-game-info.index') }}" class="card-button">
                 프로젝트 보기

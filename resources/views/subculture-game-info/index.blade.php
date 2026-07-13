@@ -4,21 +4,18 @@
 
 @section('header')
     <div class="header-nav">
-        <a href="/" class="back-button">
+        <a href="{{ route('subculture-game-info.index') }}" class="back-button">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
-            돌아가기
+            허브로
         </a>
     </div>
     <span class="header-badge">🎮 서브컬쳐 게임</span>
     <h1>리딤코드 모아보기</h1>
     <p>원신·스타레일·젠레스·블루아카·명조·트릭컬의 리딤/쿠폰 코드를 한 곳에서.</p>
     <p>
-        <a href="{{ route('subculture-game-info.raids.index') }}" class="sgi-raids-link">⚔️ 레이드 정보 통합 바로가기 →</a>
-        {{-- 단일 게임 필터 중이면 그 게임을 에이전트의 기준 게임 컨텍스트로 넘긴다 --}}
-        <a href="{{ route('subculture-agent.index', count($selected) === 1 ? ['game' => $selected[0]] : []) }}"
-           class="sgi-raids-link">🤖 AI에게 물어보기 →</a>
+        <a href="{{ route('subculture-game-info.info') }}" class="sgi-raids-link">🔎 정보검색(미래시·학정보·레이드) →</a>
     </p>
 @endsection
 
@@ -26,7 +23,7 @@
     <div class="sgi-page">
         {{-- 게임 필터: 버튼(탭) 다중 선택. 각 버튼은 해당 게임을 선택 목록에 넣고 빼는 링크(토글) --}}
         <nav class="sgi-tabs">
-            <a href="{{ route('subculture-game-info.index') }}"
+            <a href="{{ route('subculture-game-info.codes') }}"
                class="sgi-tab {{ empty($selected) ? 'is-active' : '' }}">전체
                 <span class="sgi-tab-unredeemed" data-unredeemed-tab="__all__" hidden></span></a>
             @foreach ($games as $game)
@@ -36,8 +33,8 @@
                         ? array_values(array_diff($selected, [$game->slug]))
                         : array_values(array_merge($selected, [$game->slug]));
                     $href = $toggled
-                        ? route('subculture-game-info.index', ['game' => $toggled])
-                        : route('subculture-game-info.index');
+                        ? route('subculture-game-info.codes', ['game' => $toggled])
+                        : route('subculture-game-info.codes');
                 @endphp
                 <a href="{{ $href }}" class="sgi-tab {{ $isSel ? 'is-active' : '' }}">
                     <span class="sgi-tab-icon">{{ $game->icon }}</span> {{ $game->name }}

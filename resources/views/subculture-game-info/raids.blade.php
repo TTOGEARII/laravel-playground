@@ -12,12 +12,12 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
-            리딤코드로
+            허브로
         </a>
     </div>
-    <span class="header-badge">⚔️ 서브컬쳐 게임</span>
-    <h1>레이드 정보 통합</h1>
-    <p>블루아카·니케·트릭컬·브라운더스트2의 레이드 보스·추천 편성·커뮤니티 공략을 한 곳에서.</p>
+    <span class="header-badge">🔎 서브컬쳐 게임</span>
+    <h1>정보검색</h1>
+    <p>블루아카·니케·트릭컬·브라운더스트2의 레이드·추천 편성·커뮤니티 공략을 한 곳에서. (미래시·학정보는 순차 확장 중)</p>
 @endsection
 
 @section('content')
