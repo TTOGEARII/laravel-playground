@@ -79,16 +79,21 @@ class ScheduleService
     /** @param  Collection<string, Character>  $chars */
     private function bannerData(Banner $b, Collection $chars): array
     {
-        $featured = collect($b->featured ?? [])->map(function (array $f) use ($chars) {
+        $collectionBase = rtrim((string) config('subculture-game-info.raids.schaledb.collection_image_base'), '/');
+
+        $featured = collect($b->featured ?? [])->map(function (array $f) use ($chars, $collectionBase) {
             $c = $chars->get($f['external_key'] ?? null);
             $traits = $c ? (array) $c->traits : [];
+            $key = $f['external_key'] ?? null;
 
             return [
-                'external_key' => $f['external_key'] ?? null,
+                'external_key' => $key,
                 'name' => $f['name'] ?? null,
                 'rarity' => $f['rarity'] ?? null,
-                // 몰루로그 캐시 이미지 우선(없으면 소스 이미지 폴백)
-                'image' => $c?->display_image_url ?? ($f['image'] ?? null),
+                // 픽업 카드용 전신 일러(몰루로그와 동일 collection 소스), 폴백은 캐시/소스 이미지
+                'image' => ($key !== null && $collectionBase !== '')
+                    ? "{$collectionBase}/{$key}.webp"
+                    : ($c?->display_image_url ?? ($f['image'] ?? null)),
                 // 픽업 카드용 속성 배지(공격/방어/구분)
                 'attributes' => array_values(array_filter([
                     $traits['bullet'] ?? null,

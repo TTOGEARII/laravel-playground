@@ -52,6 +52,7 @@ const ATTR_COLOR = {
   관통: 'is-amber', 중장갑: 'is-amber',
   신비: 'is-blue', 특수장갑: 'is-blue',
   진동: 'is-purple', 탄력장갑: 'is-purple',
+  STRIKER: 'is-red', SPECIAL: 'is-blue',
 };
 const ATTR_LABEL = { STRIKER: '스트라이커', SPECIAL: '스페셜' };
 

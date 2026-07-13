@@ -483,6 +483,8 @@ return [
             'region_forecast' => 'Jp',
             'games' => ['bluearchive'],
             'timeout' => (int) env('SGI_SCHALEDB_TIMEOUT', 20),
+            // 픽업 카드용 전신 일러(몰루로그와 동일 소스 baql.net collection) — {id}.webp
+            'collection_image_base' => env('SGI_BA_COLLECTION_BASE', 'https://assets.baql.net/images/students/collection'),
         ],
 
         /*

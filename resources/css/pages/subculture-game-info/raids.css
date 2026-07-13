@@ -2163,51 +2163,59 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    width: 96px;
+    gap: 4px;
+    width: 118px;
     text-align: center;
 }
-.sgi-pickup-portrait { position: relative; width: 76px; height: 76px; }
-.sgi-pickup-portrait img {
-    width: 76px; height: 76px;
+/* 전신 일러 카드(몰루로그 스타일) — 세로 비율, 상단 정렬 */
+.sgi-pickup-portrait {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
     border-radius: var(--ds-round-md);
-    object-fit: cover;
+    overflow: hidden;
     border: 2px solid var(--border-color);
     background: var(--ds-surface-2);
 }
-.sgi-pickup.is-owned .sgi-pickup-portrait img { border-color: var(--ds-primary); }
+.sgi-pickup-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+.sgi-pickup.is-owned .sgi-pickup-portrait { border-color: var(--ds-primary); }
 .sgi-pickup-owned {
-    position: absolute; top: 3px; left: 3px;
-    padding: 0 6px;
+    position: absolute; top: 4px; right: 4px;
+    padding: 1px 7px;
     border-radius: var(--ds-round-full);
     background: var(--ds-primary); color: var(--ds-on-accent);
     font-size: 9px; font-weight: var(--ds-fw-bold);
 }
+/* 코스튬 태그 — 일러 좌상단 오버레이 */
 .sgi-pickup-costume {
-    padding: 0 7px;
+    position: absolute; top: 4px; left: 4px;
+    padding: 1px 8px;
     border-radius: var(--ds-round-full);
-    background: var(--ds-surface-2);
-    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
     font-size: 10px; font-weight: var(--ds-fw-semibold);
 }
-.sgi-pickup-name { color: var(--text-primary); font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-bold); line-height: 1.2; }
+.sgi-pickup-name { color: var(--text-primary); font-size: var(--ds-fs-md); font-weight: var(--ds-fw-bold); line-height: 1.2; }
 .sgi-pickup-star { font-size: 10px; color: var(--ds-text-amber, #fbbf24); }
-.sgi-pickup-attrs { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 2px; }
+.sgi-pickup-attrs { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 2px; }
 
-/* 속성 배지 — BA 인게임 상성 색(기존 장갑 도트 색과 동일 규칙) */
+/* 속성 배지 — 어두운 pill + 색 도트(BA 인게임 상성 색) */
 .sgi-attr {
-    padding: 1px 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px 2px 7px;
     border-radius: var(--ds-round-full);
     font-size: 10px;
     font-weight: var(--ds-fw-bold);
     background: var(--ds-surface-2);
-    color: var(--text-secondary);
-    border: 1px solid transparent;
+    color: var(--text-primary);
 }
-.sgi-attr.is-red { background: rgba(239, 68, 68, 0.16); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
-.sgi-attr.is-amber { background: rgba(245, 158, 11, 0.16); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
-.sgi-attr.is-blue { background: rgba(59, 130, 246, 0.16); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); }
-.sgi-attr.is-purple { background: rgba(168, 85, 247, 0.16); color: #c084fc; border-color: rgba(168, 85, 247, 0.4); }
+.sgi-attr::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--text-secondary); flex: none; }
+.sgi-attr.is-red::before { background: #ef4444; }
+.sgi-attr.is-amber::before { background: #f59e0b; }
+.sgi-attr.is-blue::before { background: #3b82f6; }
+.sgi-attr.is-purple::before { background: #a855f7; }
 
 /* ---- 진행중 컨텐츠 히어로 ---- */
 .sgi-hero {
