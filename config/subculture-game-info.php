@@ -485,6 +485,11 @@ return [
             'timeout' => (int) env('SGI_SCHALEDB_TIMEOUT', 20),
             // 픽업 카드용 전신 일러(몰루로그와 동일 소스 baql.net collection) — {id}.webp
             'collection_image_base' => env('SGI_BA_COLLECTION_BASE', 'https://assets.baql.net/images/students/collection'),
+            // 진행중 이벤트 히어로 배너 이미지 — SchaleDB 이벤트 ID → 이미지 URL(수동 등록).
+            // 이벤트 배너 이미지는 자동 소스가 없어(몰루로그도 자체 슬러그로 수동 호스팅) 현재 이벤트만 등록한다.
+            'event_images' => [
+                855 => 'https://assets.mollulog.net/assets/images/events/game-development-department-cleaning.jpg',
+            ],
         ],
 
         /*

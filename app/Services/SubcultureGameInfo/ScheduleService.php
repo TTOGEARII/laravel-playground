@@ -18,7 +18,7 @@ class ScheduleService
     {
         $rows = Banner::forGame($gameId)
             ->where('scope', $scope)
-            ->orderByRaw('(ends_at IS NOT NULL AND ends_at < ?)', [now()]) // 종료된 건 뒤로(DB 무관)
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', now())) // 종료된 픽업은 제외
             ->orderBy('starts_at')
             ->get();
 
@@ -55,7 +55,7 @@ class ScheduleService
         return GameEvent::forGame($gameId)
             ->where('scope', $scope)
             ->when($kind !== null, fn ($q) => $q->where('kind', $kind))
-            ->orderByRaw('(ends_at IS NOT NULL AND ends_at < ?)', [now()])
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', now())) // 종료된 이벤트는 제외
             ->orderBy('starts_at')
             ->get()
             ->map(fn (GameEvent $e) => $this->eventData($e));

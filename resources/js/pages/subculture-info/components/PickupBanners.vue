@@ -1,7 +1,8 @@
 <template>
-  <section v-if="loaded && banners.length" class="sgr-module sgi-banners">
+  <section v-if="loaded" class="sgr-module sgi-banners">
     <h3 class="sgr-module-title">🎟️ 모집중 학생 <small class="sgr-feed-hint">픽업 배너 · 현재 서버 기준</small></h3>
-    <div class="sgi-banner-list">
+    <p v-if="!banners.length" class="sgr-empty">현재 진행 중인 픽업이 없어요.</p>
+    <div v-else class="sgi-banner-list">
       <article v-for="b in banners" :key="b.id" class="sgi-banner" :class="`is-${b.status}`">
         <div class="sgi-banner-head">
           <span class="sgi-banner-title">{{ b.title }}</span>

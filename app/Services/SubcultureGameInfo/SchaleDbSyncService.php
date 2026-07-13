@@ -176,8 +176,15 @@ class SchaleDbSyncService
                 }
             }
 
+            $eventImages = (array) config('subculture-game-info.raids.schaledb.event_images', []);
             foreach ((array) ($region['CurrentEvents'] ?? []) as $e) {
-                $key = $this->upsertEvent($game, $scope, 'event', (string) ($eventNames[$e['event'] ?? ''] ?? ('이벤트 #'.($e['event'] ?? '?'))), $e['start'] ?? null, $e['end'] ?? null, "event-{$scope}-".($e['event'] ?? ''));
+                $eventId = $e['event'] ?? null;
+                $key = $this->upsertEvent(
+                    $game, $scope, 'event',
+                    (string) ($eventNames[$eventId ?? ''] ?? ('이벤트 #'.($eventId ?? '?'))),
+                    $e['start'] ?? null, $e['end'] ?? null, "event-{$scope}-".($eventId ?? ''),
+                    $eventImages[$eventId] ?? null, // 히어로 배너 이미지(수동 등록분)
+                );
                 if ($key !== null) {
                     $eventKeys[] = $key;
                     $events++;
@@ -240,7 +247,7 @@ class SchaleDbSyncService
         return $key;
     }
 
-    private function upsertEvent(Game $game, string $scope, string $kind, string $title, $start, $end, string $keySuffix): ?string
+    private function upsertEvent(Game $game, string $scope, string $kind, string $title, $start, $end, string $keySuffix, ?string $imageUrl = null): ?string
     {
         if ($start === null) {
             return null;
@@ -255,6 +262,7 @@ class SchaleDbSyncService
                 'title' => $title,
                 'starts_at' => $this->ts($start),
                 'ends_at' => $this->ts($end),
+                'image_url' => $imageUrl,
                 'source' => self::SOURCE,
             ],
         );

@@ -1,8 +1,10 @@
 <template>
-  <section v-if="loaded && events.length" class="sgr-module sgi-ongoing">
+  <section v-if="loaded" class="sgr-module sgi-ongoing">
     <h3 class="sgr-module-title">🎪 진행중인 컨텐츠 <small class="sgr-feed-hint">이벤트</small></h3>
 
-    <!-- 진행 중 이벤트는 상단에 크게(무엇을 하는지 한눈에), 예정/종료는 아래 리스트로 -->
+    <p v-if="!events.length" class="sgr-empty">진행 중인 이벤트가 없어요.</p>
+
+    <!-- 진행 중 이벤트는 상단에 크게(무엇을 하는지 한눈에), 예정은 아래 리스트로 -->
     <a
       v-for="e in heroes"
       :key="e.id"
