@@ -10,9 +10,9 @@ use Illuminate\Console\Command;
 class SyncYattaCommand extends Command
 {
     protected $signature = 'subculture:sync-yatta
-        {--game= : 특정 게임 슬러그만 동기화(현재 genshin)}';
+        {--game= : 특정 게임 슬러그만 동기화(genshin/starrail)}';
 
-    protected $description = 'Project Yatta(호요버스)에서 캐릭터 도감(학정보)을 동기화 — 원신';
+    protected $description = 'Project Yatta(호요버스)에서 캐릭터 도감(학정보)을 동기화 — 원신·스타레일';
 
     public function handle(CodeSyncService $codeSync, YattaSyncService $sync): int
     {

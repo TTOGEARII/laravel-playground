@@ -83,9 +83,16 @@ Schedule::command('subculture:sync-schaledb')
     ->withoutOverlapping(30)
     ->runInBackground();
 
-// 호요버스 Yatta 동기화 — 캐릭터 도감(학정보, 원신). 정적 JSON, Gemini 없음. 매일 1회.
+// 호요버스 Yatta 동기화 — 캐릭터 도감(학정보, 원신·스타레일). 정적 JSON, Gemini 없음. 매일 1회.
 Schedule::command('subculture:sync-yatta')
     ->dailyAt('05:45')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
+// 젠레스 Enka 동기화 — 에이전트 도감(학정보). 정적 JSON(GitHub raw), Gemini 없음. 매일 1회.
+Schedule::command('subculture:sync-zenless')
+    ->dailyAt('05:50')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(30)
     ->runInBackground();

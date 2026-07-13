@@ -395,8 +395,10 @@ return [
                 'main' => ['raids', 'guides'],
                 'tabs' => ['student-dex'],
             ],
-            // 호요버스 — 학정보(도감)만 우선(yatta 소스). 레이드·공략 미수집이라 서브탭 없이 도감이 메인.
+            // 호요버스 — 학정보(도감)만 우선. 레이드·공략 미수집이라 서브탭 없이 도감이 메인.
             'genshin' => ['student-dex'],
+            'starrail' => ['student-dex'],
+            'zenless' => ['student-dex'],
         ],
 
         /*
@@ -453,6 +455,21 @@ return [
                 ['key' => 'region', 'label' => '지역', 'type' => 'text', 'filter' => true,
                     'labels' => ['MONDSTADT' => '몬드', 'LIYUE' => '리월', 'INAZUMA' => '이나즈마', 'SUMERU' => '수메르', 'FONTAINE' => '폰타인', 'NATLAN' => '나타', 'SNEZHNAYA' => '스네주나야']],
             ],
+            // 스타레일 — traits: star(rank)/path(운명경로)/element(전투속성) (yatta 소스). 내부 코드 labels 한글화.
+            'starrail' => [
+                ['key' => 'star', 'label' => '성급', 'type' => 'stars', 'filter' => true],
+                ['key' => 'path', 'label' => '운명', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['Warrior' => '멸망', 'Rogue' => '수렵', 'Mage' => '지식', 'Shaman' => '화합', 'Warlock' => '공허', 'Knight' => '보존', 'Priest' => '풍요', 'Memory' => '기억', 'Elation' => '환락']],
+                ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['Physical' => '물리', 'Fire' => '화염', 'Ice' => '빙결', 'Thunder' => '전기', 'Wind' => '바람', 'Quantum' => '양자', 'Imaginary' => '허수']],
+            ],
+            // 젠레스 — traits: element(속성)/profession(특성) (Enka 소스). rarity(S/A)는 상위 컬럼 표시.
+            'zenless' => [
+                ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['Physics' => '물리', 'Fire' => '화염', 'Ice' => '빙결', 'Elec' => '전기', 'Ether' => '에테르', 'Wind' => '바람', 'FireFrost' => '서리', 'AuricEther' => '오라에테르']],
+                ['key' => 'profession', 'label' => '특성', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['Attack' => '강공', 'Stun' => '격파', 'Anomaly' => '이상', 'Support' => '지원', 'Defense' => '방어', 'Rupture' => '파열']],
+            ],
         ],
 
         /*
@@ -475,8 +492,33 @@ return [
         'yatta' => [
             'lang' => 'kr',
             'timeout' => (int) env('SGI_YATTA_TIMEOUT', 20),
+            // image_template 플레이스홀더: {icon}(아이콘 코드) · {id}(캐릭터 id)
             'games' => [
-                'genshin' => ['base' => env('SGI_YATTA_GI_BASE', 'https://gi.yatta.moe')],
+                'genshin' => [
+                    'base' => env('SGI_YATTA_GI_BASE', 'https://gi.yatta.moe'),
+                    'image_template' => 'https://gi.yatta.moe/assets/UI/{icon}.png',
+                ],
+                'starrail' => [
+                    'base' => env('SGI_YATTA_HSR_BASE', 'https://sr.yatta.top'),
+                    // HSR 초상은 Mar-7th StarRailRes(표준 에셋 저장소) — yatta 는 이미지 직접 제공 안 함
+                    'image_template' => 'https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/icon/character/{id}.png',
+                ],
+            ],
+        ],
+
+        /*
+        | 젠레스 존 제로 — Enka Network 스토어 데이터(GitHub raw, 안정적). 학정보(에이전트 도감).
+        | (원래 계획 hakush.in 은 dev·운영 모두 접근 불가) avatars.Name → locs.ko 로 한글명 해석.
+        */
+        'enka' => [
+            'timeout' => (int) env('SGI_ENKA_TIMEOUT', 20),
+            'games' => [
+                'zenless' => [
+                    'avatars_url' => env('SGI_ENKA_ZZZ_AVATARS', 'https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/zzz/avatars.json'),
+                    'locs_url' => env('SGI_ENKA_ZZZ_LOCS', 'https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/zzz/locs.json'),
+                    'lang' => 'ko',
+                    'image_base' => 'https://enka.network',
+                ],
             ],
         ],
 

@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Project Yatta(=Amber) 동기화 — 호요버스 캐릭터 도감(정적 JSON, Playwright·Gemini 불필요).
- * 원신: gi.yatta.moe/api/v2/{lang}/avatar → Character(traits 도감 필드), external_key=캐릭터 id.
- * (스타레일·젠레스는 신뢰 소스 확정 후 games 에 추가.) 영문 코드는 config student_schema labels 로 한글 표시.
- * 방어: 수집 0건이면 sync 스킵.
+ *   원신: gi.yatta.moe/api/v2/{lang}/avatar (traits: star/element/weapon/region, 이미지=yatta assets)
+ *   스타레일: sr.yatta.top/api/v2/{lang}/avatar (traits: star/path/element, 이미지=Mar-7th StarRailRes)
+ * external_key=캐릭터 id. 영문 코드는 config student_schema labels 로 한글 표시. 수집 0건이면 sync 스킵.
  */
 class YattaSyncService
 {
@@ -39,6 +39,8 @@ class YattaSyncService
             return 0;
         }
 
+        $imageTemplate = (string) ($gameCfg['image_template'] ?? '');
+
         $count = 0;
         foreach ($items as $s) {
             if (! is_array($s)) {
@@ -49,28 +51,54 @@ class YattaSyncService
                 continue;
             }
 
-            $traits = array_filter([
-                'star' => $s['rank'] ?? null,
-                'element' => $s['element'] ?? null,
-                'weapon' => $s['weaponType'] ?? null,
-                'region' => $s['region'] ?? null,
-            ], fn ($v) => $v !== null && $v !== '');
-
             $char = Character::firstOrNew(['subculture_game_id' => $game->id, 'external_key' => $id]);
-            $char->traits = array_merge((array) ($char->traits ?? []), $traits);
+            $char->traits = array_merge((array) ($char->traits ?? []), $this->traitsFor($game->slug, $s));
             $char->name = (string) ($s['name'] ?? $id); // yatta 한글명이 정본(호요는 다른 소스 없음)
             if (! $char->exists) {
                 $char->source = self::SOURCE;
                 $char->active_flg = true;
             }
-            if (! empty($s['icon'])) {
-                $char->image_url = "{$base}/assets/UI/{$s['icon']}.png";
+            $image = $this->image($imageTemplate, $s);
+            if ($image !== null) {
+                $char->image_url = $image;
             }
             $char->save();
             $count++;
         }
 
         return $count;
+    }
+
+    /** 게임별 도감 traits 추출(원신=element/weapon/region, 스타레일=path/element). */
+    private function traitsFor(string $slug, array $s): array
+    {
+        $traits = $slug === 'starrail'
+            ? [
+                'star' => $s['rank'] ?? null,
+                'path' => $s['types']['pathType'] ?? null,
+                'element' => $s['types']['combatType'] ?? null,
+            ]
+            : [
+                'star' => $s['rank'] ?? null,
+                'element' => $s['element'] ?? null,
+                'weapon' => $s['weaponType'] ?? null,
+                'region' => $s['region'] ?? null,
+            ];
+
+        return array_filter($traits, fn ($v) => $v !== null && $v !== '');
+    }
+
+    /** image_template 의 {icon}/{id} 치환. */
+    private function image(string $template, array $s): ?string
+    {
+        if ($template === '') {
+            return null;
+        }
+
+        return strtr($template, [
+            '{icon}' => (string) ($s['icon'] ?? ''),
+            '{id}' => (string) ($s['id'] ?? ''),
+        ]);
     }
 
     private function getJson(string $url, int $timeout): ?array
