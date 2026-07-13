@@ -383,9 +383,18 @@ return [
                 'main' => ['ongoing-content', 'pickup-banners', 'raids', 'event-challenges', 'guides'],
                 'tabs' => ['future-timeline', 'student-dex'],
             ],
-            'nikke' => ['raids', 'guides'],
-            'trickcal' => ['attribute-parties', 'raids', 'guides'],
-            'browndust2' => ['raids', 'guides'],
+            'nikke' => [
+                'main' => ['raids', 'guides'],
+                'tabs' => ['student-dex'],
+            ],
+            'trickcal' => [
+                'main' => ['attribute-parties', 'raids', 'guides'],
+                'tabs' => ['student-dex'],
+            ],
+            'browndust2' => [
+                'main' => ['raids', 'guides'],
+                'tabs' => ['student-dex'],
+            ],
         ],
 
         /*
@@ -405,6 +414,32 @@ return [
                 ['key' => 'bullet', 'label' => '공격', 'type' => 'text', 'filter' => false],
                 ['key' => 'armor', 'label' => '방어', 'type' => 'text', 'filter' => false],
                 ['key' => 'position', 'label' => '위치', 'type' => 'text', 'filter' => false],
+            ],
+            // 니케 — traits: burst/element/weapon/manufacturer (letsdoro 크롤). 영문 코드는 labels 로 한글화.
+            'nikke' => [
+                ['key' => 'burst', 'label' => '버스트', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['STEP1' => 'Ⅰ', 'STEP2' => 'Ⅱ', 'STEP3' => 'Ⅲ', 'ALL_STEP' => 'ALL', 'ALLSTEP' => 'ALL']],
+                ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['FIRE' => '작열', 'WATER' => '수냉', 'WIND' => '풍압', 'IRON' => '철갑', 'ELECTRONIC' => '전격', 'ELECTRIC' => '전격', 'UTILITY' => '유틸']],
+                ['key' => 'weapon', 'label' => '무기', 'type' => 'badge', 'filter' => true],
+                ['key' => 'manufacturer', 'label' => '제조사', 'type' => 'text', 'filter' => true,
+                    'labels' => ['ELYSION' => '엘리시온', 'MISSILIS' => '미실리스', 'TETRA' => '테트라', 'PILGRIM' => '필그림', 'ABNORMAL' => '어보노멀']],
+            ],
+            // 트릭컬 — traits: personality/race. rarity(3성 등)는 상위 컬럼(도감 카드가 직접 표시).
+            'trickcal' => [
+                ['key' => 'personality', 'label' => '성격', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['Gloomy' => '우울', 'Jolly' => '활발', 'Naive' => '순수', 'Cool' => '냉정', 'Mad' => '광기']],
+                ['key' => 'race', 'label' => '종족', 'type' => 'badge', 'filter' => true],
+            ],
+            // 브더2 — 코스튬당 1행. traits: element/cd/sp/skill/base_character. rarity(5★)는 상위 컬럼.
+            'browndust2' => [
+                ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['fire' => '불', 'water' => '물', 'wind' => '바람', 'light' => '빛', 'dark' => '어둠']],
+                ['key' => 'base_character', 'label' => '원본', 'type' => 'text', 'filter' => true],
+                ['key' => 'cd', 'label' => '쿨타임', 'type' => 'text', 'filter' => false],
+                ['key' => 'sp', 'label' => '코스트', 'type' => 'text', 'filter' => false],
+                ['key' => 'skill_name', 'label' => '스킬', 'type' => 'text', 'filter' => false],
+                ['key' => 'skill_desc', 'label' => '스킬 설명', 'type' => 'text', 'filter' => false],
             ],
         ],
 

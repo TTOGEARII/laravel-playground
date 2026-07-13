@@ -8,7 +8,7 @@
       <select v-for="f in filterFields" :key="f.key" v-model="filters[f.key]" class="sgi-dex-filter">
         <option value="">{{ f.label }} 전체</option>
         <option v-for="opt in optionsFor(f.key)" :key="opt" :value="String(opt)">
-          {{ f.type === 'stars' ? '★' + opt : opt }}
+          {{ f.type === 'stars' ? '★' + opt : fieldVal(f, opt) }}
         </option>
       </select>
       <label class="sgi-dex-owned-toggle"><input v-model="ownedOnly" type="checkbox" /> 보유만</label>
@@ -31,6 +31,7 @@
         </span>
         <span class="sgi-dex-name">{{ c.name }}</span>
         <span v-if="c.traits.star" class="sgi-dex-stars">{{ '★'.repeat(c.traits.star) }}</span>
+        <span v-else-if="c.rarity" class="sgi-dex-rarity">{{ c.rarity }}</span>
       </button>
     </div>
 
@@ -44,6 +45,7 @@
         <h4 class="sgi-dex-modal-name">
           {{ selected.name }}
           <span v-if="selected.traits.star" class="sgi-dex-stars">{{ '★'.repeat(selected.traits.star) }}</span>
+          <span v-else-if="selected.rarity" class="sgi-dex-rarity">{{ selected.rarity }}</span>
           <span v-if="isOwned(selected.external_key)" class="sgi-dex-owned-badge">보유</span>
         </h4>
         <dl class="sgi-dex-fields">
@@ -51,8 +53,8 @@
             <div v-if="f.type !== 'stars' && selected.traits[f.key] != null" class="sgi-dex-field">
               <dt>{{ f.label }}</dt>
               <dd>
-                <span v-if="f.type === 'badge'" class="sgi-dex-badge">{{ selected.traits[f.key] }}</span>
-                <template v-else>{{ selected.traits[f.key] }}</template>
+                <span v-if="f.type === 'badge'" class="sgi-dex-badge">{{ fieldVal(f, selected.traits[f.key]) }}</span>
+                <template v-else>{{ fieldVal(f, selected.traits[f.key]) }}</template>
               </dd>
             </div>
           </template>
@@ -86,6 +88,11 @@ function isOwned(key) {
   return !!props.pool[key]?.owned;
 }
 
+// 스키마 필드의 선택적 labels 맵으로 원시값(WIND/Mad/fire…)을 한글로 표시
+function fieldVal(field, raw) {
+  return field.labels?.[raw] ?? raw;
+}
+
 function optionsFor(key) {
   const set = new Set();
   for (const c of characters.value) {
@@ -115,7 +122,8 @@ async function load() {
       cache.set(props.gameSlug, await raidApi.getCharacters(props.gameSlug));
     }
     const res = cache.get(props.gameSlug);
-    characters.value = res.data;
+    // traits 가 null 인 캐릭터가 있어도 안전하게(도감 렌더가 traits.* 를 참조)
+    characters.value = res.data.map((c) => ({ ...c, traits: c.traits ?? {} }));
     schema.value = res.meta?.student_schema ?? [];
     // 필터 상태 초기화(게임 전환 시)
     Object.keys(filters).forEach((k) => delete filters[k]);

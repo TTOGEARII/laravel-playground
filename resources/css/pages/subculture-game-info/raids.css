@@ -2059,6 +2059,7 @@
 }
 .sgi-dex-name { font-size: 11px; color: var(--text-primary); font-weight: var(--ds-fw-semibold); text-align: center; line-height: 1.2; }
 .sgi-dex-stars { font-size: 10px; color: var(--ds-text-amber, #fbbf24); }
+.sgi-dex-rarity { font-size: 10px; font-weight: var(--ds-fw-bold); color: var(--ds-text-accent); }
 
 /* 도감 상세 모달 */
 .sgi-dex-modal {
