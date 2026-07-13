@@ -395,6 +395,8 @@ return [
                 'main' => ['raids', 'guides'],
                 'tabs' => ['student-dex'],
             ],
+            // 호요버스 — 학정보(도감)만 우선(yatta 소스). 레이드·공략 미수집이라 서브탭 없이 도감이 메인.
+            'genshin' => ['student-dex'],
         ],
 
         /*
@@ -441,6 +443,16 @@ return [
                 ['key' => 'skill_name', 'label' => '스킬', 'type' => 'text', 'filter' => false],
                 ['key' => 'skill_desc', 'label' => '스킬 설명', 'type' => 'text', 'filter' => false],
             ],
+            // 원신 — traits: star(rank)/element/weapon/region (yatta 크롤). 영문 코드는 labels 로 한글화.
+            'genshin' => [
+                ['key' => 'star', 'label' => '성급', 'type' => 'stars', 'filter' => true],
+                ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['Ice' => '얼음', 'Fire' => '불', 'Water' => '물', 'Electric' => '번개', 'Wind' => '바람', 'Rock' => '바위', 'Grass' => '풀']],
+                ['key' => 'weapon', 'label' => '무기', 'type' => 'badge', 'filter' => true,
+                    'labels' => ['WEAPON_SWORD_ONE_HAND' => '한손검', 'WEAPON_CLAYMORE' => '양손검', 'WEAPON_POLE' => '창', 'WEAPON_BOW' => '활', 'WEAPON_CATALYST' => '법구']],
+                ['key' => 'region', 'label' => '지역', 'type' => 'text', 'filter' => true,
+                    'labels' => ['MONDSTADT' => '몬드', 'LIYUE' => '리월', 'INAZUMA' => '이나즈마', 'SUMERU' => '수메르', 'FONTAINE' => '폰타인', 'NATLAN' => '나타', 'SNEZHNAYA' => '스네주나야']],
+            ],
         ],
 
         /*
@@ -454,6 +466,18 @@ return [
             'region_forecast' => 'Jp',
             'games' => ['bluearchive'],
             'timeout' => (int) env('SGI_SCHALEDB_TIMEOUT', 20),
+        ],
+
+        /*
+        | 호요버스 정보 소스 — Project Yatta(=Amber). 학정보(캐릭터 도감).
+        | 원신: gi.yatta.moe/api/v2/{lang}/avatar. (스타레일·젠레스는 신뢰 소스 확정 후 추가 — hakush.in 은 접근 불가)
+        */
+        'yatta' => [
+            'lang' => 'kr',
+            'timeout' => (int) env('SGI_YATTA_TIMEOUT', 20),
+            'games' => [
+                'genshin' => ['base' => env('SGI_YATTA_GI_BASE', 'https://gi.yatta.moe')],
+            ],
         ],
 
         // 이벤트 챌린지 공략(블아) — 아카 채널의 이벤트 '올인원' 글에서 챌린지 섹션을 파싱.

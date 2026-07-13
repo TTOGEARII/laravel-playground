@@ -83,6 +83,13 @@ Schedule::command('subculture:sync-schaledb')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// 호요버스 Yatta 동기화 — 캐릭터 도감(학정보, 원신). 정적 JSON, Gemini 없음. 매일 1회.
+Schedule::command('subculture:sync-yatta')
+    ->dailyAt('05:45')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
 // 블아 종합전술시험(종전시) — 새 차수 글만 가볍게 확인(아카 HTML 파싱, Gemini 없음). 매일 1회.
 Schedule::command('subculture:collect-jfd')
     ->dailyAt('06:10')

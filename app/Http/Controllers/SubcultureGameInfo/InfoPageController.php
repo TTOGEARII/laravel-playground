@@ -13,18 +13,23 @@ class InfoPageController extends Controller
 {
     public function index(): View
     {
-        $slugs = config('subculture-game-info.raids.games', []);
-        $games = Game::whereIn('slug', $slugs)
+        // 정보검색에 노출할 게임 = modules 가 정의된 게임(config 단일 출처, 배열 순서 = 탭 순서).
+        // 레이드 게임(블아·니케·트릭컬·브더2) + 호요버스(학정보만) 등을 모두 포괄한다.
+        $slugs = array_keys((array) config('subculture-game-info.raids.modules', []));
+        $bySlug = Game::whereIn('slug', $slugs)
             ->where('active_flg', true)
-            ->orderBy('sort')
             ->get(['slug', 'name', 'icon', 'color'])
-            ->map(fn (Game $g) => [
-                'slug' => $g->slug,
-                'name' => $g->name,
-                'icon' => $g->icon,
-                'color' => $g->color,
+            ->keyBy('slug');
+
+        $games = collect($slugs)
+            ->filter(fn (string $slug) => $bySlug->has($slug))
+            ->map(fn (string $slug) => [
+                'slug' => $bySlug[$slug]->slug,
+                'name' => $bySlug[$slug]->name,
+                'icon' => $bySlug[$slug]->icon,
+                'color' => $bySlug[$slug]->color,
                 // 게임별 정보 모듈(렌더 순서) — 게임마다 다른 정보 구성을 서버가 결정한다
-                'modules' => config("subculture-game-info.raids.modules.{$g->slug}", ['raids', 'guides']),
+                'modules' => config("subculture-game-info.raids.modules.{$slug}"),
             ])
             ->values();
 
