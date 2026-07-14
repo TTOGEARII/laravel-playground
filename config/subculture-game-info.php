@@ -532,6 +532,13 @@ return [
             'tier' => [
                 'zenless' => 'https://zzz.gg/ko/tier-list',
             ],
+            // 성장(강화) 재료 — Project Yatta 캐릭터 상세(avatar/{id})의 ascension. 젠존제는 Yatta 미지원이라 제외.
+            //   items: inline=avatar 응답에 items 딕셔너리 포함(원신) / bulk=별도 item 목록으로 이름 해결(스타레일)
+            'materials' => [
+                'genshin' => ['base' => 'https://gi.yatta.moe', 'items' => 'inline'],
+                'starrail' => ['base' => 'https://sr.yatta.moe', 'items' => 'bulk'],
+            ],
+            'materials_limit' => 6,
             'timeout' => (int) env('SGI_HOYO_BUILD_TIMEOUT', 20),
             'fetch_delay_ms' => (int) env('SGI_HOYO_BUILD_DELAY_MS', 300),
         ],
@@ -579,7 +586,7 @@ return [
                     'image_template' => 'https://gi.yatta.moe/assets/UI/{icon}.png',
                 ],
                 'starrail' => [
-                    'base' => env('SGI_YATTA_HSR_BASE', 'https://sr.yatta.top'),
+                    'base' => env('SGI_YATTA_HSR_BASE', 'https://sr.yatta.moe'),
                     // HSR 초상은 Mar-7th StarRailRes(표준 에셋 저장소) — yatta 는 이미지 직접 제공 안 함
                     'image_template' => 'https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/icon/character/{id}.png',
                 ],

@@ -34,10 +34,10 @@ class SyncHoyoBuildCommand extends Command
             }
             $this->info("[{$slug}] 빌드 보강 중... (조합 유튜브 검색 포함 — 수 분 걸릴 수 있음)");
             $stats = $sync->sync($game);
-            $rows[] = [$slug, $stats['characters'], $stats['tiers'], $stats['comps']];
+            $rows[] = [$slug, $stats['characters'], $stats['tiers'], $stats['materials'], $stats['comps']];
         }
 
-        $this->table(['게임', '캐릭터', '티어', '조합영상'], $rows);
+        $this->table(['게임', '캐릭터', '티어', '재료', '조합영상'], $rows);
         $this->info('완료.');
 
         return self::SUCCESS;
