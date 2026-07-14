@@ -2003,8 +2003,39 @@
 .sgi-tl-kind.is-raid { background: rgba(251, 191, 36, 0.15); color: var(--ds-text-amber, #fbbf24); }
 .sgi-tl-kind.is-event { background: rgba(59, 130, 246, 0.15); color: var(--ds-text-blue, #60a5fa); }
 .sgi-tl-title { color: var(--text-primary); font-weight: var(--ds-fw-semibold); font-size: var(--ds-fs-md); }
-.sgi-tl-students { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
-.sgi-tl-students img { width: 34px; height: 34px; border-radius: var(--ds-round-sm); object-fit: cover; border: 1px solid var(--border-color); }
+/* 미래시 픽업 학생 — 큰 사진 + 상시/한정·중요도 배지 + 성급 */
+.sgi-tl-students { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.sgi-tl-student { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 68px; }
+.sgi-tl-portrait { position: relative; width: 68px; height: 68px; }
+.sgi-tl-portrait img {
+    width: 68px; height: 68px;
+    border-radius: var(--ds-round-md);
+    object-fit: cover; object-position: top center;
+    border: 1px solid var(--border-color);
+    background: var(--ds-surface-2);
+}
+/* 상시/한정 배지 — 색으로 뽑기 중요도 전달(페스한정>한정>이벤트>상시) */
+.sgi-tl-limited {
+    position: absolute; left: 0; bottom: 0; right: 0;
+    padding: 1px 0;
+    text-align: center;
+    font-size: 9px; font-weight: var(--ds-fw-bold);
+    color: #fff;
+    border-radius: 0 0 var(--ds-round-md) var(--ds-round-md);
+}
+.sgi-tl-limited.is-fes { background: var(--ds-negative); }             /* 페스한정 — 최우선 */
+.sgi-tl-limited.is-limited { background: var(--ds-primary); }          /* 한정 */
+.sgi-tl-limited.is-event { background: var(--ds-text-blue, #3b82f6); } /* 이벤트(무료) */
+.sgi-tl-limited.is-perm { background: rgba(0, 0, 0, 0.55); }           /* 상시 */
+.sgi-tl-rerun {
+    position: absolute; top: 2px; right: 2px;
+    padding: 0 5px;
+    border-radius: var(--ds-round-full);
+    background: rgba(0, 0, 0, 0.65); color: #fff;
+    font-size: 8px; font-weight: var(--ds-fw-bold);
+}
+.sgi-tl-sname { color: var(--text-primary); font-size: 10px; line-height: 1.2; text-align: center; word-break: keep-all; }
+.sgi-tl-stars { color: var(--ds-text-amber, #f59e0b); font-size: 9px; letter-spacing: -1px; }
 .sgi-tl-range { color: var(--text-secondary); font-size: var(--ds-fs-micro); }
 
 /* ---- 학정보(도감) ---- */
@@ -2444,3 +2475,14 @@
 .sgi-build-video:hover span { color: var(--ds-text-accent); }
 .sgi-build-video img { width: 96px; aspect-ratio: 16/9; border-radius: var(--ds-round-sm); object-fit: cover; flex: none; background: var(--ds-surface-2); }
 .sgi-build-video span { line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 미래시 픽업 배지 범례 */
+.sgi-future-legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+    margin: 0 0 var(--ds-space-md);
+    color: var(--text-secondary); font-size: var(--ds-fs-micro);
+}
+.sgi-future-legend .sgi-tl-limited {
+    position: static; padding: 1px 8px; border-radius: var(--ds-round-full);
+    display: inline-block; width: auto;
+}

@@ -99,6 +99,7 @@ class SchaleDbSyncService
                 'bullet' => $bullet[$s['BulletType'] ?? ''] ?? ($s['BulletType'] ?? null),
                 'armor' => $armor[$s['ArmorType'] ?? ''] ?? ($s['ArmorType'] ?? null),
                 'position' => $pos[$s['Position'] ?? ''] ?? null,
+                'limited' => $this->limitedType($s['IsLimited'] ?? null),
             ], fn ($v) => $v !== null && $v !== '');
 
             $char = Character::firstOrNew([
@@ -117,5 +118,32 @@ class SchaleDbSyncService
         }
 
         return $count;
+    }
+
+    /**
+     * SchaleDB IsLimited([Jp, Global, Cn]) → 상시/한정 분류.
+     * 값: 4=상시(常設), 1=한정(이벤트 픽업), 3=페스한정, 2=이벤트(무료 배포), 0=미출시(그 지역).
+     * 캐릭터 고유 성격이라 앞선 지역(Jp)의 첫 non-zero 값으로 판정.
+     */
+    private function limitedType(mixed $isLimited): ?string
+    {
+        if (! is_array($isLimited)) {
+            return null;
+        }
+        $code = null;
+        foreach ($isLimited as $v) { // Jp → Global 순, 첫 출시(non-zero) 값
+            if ((int) $v !== 0) {
+                $code = (int) $v;
+                break;
+            }
+        }
+
+        return match ($code) {
+            4 => '상시',
+            1 => '한정',
+            3 => '페스한정',
+            2 => '이벤트',
+            default => null,
+        };
     }
 }

@@ -23,6 +23,14 @@ class MollulogFuturesSyncService
 {
     private const SOURCE = 'mollulog-futures';
 
+    /** 몰루로그 recruitmentType → 상시/한정 라벨(뽑기 중요도). recollect(복각)는 대개 한정 캐릭터 재픽업. */
+    private const RECRUITMENT_LIMITED = [
+        'usual' => '상시',
+        'limited' => '한정',
+        'given' => '이벤트',
+        'recollect' => '한정',
+    ];
+
     /** 몰루로그 raidType → crawl-raids(bluearchive.mjs)와 동일한 URL 슬러그(키 합류용). */
     private const RAID_SLUGS = ['total_assault' => 'total-assault', 'elimination' => 'grand-assault', 'unlimit' => 'unlimit'];
 
@@ -226,6 +234,8 @@ class MollulogFuturesSyncService
                 'name' => $r['studentName'] ?? null,
                 'rarity' => null, // ScheduleService 가 캐릭터 마스터(traits.star)로 보강
                 'rerun' => (bool) ($r['rerun'] ?? false),
+                // 픽업 상시/한정 = 뽑기 중요도(KR 기준, 미래 픽업까지 정확). usual=상시·limited=한정·given=이벤트·recollect=복각(한정)
+                'limited' => self::RECRUITMENT_LIMITED[$r['recruitmentType'] ?? ''] ?? null,
             ])->filter(fn (array $f) => $f['external_key'] !== '')->unique('external_key')->values();
 
             if ($featured->isEmpty()) {

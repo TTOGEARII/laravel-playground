@@ -91,6 +91,9 @@ class ScheduleService
                 'name' => $f['name'] ?? null,
                 'rarity' => $f['rarity'] ?? ($traits['star'] ?? null), // 성급은 캐릭터 마스터로 폴백
                 'rerun' => (bool) ($f['rerun'] ?? false), // 복각 배지(몰루로그 소스)
+                // 상시/한정(뽑기 중요도): 몰루로그 픽업 타입(KR·미래 정확) 우선, SchaleDB 캐릭터 분류 폴백
+                'limited' => $f['limited'] ?? ($traits['limited'] ?? null),
+                'star' => $traits['star'] ?? null,
                 // 픽업 카드용 전신 일러(몰루로그와 동일 collection 소스), 폴백은 캐시/소스 이미지
                 'image' => ($key !== null && $collectionBase !== '')
                     ? "{$collectionBase}/{$key}.webp"
