@@ -111,9 +111,16 @@ Schedule::command('subculture:sync-wiki')
     ->withoutOverlapping(60)
     ->runInBackground();
 
-// 호요버스 빌드 보강 — 티어(젠존제 zzz.gg)·추천 조합 영상(유튜브). 매주 화 07:00.
+// 호요버스 빌드 보강 — 티어(젠존제 zzz.gg)·추천 조합 영상(유튜브)·성장재료(Yatta). 매주 화 07:00.
 Schedule::command('subculture:sync-hoyo-build')
     ->weeklyOn(2, '07:00')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(60)
+    ->runInBackground();
+
+// 호요버스 추천 무기·세트 — genshin-builds.com(한국어). 매주 화 07:30.
+Schedule::command('subculture:sync-genshin-builds')
+    ->weeklyOn(2, '07:30')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(60)
     ->runInBackground();

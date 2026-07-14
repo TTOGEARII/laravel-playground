@@ -84,6 +84,24 @@
             </div>
           </section>
 
+          <!-- 추천 무기(호요버스: 랭킹순 다수) -->
+          <section v-if="selected.traits.rec_weapons?.length" class="sgi-build-sec">
+            <h5 class="sgi-build-title">⚔️ 추천 무기 <small>추천순</small></h5>
+            <div class="sgi-build-pills">
+              <span v-for="(w, i) in selected.traits.rec_weapons" :key="i" class="sgi-build-pill" :class="{ 'is-echo': i === 0 }">
+                <b v-if="i === 0">1</b> {{ w }}
+              </span>
+            </div>
+          </section>
+
+          <!-- 추천 세트(성유물/유물/디스크) -->
+          <section v-if="selected.traits.rec_sets?.length" class="sgi-build-sec">
+            <h5 class="sgi-build-title">🎴 추천 세트</h5>
+            <div class="sgi-build-pills">
+              <span v-for="(s, i) in selected.traits.rec_sets" :key="i" class="sgi-build-pill">{{ s }}</span>
+            </div>
+          </section>
+
           <section v-if="selected.traits.best_weapon?.name" class="sgi-build-sec">
             <h5 class="sgi-build-title">⚔️ 최고 무기</h5>
             <div class="sgi-build-weapon">
@@ -198,7 +216,8 @@ const filterFields = computed(() => schema.value.filter((f) => f.filter));
 // 빌드 상세(에코세트·재료·무기·스탯·조합)를 가진 캐릭터인지 — 명조 등
 const hasBuild = computed(() => {
   const t = selected.value?.traits ?? {};
-  return !!(t.echo_sets?.length || t.best_weapon?.name || t.materials?.length || t.best_stats?.length || t.comps?.length);
+  return !!(t.echo_sets?.length || t.best_weapon?.name || t.materials?.length || t.best_stats?.length
+    || t.comps?.length || t.rec_weapons?.length || t.rec_sets?.length);
 });
 
 function isOwned(c) {

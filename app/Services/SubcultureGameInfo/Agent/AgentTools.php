@@ -297,6 +297,12 @@ class AgentTools
         if (! empty($t['best_weapon']['name'])) {
             $parts[] = "무기: {$t['best_weapon']['name']}";
         }
+        if (! empty($t['rec_weapons']) && is_array($t['rec_weapons'])) {
+            $parts[] = '추천무기: '.implode(', ', array_slice($t['rec_weapons'], 0, 4));
+        }
+        if (! empty($t['rec_sets']) && is_array($t['rec_sets'])) {
+            $parts[] = '추천세트: '.implode(', ', array_slice($t['rec_sets'], 0, 3));
+        }
         if (! empty($t['best_stats']) && is_array($t['best_stats'])) {
             $parts[] = '추천스탯: '.implode(', ', array_slice($t['best_stats'], 0, 6));
         }

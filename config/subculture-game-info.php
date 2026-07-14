@@ -517,6 +517,25 @@ return [
         ],
 
         /*
+        | genshin-builds.com(한국어·SSR·멀티게임) — 호요버스 추천 무기·세트를 캐릭터에 추가.
+        | 목록에서 (한글명 → 슬러그) 매핑 후, 빌드 페이지에서 추천 무기/세트를 랭킹 순으로 수집.
+        | 이름 위치: 원신=RSC 데이터 블롭, 스타레일·젠존제=앵커 img alt (하이브리드 추출).
+        */
+        'genshin_builds' => [
+            'base' => env('SGI_GBUILDS_BASE', 'https://genshin-builds.com'),
+            'timeout' => (int) env('SGI_GBUILDS_TIMEOUT', 20),
+            'fetch_delay_ms' => (int) env('SGI_GBUILDS_DELAY_MS', 300),
+            'top_weapons' => 5,
+            'top_sets' => 4,
+            // 목록 구조가 게임마다 다름(원신=sr-only h3, 스타레일=앵커 img alt, 젠존제=JSON 블롭) — 매핑은 세 패턴 모두 시도.
+            'games' => [
+                'genshin' => ['list' => '/ko/characters', 'char_path' => '/ko/character/', 'weapon' => '/weapon/', 'set' => '/artifacts/'],
+                'starrail' => ['list' => '/ko/hsr/', 'char_path' => '/ko/hsr/character/', 'weapon' => '/hsr/lightcones/', 'set' => '/hsr/relics/'],
+                'zenless' => ['list' => '/ko/zenless/characters', 'char_path' => '/ko/zenless/characters/', 'weapon' => '/zenless/w-engines/', 'set' => '/zenless/disk-drives/'],
+            ],
+        ],
+
+        /*
         | 호요버스 빌드 보강 — 명조처럼 캐릭터에 티어·조합을 추가한다.
         | (호요버스엔 wuthering.gg 같은 통합 빌드 소스가 없어, 조합은 유튜브·티어는 SSR 티어리스트만 확보되는 만큼)
         |  comps: '{prefix} {캐릭터} {suffix}' 유튜브 검색(신규/미수집만).
