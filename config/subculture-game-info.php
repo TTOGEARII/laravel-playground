@@ -472,8 +472,9 @@ return [
                 ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true],
                 ['key' => 'weapon', 'label' => '무기', 'type' => 'badge', 'filter' => true],
             ],
-            // 젠레스 — traits: element(속성)/profession(특성) (Enka 소스). rarity(S/A)는 상위 컬럼 표시.
+            // 젠레스 — traits: tier(zzz.gg)/element(속성)/profession(특성) (Enka 소스). rarity(S/A)는 상위 컬럼 표시.
             'zenless' => [
+                ['key' => 'tier', 'label' => '티어', 'type' => 'badge', 'filter' => true],
                 ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
                     'labels' => ['Physics' => '물리', 'Fire' => '화염', 'Ice' => '빙결', 'Elec' => '전기', 'Ether' => '에테르', 'Wind' => '바람', 'FireFrost' => '서리', 'AuricEther' => '오라에테르']],
                 ['key' => 'profession', 'label' => '특성', 'type' => 'badge', 'filter' => true,
@@ -513,6 +514,26 @@ return [
                 'zenless' => ['app' => 'zzz', 'include_menus' => ['8'], 'character_menu' => '8'],
                 'starrail' => ['app' => 'hsr', 'include_menus' => ['104'], 'character_menu' => '104'],
             ],
+        ],
+
+        /*
+        | 호요버스 빌드 보강 — 명조처럼 캐릭터에 티어·조합을 추가한다.
+        | (호요버스엔 wuthering.gg 같은 통합 빌드 소스가 없어, 조합은 유튜브·티어는 SSR 티어리스트만 확보되는 만큼)
+        |  comps: '{prefix} {캐릭터} {suffix}' 유튜브 검색(신규/미수집만).
+        |  tier : 게임별 SSR 티어리스트(.tier-list .tier.{S/A/B/C/D})에서 이름 매칭. 젠존제만 확보(zzz.gg SSR).
+        */
+        'hoyo_build' => [
+            'comps' => [
+                'zenless' => ['prefix' => '젠레스 존제로', 'suffix' => '추천 조합'],
+                'starrail' => ['prefix' => '붕괴 스타레일', 'suffix' => '추천 조합'],
+                'genshin' => ['prefix' => '원신', 'suffix' => '추천 파티'],
+            ],
+            'comps_limit' => 4,
+            'tier' => [
+                'zenless' => 'https://zzz.gg/ko/tier-list',
+            ],
+            'timeout' => (int) env('SGI_HOYO_BUILD_TIMEOUT', 20),
+            'fetch_delay_ms' => (int) env('SGI_HOYO_BUILD_DELAY_MS', 300),
         ],
 
         /*

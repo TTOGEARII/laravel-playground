@@ -111,6 +111,13 @@ Schedule::command('subculture:sync-wiki')
     ->withoutOverlapping(60)
     ->runInBackground();
 
+// 호요버스 빌드 보강 — 티어(젠존제 zzz.gg)·추천 조합 영상(유튜브). 매주 화 07:00.
+Schedule::command('subculture:sync-hoyo-build')
+    ->weeklyOn(2, '07:00')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(60)
+    ->runInBackground();
+
 // 블아 종합전술시험(종전시) — 새 차수 글만 가볍게 확인(아카 HTML 파싱, Gemini 없음). 매일 1회.
 Schedule::command('subculture:collect-jfd')
     ->dailyAt('06:10')
