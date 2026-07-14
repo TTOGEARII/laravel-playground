@@ -302,8 +302,10 @@
 .sga-select-title { color: var(--text-primary); font-size: var(--ds-fs-2xl, 22px); font-weight: var(--ds-fw-bold); margin-bottom: var(--ds-space-xs); }
 .sga-select-lead { color: var(--text-secondary); font-size: var(--ds-fs-sm); margin-bottom: var(--ds-space-xl); }
 .sga-persona-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* flex + 중앙정렬: 카드가 적어도(1~2개) 좌측으로 쏠리지 않고 헤더와 함께 가운데 정렬 */
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: var(--ds-space-lg);
     text-align: left;
 }
@@ -311,12 +313,18 @@
     display: flex;
     flex-direction: column;
     gap: var(--ds-space-sm);
+    flex: 1 1 220px;
+    max-width: 260px; /* PC 에서 카드가 과도하게 넓어지지 않게 상한 */
     padding: var(--ds-space-lg);
     border-radius: var(--ds-round-xl);
     background: var(--ds-surface);
     border: 1px solid var(--border-color);
     box-shadow: var(--ds-shadow-medium);
     transition: transform 0.12s ease, border-color 0.15s ease;
+}
+/* 모바일: 한 줄에 하나씩 꽉 차게 */
+@media (max-width: 560px) {
+    .sga-persona-card { flex-basis: 100%; max-width: none; }
 }
 .sga-persona-card:hover { transform: translateY(-3px); border-color: rgba(243, 114, 127, 0.6); }
 .sga-persona-card.is-current { border-color: var(--ds-primary); }
