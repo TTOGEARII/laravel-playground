@@ -32,6 +32,7 @@ class SubcultureAgentService
         'get_attribute_parties' => '🎭 속성별 조합 조회 중…',
         'search_community' => '🔍 커뮤니티 실시간 검색 중…',
         'search_youtube_videos' => '🎬 유튜브 영상 검색 중…',
+        'get_my_characters' => '🎒 내 캐릭터 풀 확인 중…',
         'fetch_live_page' => '🌐 최신 페이지 확인 중…',
     ];
 
@@ -147,6 +148,8 @@ class SubcultureAgentService
 
     private function pendingRequest(AgentSession $session, string $userMessage, ?string $game = null): \Prism\Prism\Text\PendingRequest
     {
+        $this->tools->userId = $session->user_id; // 내 캐릭터 풀 조회용(비로그인 세션은 null)
+
         $request = Prism::text()
             ->using('gemini', (string) config('services.gemini.model', 'gemini-3-flash-preview'))
             ->withSystemPrompt($this->persona->systemPrompt($session, $game))

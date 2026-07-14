@@ -2073,7 +2073,7 @@
 .sgi-dex-card:hover { transform: translateY(-2px); border-color: rgba(243, 114, 127, 0.6); }
 .sgi-dex-card.is-owned { border-color: var(--ds-primary); box-shadow: inset 0 0 0 1px var(--ds-primary); }
 .sgi-dex-portrait { display: block; width: 100%; padding: 0; border: none; background: none; cursor: pointer; }
-.sgi-dex-portrait img { display: block; width: 100%; aspect-ratio: 1; border-radius: var(--ds-round-sm); object-fit: cover; background: var(--ds-surface-2); }
+.sgi-dex-portrait img { display: block; width: 100%; aspect-ratio: 1; border-radius: var(--ds-round-sm); object-fit: cover; object-position: top center; background: var(--ds-surface-2); }
 .sgi-dex-card:not(.is-owned) .sgi-dex-portrait img { opacity: 0.72; filter: grayscale(0.2); }
 /* 빠른 보유 토글(코너) */
 .sgi-dex-own {
@@ -2126,7 +2126,7 @@
     font-size: 14px;
 }
 .sgi-dex-modal-close:hover { color: var(--text-primary); }
-.sgi-dex-modal-img { width: 200px; height: 200px; margin: 0 auto var(--ds-space-md); display: block; border-radius: var(--ds-round-lg); object-fit: cover; background: var(--ds-surface-2); }
+.sgi-dex-modal-img { width: 200px; height: 260px; margin: 0 auto var(--ds-space-md); display: block; border-radius: var(--ds-round-lg); object-fit: cover; object-position: top center; background: var(--ds-surface-2); }
 .sgi-dex-modal-name { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 var(--ds-space-sm); color: var(--text-primary); font-size: var(--ds-fs-xl); }
 /* 속성 배지 행(몰루로그 스타일) */
 .sgi-dex-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 0 0 var(--ds-space-lg); }

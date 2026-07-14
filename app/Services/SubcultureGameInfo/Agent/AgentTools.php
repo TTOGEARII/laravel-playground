@@ -32,6 +32,9 @@ class AgentTools
     /** @var array<int, array{name: string, label: string}> 진행 표시·감사용 */
     public array $toolCalls = [];
 
+    /** 현재 대화의 로그인 사용자 id(내 캐릭터풀 조회용) — 요청마다 서비스가 세션에서 주입, 비로그인은 null. */
+    public ?int $userId = null;
+
     public function __construct(
         private RedeemCodeService $codes,
         private RaidQueryService $raids,
@@ -54,8 +57,56 @@ class AgentTools
             $this->attributePartiesTool(),
             $this->communitySearchTool(),
             $this->youtubeVideosTool(),
+            $this->myCharactersTool(),
             $this->livePageTool(),
         ];
+    }
+
+    /**
+     * 내 캐릭터 풀(로그인 사용자의 보유 캐릭터) 조회 — "내 캐릭터로 조합" 류 질문에 사용.
+     * DB(subculture_user_characters)에서 owned_flg 인 캐릭터를 게임별로 돌려준다.
+     */
+    private function myCharactersTool(): \Prism\Prism\Tool
+    {
+        return Tool::as('get_my_characters')
+            ->for('로그인한 사용자가 보유한 캐릭터(내 캐릭터 풀)를 게임별로 조회한다. '
+                .'"내 캐릭터", "내가 가진", "내 보유로 조합" 같은 요청에 사용. game 을 비우면 전체 게임.')
+            ->withStringParameter('game', '게임 이름(예: 블루아카이브, 명조). 전체면 빈 문자열', false)
+            ->using(function (string $game = '') {
+                if ($this->userId === null) {
+                    return '로그인하지 않아 내 캐릭터 풀을 볼 수 없습니다. 로그인 후 캐릭터정보에서 보유를 표시해 주세요.';
+                }
+                $slug = $this->resolveGame($game);
+                $this->track('get_my_characters', '내 캐릭터 풀 조회'.($slug ? " · {$this->gameName($slug)}" : ''));
+
+                $rows = \App\Models\SubcultureGameInfo\UserCharacter::query()
+                    ->where('user_id', $this->userId)
+                    ->where('owned_flg', true)
+                    ->whereHas('character', fn ($q) => $slug
+                        ? $q->whereHas('game', fn ($g) => $g->where('slug', $slug))
+                        : $q)
+                    ->with(['character.game'])
+                    ->get()
+                    ->filter(fn ($uc) => $uc->character !== null);
+
+                if ($rows->isEmpty()) {
+                    return $slug
+                        ? "{$this->gameName($slug)}에서 보유 표시한 캐릭터가 없습니다."
+                        : '아직 보유 표시한 캐릭터가 없습니다. 캐릭터정보 탭에서 보유를 체크해 주세요.';
+                }
+
+                $byGame = $rows->groupBy(fn ($uc) => $uc->character->game?->name ?? '기타');
+                $items = [];
+                $lines = [];
+                foreach ($byGame as $gameName => $group) {
+                    $names = $group->map(fn ($uc) => $uc->character->name)->sort()->values();
+                    $items[] = ['game' => $gameName, 'characters' => $names->all()];
+                    $lines[] = "{$gameName}({$names->count()}): ".$names->implode(', ');
+                }
+                $this->card('my_characters', ['total' => $rows->count(), 'games' => $items]);
+
+                return "내 보유 캐릭터 {$rows->count()}명:\n".implode("\n", $lines);
+            });
     }
 
     /** 유튜브 영상 검색 — 공략/가이드 영상 요청에 사용(링크 카드 제공). */

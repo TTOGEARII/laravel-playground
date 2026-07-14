@@ -67,13 +67,17 @@ class WutheringGgSyncService
             if (($card['rarity'] ?? null) !== null) {
                 $char->rarity = $card['rarity'];
             }
-            if (($card['image'] ?? null) !== null) {
-                $char->image_url = $card['image'];
-            }
 
-            // 상세(티어·재료·무기·에코세트·스탯)는 매 sync 갱신(현재 메타 반영)
+            // 상세(티어·재료·무기·에코세트·스탯 + 전신 초상)는 매 sync 갱신(현재 메타 반영)
             $detail = $this->characterDetail($base, $slug);
             usleep($delayMicros);
+
+            // 이미지는 상세의 전신 초상 우선(목록 head 아이콘은 일부 404)
+            $image = $detail['portrait'] ?? $card['image'] ?? null;
+            if ($image !== null) {
+                $char->image_url = $image;
+            }
+            unset($detail['portrait']);
 
             // 팀 조합 영상은 없을 때만(유튜브 요청 절약 — 메타 갱신은 수동 재수집)
             $comps = $traits['comps'] ?? null;
@@ -189,11 +193,22 @@ class WutheringGgSyncService
         }
 
         return array_filter([
+            'portrait' => $this->parsePortrait($html),
             'materials' => $this->parseMaterials($xp),
             'best_weapon' => $this->parseWeapon($xp),
             'echo_sets' => $this->parseEchoSets($xp),
             'best_stats' => $this->parseBestStats($xp),
         ], fn ($v) => ! empty($v));
+    }
+
+    /** 상세 페이지의 전신 초상(iconrolepile) — 목록 head 아이콘(일부 404)보다 크고 안정적. */
+    private function parsePortrait(string $html): ?string
+    {
+        if (preg_match('#(/_ipx/[^"\'\s]*iconrolepile[^"\'\s]+\.png)#i', $html, $m)) {
+            return 'https://wuthering.gg'.html_entity_decode($m[1]);
+        }
+
+        return null;
     }
 
     /** 각성 재료: .ascension li.consume → {name, cost}. */

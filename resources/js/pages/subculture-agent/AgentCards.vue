@@ -97,6 +97,15 @@
         </ul>
       </template>
 
+      <!-- 내 캐릭터 풀 -->
+      <template v-else-if="card.type === 'my_characters'">
+        <div class="sga-card-head">🎒 내 캐릭터 풀 <small>{{ card.data.total }}명</small></div>
+        <div v-for="g in card.data.games" :key="g.game" class="sga-mychars-game">
+          <b>{{ g.game }}</b>
+          <span class="sga-mychars-names">{{ g.characters.join(', ') }}</span>
+        </div>
+      </template>
+
       <!-- 실시간 페이지 출처 -->
       <template v-else-if="card.type === 'live_page'">
         <a :href="card.data.url" target="_blank" rel="noopener" class="sga-link">🌐 출처 페이지 열기</a>

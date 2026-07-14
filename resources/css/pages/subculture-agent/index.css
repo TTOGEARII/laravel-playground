@@ -423,3 +423,8 @@
     background: var(--ds-surface-2);
 }
 .sga-video-title { line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 내 캐릭터 풀 카드 */
+.sga-mychars-game { display: flex; gap: 8px; font-size: var(--ds-fs-sm); padding: 4px 0; }
+.sga-mychars-game b { color: var(--ds-text-accent); flex: none; }
+.sga-mychars-names { color: var(--text-secondary); line-height: 1.5; }
