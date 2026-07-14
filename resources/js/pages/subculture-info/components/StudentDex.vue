@@ -66,10 +66,62 @@
 
         <div class="sgi-dex-badges">
           <template v-for="f in schema" :key="f.key">
-            <span v-if="f.type !== 'stars' && selected.traits[f.key] != null" class="sgi-dex-badge">
-              {{ fieldVal(f, selected.traits[f.key]) }}
+            <span v-if="f.type !== 'stars' && selected.traits[f.key] != null"
+              class="sgi-dex-badge" :class="{ 'is-tier': f.key === 'tier' }">
+              {{ f.key === 'tier' ? selected.traits[f.key] + '티어' : fieldVal(f, selected.traits[f.key]) }}
             </span>
           </template>
+        </div>
+
+        <!-- 빌드 상세(명조 등: 에코세트·재료·최고무기·추천스탯·조합 영상) -->
+        <div v-if="hasBuild" class="sgi-build">
+          <section v-if="selected.traits.echo_sets?.length" class="sgi-build-sec">
+            <h5 class="sgi-build-title">🎴 에코 세트</h5>
+            <div class="sgi-build-pills">
+              <span v-for="(e, i) in selected.traits.echo_sets" :key="i" class="sgi-build-pill is-echo">
+                {{ e.sonata }} <b>{{ e.count }}</b>
+              </span>
+            </div>
+          </section>
+
+          <section v-if="selected.traits.best_weapon?.name" class="sgi-build-sec">
+            <h5 class="sgi-build-title">⚔️ 최고 무기</h5>
+            <div class="sgi-build-weapon">
+              <b>{{ selected.traits.best_weapon.name }}</b>
+              <span v-for="(s, i) in selected.traits.best_weapon.stats ?? []" :key="i" class="sgi-build-stat">
+                {{ s.k }} {{ s.v }}
+              </span>
+            </div>
+            <p v-if="selected.traits.best_weapon.ability" class="sgi-build-ability">{{ selected.traits.best_weapon.ability }}</p>
+          </section>
+
+          <section v-if="selected.traits.best_stats?.length" class="sgi-build-sec">
+            <h5 class="sgi-build-title">📊 추천 스탯</h5>
+            <div class="sgi-build-pills">
+              <span v-for="(s, i) in selected.traits.best_stats" :key="i" class="sgi-build-pill">{{ s }}</span>
+            </div>
+          </section>
+
+          <section v-if="selected.traits.materials?.length" class="sgi-build-sec">
+            <h5 class="sgi-build-title">🧪 강화 재료</h5>
+            <div class="sgi-build-pills">
+              <span v-for="(m, i) in selected.traits.materials" :key="i" class="sgi-build-pill">
+                {{ m.name }}<b v-if="m.cost"> ×{{ m.cost }}</b>
+              </span>
+            </div>
+          </section>
+
+          <section v-if="selected.traits.comps?.length" class="sgi-build-sec">
+            <h5 class="sgi-build-title">🎬 추천 조합 <small>유튜브</small></h5>
+            <ul class="sgi-build-videos">
+              <li v-for="v in selected.traits.comps" :key="v.url">
+                <a :href="v.url" target="_blank" rel="noopener" class="sgi-build-video">
+                  <img v-if="v.thumbnail" :src="v.thumbnail" :alt="v.title" loading="lazy" />
+                  <span>{{ v.title }}</span>
+                </a>
+              </li>
+            </ul>
+          </section>
         </div>
 
         <!-- 내 보유 -->
@@ -142,6 +194,12 @@ const fileInput = ref(null);
 const cache = new Map();
 
 const filterFields = computed(() => schema.value.filter((f) => f.filter));
+
+// 빌드 상세(에코세트·재료·무기·스탯·조합)를 가진 캐릭터인지 — 명조 등
+const hasBuild = computed(() => {
+  const t = selected.value?.traits ?? {};
+  return !!(t.echo_sets?.length || t.best_weapon?.name || t.materials?.length || t.best_stats?.length || t.comps?.length);
+});
 
 function isOwned(c) {
   return props.pool[c.external_key]?.owned === true;

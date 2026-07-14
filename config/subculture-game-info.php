@@ -399,11 +399,8 @@ return [
             'genshin' => ['student-dex'],
             'starrail' => ['student-dex'],
             'zenless' => ['student-dex'],
-            // 명조 — wuthering.gg 소스: 캐릭터정보(도감·보유) + 위키 정보(무기)
-            'wuthering' => [
-                'main' => ['student-dex'],
-                'tabs' => ['wiki-dex'],
-            ],
+            // 명조 — wuthering.gg 소스: 캐릭터정보만(도감·보유 + 티어·에코세트·재료·무기·조합을 모달에 통합)
+            'wuthering' => ['student-dex'],
         ],
 
         /*
@@ -468,8 +465,10 @@ return [
                 ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true,
                     'labels' => ['Physical' => '물리', 'Fire' => '화염', 'Ice' => '빙결', 'Thunder' => '전기', 'Wind' => '바람', 'Quantum' => '양자', 'Imaginary' => '허수']],
             ],
-            // 명조 — traits: element(속성)/weapon(무기) (wuthering.gg 소스, 한글 원문). rarity(5성 등)는 상위 컬럼.
+            // 명조 — traits: tier(티어)/element(속성)/weapon(무기) (wuthering.gg 소스, 한글 원문). rarity(5성 등)는 상위 컬럼.
+            // 에코세트·강화재료·최고무기·조합 영상은 traits 상세 필드로 담아 도감 모달에서 표시(카드 배지는 아래 3개).
             'wuthering' => [
+                ['key' => 'tier', 'label' => '티어', 'type' => 'badge', 'filter' => true],
                 ['key' => 'element', 'label' => '속성', 'type' => 'badge', 'filter' => true],
                 ['key' => 'weapon', 'label' => '무기', 'type' => 'badge', 'filter' => true],
             ],
@@ -517,13 +516,20 @@ return [
         ],
 
         /*
-        | wuthering.gg(명조) — SSR DOM 파싱. 캐릭터(공명자)는 Character(도감·보유)로,
-        | 무기는 위키 항목으로 저장. 상세 페이지도 항목별로 순회 수집한다.
+        | wuthering.gg(명조) — SSR DOM 파싱. 캐릭터(공명자) = Character(도감·보유) + 상세(traits):
+        | 티어(티어리스트)·각성 재료·최고 무기·에코 세트(소나타)·추천 스탯을 캐릭터 상세로 수집한다.
+        | 팀 조합은 사이트에 없어 유튜브 검색(YoutubeSearchClient)으로 캐릭터별 영상을 채운다(신규/미수집만).
         */
         'wutheringgg' => [
             'base' => env('SGI_WUTHERINGGG_BASE', 'https://wuthering.gg'),
             'timeout' => (int) env('SGI_WUTHERINGGG_TIMEOUT', 20),
             'fetch_delay_ms' => (int) env('SGI_WUTHERINGGG_DELAY_MS', 300),
+            // 팀 조합 영상 — "명조 {캐릭터명} {suffix}" 유튜브 검색(상위 N개, 캐릭터당 1회 캐시)
+            'comps' => [
+                'enabled' => (bool) env('SGI_WUTHERINGGG_COMPS', true),
+                'query_suffix' => '추천 조합',
+                'limit' => 4,
+            ],
         ],
 
         /*

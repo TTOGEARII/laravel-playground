@@ -44,7 +44,7 @@ class SyncWikiCommand extends Command
             $this->info("[{$slug}] 위키 동기화 중... (항목별 상세 포함 — 수 분 걸릴 수 있음)");
             if ($slug === 'wuthering') {
                 $stats = $wuthering->sync($game);
-                $rows[] = [$slug, '캐릭터 '.$stats['characters'], '무기 '.$stats['weapons'], '-'];
+                $rows[] = [$slug, '캐릭터 '.$stats['characters'], '조합영상 '.$stats['comps'], '-'];
             } else {
                 $stats = $hoyowiki->sync($game);
                 $rows[] = [$slug, '메뉴 '.$stats['menus'], '항목 '.$stats['entries'], '신규상세 '.$stats['details']];
