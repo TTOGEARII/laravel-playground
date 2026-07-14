@@ -235,12 +235,14 @@ class AgentTools
     private function charactersTool(): \Prism\Prism\Tool
     {
         return Tool::as('search_characters')
-            ->for('게임의 캐릭터를 이름 키워드로 검색한다(속성/이미지 포함).')
-            ->withStringParameter('game', '게임 이름(블루아카이브/니케/트릭컬/브라운더스트2)')
-            ->withStringParameter('keyword', '캐릭터 이름 일부(예: 키사키, 우로스)')
-            ->using(function (string $game, string $keyword) {
+            ->for('게임의 캐릭터 정보를 조회한다 — 모든 게임 지원(블루아카이브·니케·트릭컬·브라운더스트2·명조·원신·스타레일·젠존제). '
+                .'정보검색 DB 를 그대로 참조하며, 캐릭터의 티어·속성/무기·에코(유물)세트·최고 무기·추천 스탯·강화 재료·추천 조합 영상까지 반환한다. '
+                .'"미야비 티어", "카를로타 에코세트", "OO 재료/무기/조합" 같은 캐릭터 빌드 질문에 사용.')
+            ->withStringParameter('game', '게임 이름(블루아카이브/명조/원신/스타레일/젠존제/니케/트릭컬/브라운더스트2)')
+            ->withStringParameter('keyword', '캐릭터 이름 일부(예: 미야비, 카를로타). 목록 전체면 빈 문자열', false)
+            ->using(function (string $game, string $keyword = '') {
                 $slug = $this->resolveGame($game);
-                $this->track('search_characters', "캐릭터 검색 · {$keyword}");
+                $this->track('search_characters', '캐릭터 검색'.($keyword !== '' ? " · {$keyword}" : ''));
                 $gameModel = $slug ? Game::where('slug', $slug)->first() : null;
                 if ($gameModel === null) {
                     return '게임을 특정할 수 없습니다. 게임 이름을 알려주세요.';
@@ -257,8 +259,58 @@ class AgentTools
                 ])->all();
                 $this->card('characters', ['game' => $gameModel->name, 'items' => $items]);
 
-                return '캐릭터 '.count($items).'명: '.$chars->pluck('name')->implode(', ');
+                // 빌드 상세(티어·에코세트·무기·재료·조합)를 텍스트로 풀어 모델이 바로 답할 수 있게 한다.
+                $lines = $chars->map(fn (Character $c) => '- '.$this->characterSummary($c))->implode("\n");
+
+                return "{$gameModel->name} 캐릭터 ".count($items)."명:\n".$lines;
             });
+    }
+
+    /** 캐릭터 traits 를 사람이 읽는 요약 라인으로(존재하는 필드만). */
+    private function characterSummary(Character $c): string
+    {
+        $t = (array) ($c->traits ?? []);
+        $parts = [$c->name];
+
+        if (! empty($t['tier'])) {
+            $parts[] = "{$t['tier']}티어";
+        }
+        if (($c->rarity ?? null) !== null) {
+            $parts[] = (string) $c->rarity;
+        }
+        // 속성/무기/역할류(게임별 배지 필드)
+        $attrs = array_filter([
+            $t['element'] ?? null, $t['weapon'] ?? null, $t['profession'] ?? null,
+            $t['path'] ?? null, $t['bullet'] ?? null, $t['armor'] ?? null,
+        ]);
+        if ($attrs !== []) {
+            $parts[] = implode('/', $attrs);
+        }
+        if (! empty($t['echo_sets']) && is_array($t['echo_sets'])) {
+            $sets = collect($t['echo_sets'])
+                ->map(fn ($e) => is_array($e) ? trim(($e['sonata'] ?? '').' '.($e['count'] ?? '')) : (string) $e)
+                ->filter()->implode(', ');
+            if ($sets !== '') {
+                $parts[] = "에코세트: {$sets}";
+            }
+        }
+        if (! empty($t['best_weapon']['name'])) {
+            $parts[] = "무기: {$t['best_weapon']['name']}";
+        }
+        if (! empty($t['best_stats']) && is_array($t['best_stats'])) {
+            $parts[] = '추천스탯: '.implode(', ', array_slice($t['best_stats'], 0, 6));
+        }
+        if (! empty($t['materials']) && is_array($t['materials'])) {
+            $mats = collect($t['materials'])->map(fn ($m) => is_array($m) ? ($m['name'] ?? '') : (string) $m)->filter()->implode(', ');
+            if ($mats !== '') {
+                $parts[] = "재료: {$mats}";
+            }
+        }
+        if (! empty($t['comps']) && is_array($t['comps'])) {
+            $parts[] = '추천 조합 영상 '.count($t['comps']).'개(카드 참고)';
+        }
+
+        return implode(' · ', $parts);
     }
 
     private function eventChallengesTool(): \Prism\Prism\Tool

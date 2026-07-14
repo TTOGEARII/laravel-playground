@@ -42,6 +42,7 @@
           <span v-for="c in card.data.items" :key="c.name" class="sga-member is-big">
             <img v-if="c.image_url" :src="c.image_url" :alt="c.name" loading="lazy" />
             {{ c.name }}
+            <i v-if="c.traits?.tier" class="sga-member-tier">{{ c.traits.tier }}</i>
           </span>
         </div>
       </template>

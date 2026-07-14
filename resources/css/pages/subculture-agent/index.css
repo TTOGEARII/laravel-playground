@@ -428,3 +428,15 @@
 .sga-mychars-game { display: flex; gap: 8px; font-size: var(--ds-fs-sm); padding: 4px 0; }
 .sga-mychars-game b { color: var(--ds-text-accent); flex: none; }
 .sga-mychars-names { color: var(--text-secondary); line-height: 1.5; }
+
+/* 캐릭터 칩 티어 배지 */
+.sga-member-tier {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: var(--ds-fw-bold);
+    padding: 0 6px;
+    border-radius: var(--ds-round-full);
+    background: var(--ds-primary);
+    color: var(--ds-on-accent);
+    margin-left: 4px;
+}
