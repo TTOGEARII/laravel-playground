@@ -100,6 +100,10 @@ class AgentController extends Controller
             $session = AgentSession::where('uuid', $validated['session_uuid'])->first();
             if ($session !== null) {
                 $this->authorizeSession($request, $session);
+                // 게스트로 시작한 세션을 로그인 후 재사용하면 소유자를 채워, 내 캐릭터 풀(get_my_characters)을 쓸 수 있게 한다
+                if ($session->user_id === null && $request->user() !== null) {
+                    $session->update(['user_id' => $request->user()->id]);
+                }
 
                 return $session;
             }
