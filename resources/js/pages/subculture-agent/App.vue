@@ -98,8 +98,11 @@
           @keydown.enter.exact.prevent="send()"
           @input="autoGrow"
         />
-        <button type="submit" class="sga-send" :disabled="streaming || !input.trim()">
-          {{ streaming ? '…' : '전송' }}
+        <button type="submit" class="sga-send" :disabled="streaming || !input.trim()" aria-label="전송">
+          <span v-if="streaming" class="sga-send-dots"><i /><i /><i /></span>
+          <svg v-else viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
         </button>
       </form>
     </template>
@@ -126,12 +129,13 @@ const messages = ref([]); // {role, content, cards, tools, streaming}
 const input = ref('');
 const inputEl = ref(null);
 
-// textarea 높이 자동 확장(최대 140px, 넘으면 스크롤)
+// textarea 높이 자동 확장 — Claude 처럼 내용이 늘면 박스가 커지고(최대 200px) 넘으면 그때 스크롤.
+const INPUT_MAX_H = 200;
 function autoGrow() {
   const el = inputEl.value;
   if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  el.style.height = 'auto'; // 먼저 초기화해야 줄어들 때도 정확한 scrollHeight 를 잰다
+  el.style.height = `${Math.min(el.scrollHeight, INPUT_MAX_H)}px`;
 }
 const streaming = ref(false);
 const scroller = ref(null);

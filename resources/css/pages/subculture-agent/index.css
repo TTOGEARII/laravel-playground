@@ -182,46 +182,60 @@
 .sga-typing i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes sga-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
 
-/* ---- 입력 바 ---- */
+/* ---- 입력 바 (Claude 스타일: 하나의 둥근 박스 안에 textarea + 원형 전송 버튼) ---- */
 .sga-inputbar {
     display: flex;
+    align-items: flex-end;         /* 여러 줄일 때 전송 버튼을 박스 하단에 붙임 */
     gap: var(--ds-space-sm);
     margin-top: var(--ds-space-xl);
     position: sticky;
     bottom: var(--ds-space-lg);
+    padding: 7px 7px 7px 18px;     /* 박스 자체가 입력 컨테이너 */
+    border-radius: 24px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    box-shadow: var(--ds-shadow-medium);
 }
+.sga-inputbar:focus-within { border-color: rgba(243, 114, 127, 0.7); }
 .sga-input {
     flex: 1;
     min-width: 0;
-    padding: 12px 20px;
-    border-radius: var(--ds-round-lg); /* textarea 다행 대응(원형 pill 대신 부드러운 라운드) */
-    border: 1px solid var(--border-color);
-    background: var(--bg-card);
+    padding: 8px 0;
+    border: none;                  /* 테두리·그림자는 바깥 박스가 담당 */
+    background: transparent;
     color: var(--text-primary);
-    font-size: var(--ds-fs-md);
+    font-size: 16px;               /* 16px 미만이면 iOS 포커스 시 화면이 확대됨 → 고정 */
     font-family: inherit;
     line-height: 1.5;
-    box-shadow: var(--ds-shadow-medium);
     outline: none;
     resize: none;
     overflow-y: auto;
-    max-height: 140px;
+    max-height: 200px;             /* 이 높이까지 자동 확장, 넘으면 그때 내부 스크롤 */
 }
-.sga-inputbar { align-items: flex-end; } /* 여러 줄일 때 전송 버튼을 하단 정렬 */
-.sga-input:focus { border-color: rgba(243, 114, 127, 0.7); }
+.sga-input::placeholder { color: var(--text-secondary); }
 .sga-send {
     flex: none;
-    padding: 0 26px;
-    border-radius: var(--ds-round-pill);
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;            /* 원형 아이콘 버튼 */
     border: none;
     background: var(--ds-primary);
     color: var(--ds-on-accent);
-    font-weight: var(--ds-fw-bold);
-    letter-spacing: var(--ds-btn-tracking);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    transition: background 0.15s ease;
 }
+.sga-send svg { display: block; }
 .sga-send:hover:not(:disabled) { background: var(--ds-primary-press); }
-.sga-send:disabled { opacity: 0.55; cursor: default; }
+.sga-send:disabled { opacity: 0.5; cursor: default; }
+/* 스트리밍 중 전송 버튼의 점 3개(생성 중 표시) */
+.sga-send-dots { display: inline-flex; gap: 3px; }
+.sga-send-dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: sga-bounce 1.2s infinite ease-in-out; }
+.sga-send-dots i:nth-child(2) { animation-delay: 0.15s; }
+.sga-send-dots i:nth-child(3) { animation-delay: 0.3s; }
 
 /* ---- 카드 ---- */
 .sga-cards { display: flex; flex-direction: column; gap: var(--ds-space-sm); }
@@ -300,6 +314,8 @@
 
 @media (max-width: 640px) {
     .sga-msg-body { max-width: 92%; }
+    /* 모바일: 입력 박스를 화면 하단에 더 붙이고 좌우 여백을 살짝 줄임 */
+    .sga-inputbar { bottom: var(--ds-space-sm); padding-left: 15px; margin-top: var(--ds-space-lg); }
 }
 
 /* ============================================================
