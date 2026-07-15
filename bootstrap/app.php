@@ -23,6 +23,15 @@ return Application::configure(basePath: dirname(__DIR__))
             '192.168.0.0/16',
         ]);
 
+        // 외부(공인 IP)에서 오는 봇 차단 — 세션·CSRF 비용 전에 걸러내도록 그룹 맨 앞에 prepend.
+        // 내부(루프백·사설 대역)는 통과하므로 배포 헬스체크·도커 내부 트래픽은 영향 없음.
+        $middleware->web(prepend: [
+            \App\Http\Middleware\BlockExternalBots::class,
+        ]);
+        $middleware->api(prepend: [
+            \App\Http\Middleware\BlockExternalBots::class,
+        ]);
+
         // 전역 보안 응답 헤더(클릭재킹·MIME 스니핑·리퍼러 유출 방지)를 web 응답에 부착.
         // 외부 유저 접속 로그(페이지 조회만, terminate 로 응답 후 기록).
         $middleware->web(append: [
