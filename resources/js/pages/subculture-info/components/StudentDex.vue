@@ -161,19 +161,27 @@
           @close="closeModal"
         />
 
-        <!-- 위키 상세(호요랩 위키 캐릭터 매칭 시 — 스킬·이야기 등) -->
+        <!-- 위키 상세(호요랩 위키 캐릭터 매칭 시 — 스킬·이야기 등). 길면 접고 더보기로 펼침 -->
         <p v-if="wikiLoading" class="sgr-empty">위키 상세 불러오는 중…</p>
-        <template v-else-if="wikiDetail">
-          <section v-for="(s, i) in wikiDetail" :key="i" class="sgi-wiki-section">
-            <h5 v-if="s.title" class="sgi-wiki-section-title">{{ s.title }}</h5>
-            <dl v-if="s.rows?.length" class="sgi-dex-fields">
-              <div v-for="(r, ri) in s.rows" :key="ri" class="sgi-dex-field">
-                <dt>{{ r.label }}</dt>
-                <dd>{{ r.value }}</dd>
-              </div>
-            </dl>
-            <p v-for="(p, pi) in s.paragraphs ?? []" :key="pi" class="sgi-wiki-para">{{ p }}</p>
-          </section>
+        <template v-else-if="wikiDetail && wikiDetail.length">
+          <div ref="wikiEl" class="sgi-wiki-detail" :class="{ 'is-collapsed': wikiOverflowing && !wikiExpanded }">
+            <section v-for="(s, i) in wikiDetail" :key="i" class="sgi-wiki-section">
+              <h5 v-if="s.title" class="sgi-wiki-section-title">{{ s.title }}</h5>
+              <dl v-if="s.rows?.length" class="sgi-dex-fields">
+                <div v-for="(r, ri) in s.rows" :key="ri" class="sgi-dex-field">
+                  <dt>{{ r.label }}</dt>
+                  <dd>{{ r.value }}</dd>
+                </div>
+              </dl>
+              <p v-for="(p, pi) in s.paragraphs ?? []" :key="pi" class="sgi-wiki-para">{{ p }}</p>
+            </section>
+          </div>
+          <button
+            v-if="wikiOverflowing"
+            type="button"
+            class="sgi-wiki-more"
+            @click="wikiExpanded = !wikiExpanded"
+          >{{ wikiExpanded ? '접기 ▴' : '더보기 ▾' }}</button>
         </template>
       </div>
     </div>
@@ -181,7 +189,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { raidApi } from '../api';
 import GrowthForm from './GrowthForm.vue';
 
@@ -189,6 +197,16 @@ import GrowthForm from './GrowthForm.vue';
 const wikiDetail = ref(null);
 const wikiLoading = ref(false);
 const wikiCache = new Map();
+// 위키 상세가 길면 접어서 미리보기만 보이고 '더보기'로 펼친다
+const wikiEl = ref(null);
+const wikiExpanded = ref(false);
+const wikiOverflowing = ref(false);
+const WIKI_COLLAPSED_PX = 150; // 접었을 때 노출 높이(px) — CSS .sgi-wiki-detail.is-collapsed 와 맞춤
+
+function measureWikiOverflow() {
+  const el = wikiEl.value;
+  wikiOverflowing.value = !!el && el.scrollHeight > WIKI_COLLAPSED_PX + 8;
+}
 
 const props = defineProps({
   gameSlug: { type: String, required: true },
@@ -258,6 +276,8 @@ function closeModal() {
 // 선택 캐릭터가 위키에 매칭돼 있으면 상세(스킬·이야기)를 지연 로드
 watch(selected, async (c) => {
   wikiDetail.value = null;
+  wikiExpanded.value = false; // 새 캐릭터를 열 때마다 접힌 상태로 시작
+  wikiOverflowing.value = false;
   if (!c?.wiki_entry_id) return;
   wikiLoading.value = true;
   try {
@@ -270,6 +290,9 @@ watch(selected, async (c) => {
   } finally {
     wikiLoading.value = false;
   }
+  // 로딩 표시(<p>)가 사라지고 상세 div(ref=wikiEl)가 렌더된 뒤 실제 높이로 측정
+  await nextTick();
+  measureWikiOverflow();
 });
 
 /** 보유 토글 — 낙관적 반영(emit) 후 저장, 실패 시 롤백. */

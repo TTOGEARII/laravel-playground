@@ -2438,6 +2438,33 @@
 }
 .sgi-wiki-para { margin: 0 0 8px; color: var(--text-primary); font-size: var(--ds-fs-sm); line-height: 1.6; }
 
+/* 위키 상세가 길면 접어서 미리보기만(호요버스·명조 등 긴 스킬·이야기) — '더보기'로 펼침 */
+.sgi-wiki-detail { position: relative; }
+.sgi-wiki-detail.is-collapsed { max-height: 150px; overflow: hidden; }
+.sgi-wiki-detail.is-collapsed::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--ds-surface));
+    pointer-events: none;
+}
+.sgi-wiki-more {
+    display: block;
+    width: 100%;
+    margin-top: var(--ds-space-sm);
+    padding: 8px 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-pill);
+    color: var(--ds-text-accent);
+    font-size: var(--ds-fs-sm);
+    font-weight: var(--ds-fw-bold);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+.sgi-wiki-more:hover { border-color: var(--ds-primary); }
+
 /* ---- 캐릭터 빌드 상세(명조 등: 에코세트·재료·무기·스탯·조합) ---- */
 .sgi-dex-badge.is-tier { background: var(--ds-primary); color: var(--ds-on-accent); font-weight: var(--ds-fw-bold); }
 .sgi-build { text-align: left; margin-top: var(--ds-space-md); display: flex; flex-direction: column; gap: var(--ds-space-md); }
