@@ -466,6 +466,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // 컬럼 코멘트는 MySQL 전용 기능 — SQLite(테스트) 등에서는 개념이 없어 스킵.
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         foreach ($this->comments as $table => $columns) {
             if (! Schema::hasTable($table)) {
                 continue;
@@ -480,11 +485,15 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         foreach ($this->comments as $table => $columns) {
             if (! Schema::hasTable($table)) {
                 continue;
             }
-            foreach ($columns as $column => $comment) {
+            foreach (array_keys($columns) as $column) {
                 if (Schema::hasColumn($table, $column)) {
                     $this->setComment($table, $column, '');
                 }

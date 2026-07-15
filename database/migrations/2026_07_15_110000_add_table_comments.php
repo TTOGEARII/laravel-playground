@@ -65,6 +65,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // 테이블 코멘트는 MySQL 전용 기능 — SQLite(테스트) 등에서는 개념이 없어 스킵.
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         foreach ($this->comments as $table => $comment) {
             if (Schema::hasTable($table)) {
                 DB::statement(sprintf('ALTER TABLE `%s` COMMENT = %s', $table, DB::getPdo()->quote($comment)));
@@ -74,6 +79,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         foreach (array_keys($this->comments) as $table) {
             if (Schema::hasTable($table)) {
                 DB::statement(sprintf("ALTER TABLE `%s` COMMENT = ''", $table));
