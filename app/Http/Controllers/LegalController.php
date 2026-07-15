@@ -11,7 +11,7 @@ use Illuminate\View\View;
 class LegalController extends Controller
 {
     /** 약관/정책 최종 개정일(표시용). 내용 바꿀 때 함께 갱신. */
-    private const EFFECTIVE_DATE = '2026-07-07';
+    private const EFFECTIVE_DATE = '2026-07-15';
 
     public function terms(): View
     {

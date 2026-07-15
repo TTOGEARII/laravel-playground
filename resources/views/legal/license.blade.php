@@ -31,11 +31,16 @@
             <li>수집 출처: 도키도키굿즈, 애니메이트코리아, 따빼몰, 굿스마일코리아, 코믹스아트, 피규어프레소</li>
         </ul>
 
-        <h2>리딤코드 정보 출처 (SubcultureGameInfo)</h2>
+        <h2>서브컬쳐 게임 정보 출처 (SubcultureGameInfo)</h2>
+        <p>
+            정보검색·리딤코드·AI 에이전트에 표시되는 데이터는 아래 공개 출처에서 정보 제공 목적으로 자동 수집·인용하며,
+            각 데이터의 저작권은 게임사 및 원 사이트에 있습니다. 영리적으로 이용하지 않습니다.
+        </p>
         <ul>
-            <li>게임사 공식 채널 및 비공식 집계 API(호요버스 코드 집계 등)</li>
-            <li>코드 정리 커뮤니티/사이트, 디씨인사이드·아카라이브 등 커뮤니티(교차검증 용도)</li>
-            <li>네이버 게임 라운지(게임사 공식 게시판)</li>
+            <li><strong>리딤코드</strong>: 게임사 공식 채널·비공식 집계 API, 코드 정리 사이트, 디씨인사이드·아카라이브 등 커뮤니티(교차검증), 네이버 게임 라운지</li>
+            <li><strong>캐릭터·도감·일정</strong>: SchaleDB, 몰루로그(mollulog.net), Project Yatta, Enka.Network, HoYoLAB 위키(호요랩 공식 위키)</li>
+            <li><strong>캐릭터 빌드(티어·무기·세트·재료)</strong>: wuthering.gg(명조), genshin-builds.com·zzz.gg(호요버스)</li>
+            <li><strong>레이드 편성·공략·조합</strong>: 몰루로그·레츠도로·baql.net(랭킹), 트릭컬 레코드/팀 매니저, 디씨·아카 공략글, YouTube 검색(조합 영상)</li>
         </ul>
 
         <h2>오픈소스 라이브러리 (Open Source)</h2>
@@ -46,6 +51,8 @@
             <li>Tailwind CSS (MIT) — 스타일링</li>
             <li>Phaser (MIT) — 미니게임 엔진</li>
             <li>Axios (MIT) — HTTP 클라이언트</li>
+            <li>Prism PHP (MIT) — AI 에이전트 LLM 연동</li>
+            <li>markdown-it (MIT) — AI 채팅 답변 렌더링</li>
             <li>Playwright (Apache-2.0) — 레이드 정보 수집(크롤링) 사이드카</li>
             <li>Google Fonts — Figtree, Noto Sans KR (Open Font License)</li>
         </ul>

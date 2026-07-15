@@ -8,6 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// 접속 로그 파기 — 개인정보처리방침 명시대로 1년 지난 로그 삭제(AccessLog prunable). 매일 04:30.
+Schedule::command('model:prune', ['--model' => [\App\Models\AccessLog::class]])
+    ->dailyAt('04:30')
+    ->timezone(config('app.timezone', 'Asia/Seoul'));
+
 /*
 |--------------------------------------------------------------------------
 | 오타쿠샵 크롤링 (3·4번 증분만 매일 실행)
