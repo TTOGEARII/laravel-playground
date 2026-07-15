@@ -24,8 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // 전역 보안 응답 헤더(클릭재킹·MIME 스니핑·리퍼러 유출 방지)를 web 응답에 부착.
+        // 외부 유저 접속 로그(페이지 조회만, terminate 로 응답 후 기록).
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\LogAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
