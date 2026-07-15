@@ -45,6 +45,22 @@
             <i v-if="c.traits?.tier" class="sga-member-tier">{{ c.traits.tier }}</i>
           </span>
         </div>
+        <!-- 특정 캐릭터를 물었을 때만(소수) 실제 추천 조합 영상을 노출 — 본문 링크 대신 정확한 DB 링크 제공 -->
+        <template v-if="card.data.items.length <= 3">
+          <div v-for="c in card.data.items" :key="'comp-' + c.name" class="sga-char-comps">
+            <template v-if="c.traits?.comps?.length">
+              <div class="sga-card-subhead">🎥 {{ c.name }} 추천 조합 영상</div>
+              <ul class="sga-video-list">
+                <li v-for="(v, i) in c.traits.comps.slice(0, 4)" :key="i">
+                  <a :href="v.url" target="_blank" rel="noopener" class="sga-video">
+                    <img v-if="v.thumbnail" :src="v.thumbnail" :alt="v.title" loading="lazy" />
+                    <span class="sga-video-title">{{ v.title }}</span>
+                  </a>
+                </li>
+              </ul>
+            </template>
+          </div>
+        </template>
       </template>
 
       <!-- 이벤트 챌린지 -->

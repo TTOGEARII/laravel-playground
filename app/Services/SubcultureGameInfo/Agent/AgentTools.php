@@ -313,7 +313,13 @@ class AgentTools
             }
         }
         if (! empty($t['comps']) && is_array($t['comps'])) {
-            $parts[] = '추천 조합 영상 '.count($t['comps']).'개(카드 참고)';
+            // 영상 제목을 그대로 넘겨야(개수만 X) 모델이 실제 조합을 근거로 답하고 임의로 지어내지 않는다.
+            $titles = collect($t['comps'])
+                ->map(fn ($v) => is_array($v) ? ($v['title'] ?? '') : (string) $v)
+                ->filter()->take(4)->implode(' / ');
+            $parts[] = $titles !== ''
+                ? "추천 조합 영상(제목): {$titles} — 이 영상들은 카드로 표시되니 본문엔 제목으로만 언급하고 URL 을 새로 만들지 말 것"
+                : '추천 조합 영상 '.count($t['comps']).'개(카드 참고)';
         }
 
         return implode(' · ', $parts);
