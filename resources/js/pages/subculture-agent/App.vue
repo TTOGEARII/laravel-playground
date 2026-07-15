@@ -85,15 +85,18 @@
       </div>
     </div>
 
-      <!-- 입력 바 -->
+      <!-- 입력 바 (Enter=전송 / Shift+Enter=줄바꿈) -->
       <form class="sga-inputbar" @submit.prevent="send()">
-        <input
+        <textarea
+          ref="inputEl"
           v-model="input"
-          type="text"
           class="sga-input"
-          placeholder="예) 블루아카이브 리딤코드 알려줘"
+          rows="1"
+          placeholder="예) 블루아카이브 리딤코드 알려줘 (Shift+Enter 줄바꿈)"
           maxlength="2000"
           :disabled="streaming"
+          @keydown.enter.exact.prevent="send()"
+          @input="autoGrow"
         />
         <button type="submit" class="sga-send" :disabled="streaming || !input.trim()">
           {{ streaming ? '…' : '전송' }}
@@ -121,6 +124,15 @@ const PERSONA_KEY = 'sga:persona';
 
 const messages = ref([]); // {role, content, cards, tools, streaming}
 const input = ref('');
+const inputEl = ref(null);
+
+// textarea 높이 자동 확장(최대 140px, 넘으면 스크롤)
+function autoGrow() {
+  const el = inputEl.value;
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+}
 const streaming = ref(false);
 const scroller = ref(null);
 const personaOptions = ref([]);
@@ -182,6 +194,7 @@ async function send(preset) {
   const text = (preset ?? input.value).trim();
   if (!text || streaming.value) return;
   input.value = '';
+  nextTick(autoGrow); // 전송 후 textarea 높이 원상복귀
   streaming.value = true;
 
   messages.value.push({ role: 'user', content: text });

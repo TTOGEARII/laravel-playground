@@ -192,15 +192,22 @@
 }
 .sga-input {
     flex: 1;
-    padding: 13px 20px;
-    border-radius: var(--ds-round-pill);
+    min-width: 0;
+    padding: 12px 20px;
+    border-radius: var(--ds-round-lg); /* textarea 다행 대응(원형 pill 대신 부드러운 라운드) */
     border: 1px solid var(--border-color);
     background: var(--bg-card);
     color: var(--text-primary);
     font-size: var(--ds-fs-md);
+    font-family: inherit;
+    line-height: 1.5;
     box-shadow: var(--ds-shadow-medium);
     outline: none;
+    resize: none;
+    overflow-y: auto;
+    max-height: 140px;
 }
+.sga-inputbar { align-items: flex-end; } /* 여러 줄일 때 전송 버튼을 하단 정렬 */
 .sga-input:focus { border-color: rgba(243, 114, 127, 0.7); }
 .sga-send {
     flex: none;

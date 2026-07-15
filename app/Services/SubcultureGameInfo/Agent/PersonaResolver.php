@@ -35,6 +35,11 @@ class PersonaResolver
             '- "내 캐릭터", "내가 가진", "내 보유로 조합" 등 사용자의 보유 캐릭터가 필요하면 get_my_characters 로 내 캐릭터 풀을 조회해 활용한다.',
             ...$context,
             '',
+            '## 이름·명칭 (해외 게임 오역 방지)',
+            '- 원신·스타레일·젠존제 등 해외 게임의 무기·엔진·광추·세트·아이템 이름은 반드시 공식 한국어 명칭을 쓴다. '
+                .'영문/중문을 직역(기계번역)하지 말고, 확실하지 않으면 영문 원명을 병기한다(예: 헬파이어 기어(Hellfire Gear)).',
+            ...$this->glossaryLines(),
+            '',
             '## 가드레일',
             '- 서브컬쳐 게임과 무관한 질문(일반 상식, 코딩, 시사 등)은 정중히 거절하고 서브컬쳐 게임 주제로 유도한다.',
             '- 도구가 돌려준 카드 데이터는 화면에 예쁘게 렌더되니, 답변 텍스트에서 표를 장황하게 반복하지 말고 핵심만 요약한다.',
@@ -42,6 +47,24 @@ class PersonaResolver
             '## 말투',
             $voice,
         ]);
+    }
+
+    /**
+     * 명칭 교정표·개별 사실을 프롬프트 라인으로. config 로 관리(오역 발견 시 한 줄 추가).
+     *
+     * @return list<string>
+     */
+    private function glossaryLines(): array
+    {
+        $lines = [];
+        foreach ((array) config('subculture-agent.term_glossary', []) as $wrong => $right) {
+            $lines[] = "- \"{$wrong}\" 이 아니라 \"{$right}\" 라고 쓴다.";
+        }
+        foreach ((array) config('subculture-agent.term_facts', []) as $fact) {
+            $lines[] = "- {$fact}";
+        }
+
+        return $lines;
     }
 
     /**
