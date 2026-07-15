@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\MyWifeBot;
 
-use App\Models\ChatCharacter;
-use App\Models\ChatMessage;
-use App\Models\ChatSession;
+use App\Models\MyWifeBot\ChatCharacter;
+use App\Models\MyWifeBot\ChatMessage;
+use App\Models\MyWifeBot\ChatSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;

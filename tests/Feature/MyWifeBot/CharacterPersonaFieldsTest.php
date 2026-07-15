@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\MyWifeBot;
 
-use App\Models\ChatCharacter;
+use App\Models\MyWifeBot\ChatCharacter;
 use App\Models\User;
 use App\Services\Gemini\PromptBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;

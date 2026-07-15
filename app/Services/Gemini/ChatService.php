@@ -4,9 +4,9 @@ namespace App\Services\Gemini;
 
 use App\Enums\MyWifeBot\Genre;
 use App\Enums\MyWifeBot\Target;
-use App\Models\ChatCharacter;
-use App\Models\ChatMessage;
-use App\Models\ChatSession;
+use App\Models\MyWifeBot\ChatCharacter;
+use App\Models\MyWifeBot\ChatMessage;
+use App\Models\MyWifeBot\ChatSession;
 use Illuminate\Database\Eloquent\Collection;
 
 class ChatService

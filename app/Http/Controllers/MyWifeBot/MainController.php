@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\MyWifeBot;
 
 use App\Http\Controllers\Controller;
-use App\Models\ChatCharacter;
+use App\Models\MyWifeBot\ChatCharacter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;

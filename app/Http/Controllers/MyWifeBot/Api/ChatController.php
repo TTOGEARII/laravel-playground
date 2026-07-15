@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\MyWifeBot\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ChatCharacter;
-use App\Models\ChatSession;
+use App\Models\MyWifeBot\ChatCharacter;
+use App\Models\MyWifeBot\ChatSession;
 use App\Services\Gemini\ChatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

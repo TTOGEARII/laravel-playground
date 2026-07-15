@@ -4,7 +4,7 @@ namespace App\Http\Controllers\MyWifeBot;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MyWifeBot\CharacterRequest;
-use App\Models\ChatCharacter;
+use App\Models\MyWifeBot\ChatCharacter;
 use App\Services\Gemini\ChatService;
 use App\Services\MyWifeBot\CharacterService;
 use Illuminate\Http\JsonResponse;

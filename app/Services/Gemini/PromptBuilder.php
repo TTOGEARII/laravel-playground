@@ -2,7 +2,7 @@
 
 namespace App\Services\Gemini;
 
-use App\Models\ChatCharacter;
+use App\Models\MyWifeBot\ChatCharacter;
 use Illuminate\Support\Str;
 
 class PromptBuilder

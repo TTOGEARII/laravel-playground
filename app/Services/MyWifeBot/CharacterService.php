@@ -4,7 +4,7 @@ namespace App\Services\MyWifeBot;
 
 use App\Enums\MyWifeBot\Genre;
 use App\Enums\MyWifeBot\Target;
-use App\Models\ChatCharacter;
+use App\Models\MyWifeBot\ChatCharacter;
 use App\Services\Gemini\ChatService;
 use App\Services\HelperService;
 use Illuminate\Http\UploadedFile;

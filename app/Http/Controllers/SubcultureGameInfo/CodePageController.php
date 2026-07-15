@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
-class MainController extends Controller
+class CodePageController extends Controller
 {
     public function __construct(private RedeemCodeService $codeService) {}
 

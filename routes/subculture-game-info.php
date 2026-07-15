@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\SubcultureGameInfo\CodePageController;
 use App\Http\Controllers\SubcultureGameInfo\HubController;
 use App\Http\Controllers\SubcultureGameInfo\InfoPageController;
-use App\Http\Controllers\SubcultureGameInfo\MainController;
 use App\Http\Controllers\SubcultureGameInfo\RedemptionController;
 use App\Http\Controllers\SubcultureGameInfo\UserCharacterController;
 use App\Http\Controllers\SubcultureGameInfo\UserSubstituteController;
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HubController::class, 'index'])->name('subculture-game-info.index');
 
 // 리딤코드 (기존 index 를 /codes 로 이동)
-Route::get('codes', [MainController::class, 'index'])->name('subculture-game-info.codes');
+Route::get('codes', [CodePageController::class, 'index'])->name('subculture-game-info.codes');
 
 // 정보검색 — mollulog 스타일 대시보드(진행중·모집중·레이드·공략 + 미래시·학정보 + AI 물어보기)
 Route::get('info', [InfoPageController::class, 'index'])->name('subculture-game-info.info');

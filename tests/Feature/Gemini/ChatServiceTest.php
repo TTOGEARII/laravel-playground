@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Gemini;
 
-use App\Models\ChatCharacter;
+use App\Models\MyWifeBot\ChatCharacter;
 use App\Services\Gemini\ChatService;
 use App\Services\Gemini\GeminiService;
 use Illuminate\Http\Client\ConnectionException;
