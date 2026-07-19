@@ -59,7 +59,7 @@ return [
             'httpx',
             'aiohttp',
 
-            // 헤드리스/자동 브라우저·스캐너
+            // 헤드리스/자동 브라우저·스캐너·공격 도구
             'headlesschrome',
             'phantomjs',
             'scrapy',
@@ -68,6 +68,19 @@ return [
             'zgrab',
             'nikto',
             'nmap',
+            'sqlmap',
+            'nuclei',
+            'wpscan',
+            'dirbuster',
+            'gobuster',
+            'feroxbuster',
+            'ffuf',
+            'wfuzz',
+            'censys',
+            'internetmeasurement',
+            'heritrix',      // 아카이브 크롤러(전 페이지 고속 훑음) — 봇 키워드에 안 걸려 누락됐던 것
+            'ia_archiver',
+            'archive.org_bot',
 
             // AI 데이터 수집 크롤러
             'gptbot',
@@ -106,5 +119,35 @@ return [
             'uptimerobot',
             'lighthouse',
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | 공격 시그니처 (BlockExternalBots 미들웨어)
+    |--------------------------------------------------------------------------
+    | 요청 URL(경로+쿼리)을 소문자로 만들고 URL 디코드한 뒤, 아래 조각이 하나라도
+    | 들어 있으면 UA·IP 무관 403 으로 막는다. LFI/경로탐색·XSS·SQLi·알려진 취약경로 스캔 등
+    | "정상 브라우저가 절대 만들지 않는" 고신뢰 패턴만 넣어 오탐을 줄인다.
+    | (원본 URI 와 디코드 URI 양쪽을 검사 — 인코딩 회피 방지)
+    */
+    'attack_signatures' => [
+        // LFI · 경로 탐색 · 래퍼 (64.89.161.83 유형: .env·wp-config 탈취 시도)
+        'php://', 'file://', 'data://', 'expect://', 'phar://',
+        '../', '..\\', '..%2f', '..%5c',
+        '/etc/passwd', '/etc/shadow', 'proc/self/environ',
+        'wp-config', '/.env', '.env%', '.aws/credentials', '.ssh/id_rsa', '/.git/',
+        'convert.base64-encode', 'base64_decode',
+
+        // XSS (앵글브래킷 breakout·스크립트·이벤트 핸들러)
+        '"><', "'><", '<script', '</script', 'javascript:', 'onerror=', 'onload=',
+
+        // SQL 인젝션
+        'union select', 'union all select', "' or '1'='1", "' or 1=1", ' or 1=1--',
+        'sleep(', 'benchmark(', 'waitfor delay', 'pg_sleep(',
+
+        // 알려진 취약 경로·RCE 스캔
+        '${jndi:', 'jndi:ldap', 'xmlrpc.php', 'wp-login.php', '/wp-admin', '/phpmyadmin',
+        '/vendor/phpunit', 'eval-stdin.php', 'boaform', '/hnap1', 'think\\app', '/solr/',
+        '/actuator/', '/cgi-bin/',
     ],
 ];

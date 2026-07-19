@@ -2,22 +2,26 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\BlockedIp;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\IpUtils;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * 외부(공인 IP)에서 오는 봇 요청을 403 으로 막는다.
+ * 악성/자동 요청을 403 으로 막는다. 세 겹으로 판정한다(먼저 걸리는 순서):
  *
- * - 내부(루프백·사설 대역) IP 는 항상 통과 → 배포 헬스체크(도커 게이트웨이 172.x)·
- *   모니터링·서버 내부 요청을 절대 막지 않는다("외부에서 들어오는 봇만" 차단).
- * - 정식 검색엔진·링크 미리보기(config security.bots.allow)는 통과 → SEO·공유 카드 유지.
- * - 스크래퍼·자동 HTTP 클라이언트·AI 크롤러(config security.bots.block)는 차단.
- * - 정상 브라우저는 봇 UA 가 아니라 영향 없음.
+ *  1) 공격 시그니처 — URL(경로+쿼리)에 LFI·경로탐색·XSS·SQLi·취약경로 스캔 등
+ *     "정상 브라우저가 절대 만들지 않는" 패턴이 있으면 UA·IP 무관 차단.
+ *     UA 를 브라우저로 위장한 스캐너(예: .env·wp-config 탈취 시도)도 여기서 잡힌다.
+ *  2) 차단 IP 목록 — blocked_ips 테이블(캐시)의 IP 는 UA 무관 차단.
+ *     접속 로그 분석으로 찾은 공격 IP 를 ip:block 커맨드로 등록한다.
+ *  3) 봇 UA — 내부(루프백·사설 대역) IP 는 항상 통과(배포 헬스체크·모니터링 보호),
+ *     정식 검색엔진·링크 미리보기(config allow)는 통과, 스크래퍼·크롤러(config block)는 차단.
  *
- * 판정은 UA 문자열만 본다(역DNS 검증 없음) — 개인 사이트 규모에서 캐주얼 스크래퍼를
- * 걸러내는 게 목적이고, UA 위장까지 막는 건 과하다. 정책은 config 단일 출처.
+ * 정책·시그니처·봇 목록은 config/security.php 단일 출처.
  */
 class BlockExternalBots
 {
@@ -36,7 +40,19 @@ class BlockExternalBots
     {
         $ip = $request->ip();
 
-        // 내부 요청은 무조건 통과(헬스체크·도커 내부 트래픽 보호).
+        // 1) 공격 시그니처 — UA·IP 무관 즉시 차단(정상 요청엔 없는 패턴).
+        if ($this->hasAttackSignature($request)) {
+            Log::warning('[Security] 공격 시그니처 차단', ['ip' => $ip, 'uri' => $request->getRequestUri()]);
+
+            return $this->deny();
+        }
+
+        // 2) 차단 IP 목록(DB·캐시) — UA 무관 차단.
+        if ($ip !== null && $this->isBlockedIp($ip)) {
+            return $this->deny();
+        }
+
+        // 3) 내부 요청은 무조건 통과(헬스체크·도커 내부 트래픽 보호).
         if ($ip === null || IpUtils::checkIp($ip, self::INTERNAL_RANGES)) {
             return $next($request);
         }
@@ -63,6 +79,53 @@ class BlockExternalBots
         }
 
         return $next($request);
+    }
+
+    /** URL(경로+쿼리)에 공격 시그니처가 있는지 — 원본·디코드(이중 포함) 문자열을 함께 검사. */
+    private function hasAttackSignature(Request $request): bool
+    {
+        $signatures = (array) config('security.attack_signatures', []);
+        if ($signatures === []) {
+            return false;
+        }
+
+        $uri = $request->getRequestUri();
+        // 인코딩 회피 방지 — 원본 + 1회/2회 디코드본을 모두 소문자로 검사한다.
+        $once = rawurldecode($uri);
+        $haystacks = [
+            mb_strtolower($uri),
+            mb_strtolower($once),
+            mb_strtolower(rawurldecode($once)),
+        ];
+
+        foreach ($signatures as $sig) {
+            $needle = mb_strtolower((string) $sig);
+            foreach ($haystacks as $h) {
+                if (str_contains($h, $needle)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** 차단 IP 목록(blocked_ips)에 있는지 — 매 요청 DB 조회를 피해 짧게 캐시. */
+    private function isBlockedIp(string $ip): bool
+    {
+        try {
+            $blocked = Cache::remember(
+                BlockedIp::CACHE_KEY,
+                now()->addMinutes(5),
+                fn () => BlockedIp::pluck('ip')->all()
+            );
+
+            return in_array($ip, $blocked, true);
+        } catch (\Throwable $e) {
+            // 블록리스트 조회 실패(테이블 없음·DB 순단 등)로 사이트 전체를 죽이지 않는다.
+            // 시그니처 차단은 DB 와 무관하게 계속 동작하므로 여기선 통과(가용성 우선).
+            return false;
+        }
     }
 
     private function deny(): Response
