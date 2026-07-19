@@ -134,10 +134,11 @@ class ChatApiTest extends TestCase
         $character = $this->makeCharacter();
         $session = ChatSession::create(['chat_character_id' => $character->id]);
 
-        $response = $this->postJson('/api/my-wife-bot/chat/send', [
-            'session_id' => (string) $session->id,
-            'content' => '안녕하세요',
-        ]);
+        $response = $this->withSession(['mwb.guest_sessions' => [$session->id]])
+            ->postJson('/api/my-wife-bot/chat/send', [
+                'session_id' => (string) $session->id,
+                'content' => '안녕하세요',
+            ]);
 
         $response->assertOk()
             ->assertJsonPath('data.message.text', '반가워요')
@@ -164,7 +165,8 @@ class ChatApiTest extends TestCase
         $character = $this->makeCharacter();
         $session = ChatSession::create(['chat_character_id' => $character->id]);
 
-        $this->postJson('/api/my-wife-bot/chat/suggest', ['session_id' => (string) $session->id])
+        $this->withSession(['mwb.guest_sessions' => [$session->id]])
+            ->postJson('/api/my-wife-bot/chat/suggest', ['session_id' => (string) $session->id])
             ->assertOk()
             ->assertJsonCount(3, 'data.suggestions')
             ->assertJsonPath('data.suggestions.0', '오늘 뭐 했어?');
@@ -184,7 +186,8 @@ class ChatApiTest extends TestCase
         $character = $this->makeCharacter();
         $session = ChatSession::create(['chat_character_id' => $character->id]);
 
-        $this->postJson('/api/my-wife-bot/chat/narrate', ['session_id' => (string) $session->id])
+        $this->withSession(['mwb.guest_sessions' => [$session->id]])
+            ->postJson('/api/my-wife-bot/chat/narrate', ['session_id' => (string) $session->id])
             ->assertOk()
             ->assertJsonPath('data.narration', '창밖으로 노을이 진다');
 
@@ -225,6 +228,26 @@ class ChatApiTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_guest_cannot_access_another_guests_session(): void
+    {
+        // IDOR 방지: 게스트 세션은 만든 브라우저에만 묶인다. 다른 게스트가 순차 id 를
+        // 열거해 남의 게스트 대화에 send/suggest 하면 403(내 세션 목록에 없음).
+        $character = $this->makeCharacter();
+        $victim = ChatSession::create(['chat_character_id' => $character->id]); // user_id=null 게스트 세션
+
+        // 이 세션을 만들지 않은(소유 목록에 없는) 다른 게스트의 요청
+        $this->postJson('/api/my-wife-bot/chat/send', [
+            'session_id' => (string) $victim->id,
+            'content' => '남의 게스트 대화 훔쳐보기',
+        ])->assertStatus(403);
+
+        $this->postJson('/api/my-wife-bot/chat/suggest', ['session_id' => (string) $victim->id])
+            ->assertStatus(403);
+
+        // 권한 검사가 처리 이전에 막아 유저 메시지가 저장되지 않아야 한다.
+        $this->assertDatabaseMissing('chat_messages', ['chat_session_id' => $victim->id, 'role' => 'user']);
+    }
+
     public function test_send_degrades_gracefully_on_connection_failure(): void
     {
         config(['services.gemini.api_key' => 'test-key']);
@@ -234,10 +257,11 @@ class ChatApiTest extends TestCase
         $session = ChatSession::create(['chat_character_id' => $character->id]);
 
         // 연결 실패에도 500이 아니라 폴백 응답으로 200이 와야 한다 (Fix 1)
-        $this->postJson('/api/my-wife-bot/chat/send', [
-            'session_id' => (string) $session->id,
-            'content' => '안녕',
-        ])->assertOk();
+        $this->withSession(['mwb.guest_sessions' => [$session->id]])
+            ->postJson('/api/my-wife-bot/chat/send', [
+                'session_id' => (string) $session->id,
+                'content' => '안녕',
+            ])->assertOk();
 
         $this->assertDatabaseHas('chat_messages', ['role' => 'character']);
     }

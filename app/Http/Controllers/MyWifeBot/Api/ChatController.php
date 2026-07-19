@@ -44,6 +44,12 @@ class ChatController extends Controller
         $resumed = $existing !== null;
         $session = $existing ?? $this->chatService->initialize($character, $userId);
 
+        // 게스트 세션은 만든 브라우저(라라벨 세션)에 묶어 둔다 — 순차 id 열거로 남의 대화에
+        // 접근하는 IDOR 방지(로그인 세션은 user_id 로 소유 검증).
+        if ($userId === null) {
+            $this->rememberGuestSession($session->id);
+        }
+
         $initialMessages = $session->messages()->get()->map(fn ($m) => [
             'role' => $m->role,
             'text' => $m->content,
@@ -162,11 +168,33 @@ class ChatController extends Controller
 
     /**
      * 요청자가 이 세션의 소유자인지 확인한다(IDOR 방지).
-     * 로그인 세션은 user_id 가 일치해야 하고, 게스트 세션(user_id=null)은 게스트 요청자만 접근한다.
-     * ((int) null === (int) null → 0 === 0 이므로 게스트끼리는 통과, 로그인/게스트 교차는 차단)
+     * - 로그인 세션(user_id≠null): 로그인 상태 + user_id 일치.
+     * - 게스트 세션(user_id=null): 비로그인 상태 + 이 세션을 만든 브라우저(라라벨 세션에 기록)여야 함.
+     *   순차 정수 session_id 를 열거해 남의 게스트 대화에 접근하는 것을 막는다.
      */
     private function ownsSession(ChatSession $session): bool
     {
-        return (int) $session->user_id === (int) auth()->id();
+        if ($session->user_id !== null) {
+            return auth()->check() && (int) $session->user_id === (int) auth()->id();
+        }
+
+        return ! auth()->check()
+            && in_array($session->id, $this->guestSessionIds(), true);
+    }
+
+    /** 이 브라우저(라라벨 세션)가 만든 게스트 채팅 세션 id 목록. */
+    private function guestSessionIds(): array
+    {
+        return array_map('intval', (array) session()->get('mwb.guest_sessions', []));
+    }
+
+    /** 게스트 세션 id 를 브라우저 세션에 기록(최근 50개만 유지). */
+    private function rememberGuestSession(int $id): void
+    {
+        $ids = $this->guestSessionIds();
+        if (! in_array($id, $ids, true)) {
+            $ids[] = $id;
+            session()->put('mwb.guest_sessions', array_slice($ids, -50));
+        }
     }
 }

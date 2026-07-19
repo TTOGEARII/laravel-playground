@@ -90,13 +90,15 @@ class BlockExternalBots
         }
 
         $uri = $request->getRequestUri();
-        // 인코딩 회피 방지 — 원본 + 1회/2회 디코드본을 모두 소문자로 검사한다.
-        $once = rawurldecode($uri);
-        $haystacks = [
-            mb_strtolower($uri),
-            mb_strtolower($once),
-            mb_strtolower(rawurldecode($once)),
-        ];
+        // 인코딩 회피 방지 — 원본 + 각종 디코드본(1·2회)을 모두 소문자로 검사한다.
+        // urldecode 는 '+' 를 공백으로도 바꾼다(폼 인코딩 SQLi "union+select" 대응),
+        // rawurldecode 는 '+' 를 보존한다 — 둘 다 검사해 회피를 막는다.
+        $u1 = urldecode($uri);
+        $r1 = rawurldecode($uri);
+        $haystacks = array_map(
+            fn ($s) => mb_strtolower($s),
+            [$uri, $u1, urldecode($u1), $r1, rawurldecode($r1)],
+        );
 
         foreach ($signatures as $sig) {
             $needle = mb_strtolower((string) $sig);
@@ -121,7 +123,7 @@ class BlockExternalBots
             );
 
             return in_array($ip, $blocked, true);
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             // 블록리스트 조회 실패(테이블 없음·DB 순단 등)로 사이트 전체를 죽이지 않는다.
             // 시그니처 차단은 DB 와 무관하게 계속 동작하므로 여기선 통과(가용성 우선).
             return false;
