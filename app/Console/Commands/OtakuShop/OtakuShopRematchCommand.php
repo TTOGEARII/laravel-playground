@@ -36,6 +36,10 @@ class OtakuShopRematchCommand extends Command
             return $this->cleanupExcluded($sync, $dryRun);
         }
 
+        // config 에 새로 추가된 IP(작품)를 otaku_ip 에 먼저 등록해야 재분류에서 ip_id 가 붙는다.
+        // (rematch 는 크롤과 달리 syncIps 를 안 거쳐, 새 IP 별칭이 반영되지 않던 것을 보강)
+        $sync->syncIps();
+
         $this->info('1. 재분류(고유값·시그니처·IP·발매일)...');
         $ipIdByCode = OtakuIp::pluck('ok_ip_id', 'ok_ip_code')->all();
         $this->reclassify($normalizer, $ipIdByCode, $force);
