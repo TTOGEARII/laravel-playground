@@ -416,10 +416,11 @@ class OtakuShopRematchCommand extends Command
             ->whereNotNull('ok_product_match_sig')
             ->where('ok_product_match_sig', '!=', '')
             ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_match_sig', 'ok_product_title'])
-            // 세트 식별자("세트 D" / "세트 2.0 & 2.1")는 1글자·숫자라 시그니처에서 탈락한다 —
-            // 식별자가 다르면 다른 구성이므로 식별자까지 그룹 키에 포함해 분리한다.
+            // 세트 식별자("세트 D" / "세트 2.0 & 2.1")·변별 번호(아크릴스탠드 "03"/"04", "5탄" 등)는
+            // 시그니처에서 탈락(1글자·단독 숫자)한다 — 다르면 다른 구성/회차이므로 그룹 키에 포함해 분리한다.
             ->groupBy(fn (OtakuProduct $p) => ($p->ok_product_ip_id ?? 'x').'|'.$p->ok_product_match_sig
-                .'|'.self::setVariantOf((string) $p->ok_product_title))
+                .'|'.self::setVariantOf((string) $p->ok_product_title)
+                .'|'.self::numberVariantOf((string) $p->ok_product_title))
             ->each(function ($products) use (&$groups) {
                 if ($products->count() > 1) {
                     $groups[] = $products->pluck('ok_product_id')->map(fn ($id) => (int) $id)->all();
@@ -437,6 +438,23 @@ class OtakuShopRematchCommand extends Command
         }
 
         return '';
+    }
+
+    /**
+     * 제목에서 변별 번호 집합(정렬)을 뽑는다 — 시그니처에서 빠지는 단독 숫자가 상품을 가르는 경우 대비.
+     * (예: 아크릴스탠드 "03" vs "04", "5탄" — 다른 회차/장면인데 시그니처가 같아지는 것을 막는다.)
+     * 발매정보 말머리(【】·[]·())와 스케일(1/7)은 상품 구분이 아니라 제거한 뒤 남는 숫자만 본다.
+     */
+    private static function numberVariantOf(string $title): string
+    {
+        $t = mb_strtolower($title);
+        $t = preg_replace(['/【.*?】/u', '/\[.*?\]/u', '/\(.*?\)/u'], ' ', $t) ?? $t;
+        $t = preg_replace('#\d+\s*/\s*\d+#', ' ', $t) ?? $t; // 스케일 1/7·1/4 제거
+        preg_match_all('/\b\d{1,4}\b/u', $t, $m);
+        $nums = array_values(array_unique($m[0] ?? []));
+        sort($nums, SORT_STRING);
+
+        return implode('.', $nums);
     }
 
     private function containmentGroups(): array
