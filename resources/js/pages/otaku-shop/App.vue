@@ -194,6 +194,9 @@
         </div>
       </div>
 
+      <!-- 페이지 이동 시 이 위치로 스크롤(하단 페이지네이션 눌러도 새 목록을 위에서부터 보게) -->
+      <div ref="resultsTopEl" class="results-top-anchor"></div>
+
       <div class="compare-summary-bar" v-if="products.length">
         <div class="compare-summary-info">
           <span class="summary-label">현재 상품</span>
@@ -318,7 +321,7 @@
         <button
           class="pagination-btn"
           :disabled="meta.current_page <= 1"
-          @click="fetchProducts(meta.current_page - 1)"
+          @click="goToPage(meta.current_page - 1)"
         >
           이전
         </button>
@@ -328,7 +331,7 @@
         <button
           class="pagination-btn"
           :disabled="meta.current_page >= meta.last_page"
-          @click="fetchProducts(meta.current_page + 1)"
+          @click="goToPage(meta.current_page + 1)"
         >
           다음
         </button>
@@ -635,6 +638,22 @@ async function fetchProducts(page = 1) {
   } finally {
     loading.value = false;
   }
+}
+
+// 결과 목록 최상단 앵커 — 페이지 이동 시 여기로 스크롤한다.
+const resultsTopEl = ref(null);
+
+function scrollToResultsTop() {
+  const el = resultsTopEl.value;
+  if (!el) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 12; // 살짝 여백
+  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+}
+
+/** 페이지 이동: 결과 상단으로 스크롤 후 해당 페이지를 불러온다(하단에 머무르는 불편 해소). */
+function goToPage(page) {
+  scrollToResultsTop();
+  fetchProducts(page);
 }
 
 function resetFilters() {
