@@ -826,7 +826,11 @@ class CrawlSyncService
                 'hash' => (string) $p->ok_product_image_hash,
                 'tokens' => $this->normalizer->primaryTokens((string) $p->ok_product_title),
             ])
-            ->filter(fn ($it) => strlen($it['hash']) === 16)  // 실패 마커('')·형식 오류 제외
+            // 실패 마커('')·형식 오류 제외 + 평면 굿즈 제외(아크릴 스탠드 등). 아크릴 스탠드류는
+            // 제목에 '피규어'가 있어 피규어로 오분류되기도 하는데, 같은 라인은 캐릭터가 달라도 이미지가
+            // 거의 같아 과병합된다(특히 1글자 캐릭터명은 토큰이 없어 캐릭터 가드를 못 세운다).
+            // 실제 3D 피규어(POP UP PARADE·스케일)는 accessory 키워드가 없어 영향받지 않는다.
+            ->filter(fn ($it) => strlen($it['hash']) === 16 && ! self::looksLikeAccessory($it['title']))
             ->values()
             ->all();
 

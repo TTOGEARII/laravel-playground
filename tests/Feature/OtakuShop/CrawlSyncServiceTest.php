@@ -610,6 +610,22 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame([], $service->imageMergeGroups(5));
     }
 
+    public function test_image_hash_does_not_merge_flat_goods_mislabeled_as_figure(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 실제 회귀: 제목에 '피규어'가 있어 피규어로 오분류된 '아크릴 스탠드'(평면 굿즈). 같은 라인이라
+        // 캐릭터가 달라도 이미지가 거의 같고, 1글자 캐릭터명(빔)은 토큰이 없어 캐릭터 가드가 못 서
+        // union-find 로 여러 캐릭터가 한 그룹으로 전이 병합되던 사고. looksLikeAccessory(아크릴/스탠드)로
+        // 이미지 병합에서 통째 제외돼야 한다(진짜 3D 피규어는 accessory 키워드가 없어 영향 없음).
+        $this->figureWithHash('체인소 맨 극장판 레제편 팝업 스토어 아크릴 스탠드 피규어 - 파워', 'dddddddddddddddd', $ipId, $cateId);
+        $this->figureWithHash('체인소 맨 극장판 레제편 팝업 스토어 아크릴 스탠드 피규어 - 빔', 'dddddddddddddddd', $ipId, $cateId);
+        $this->figureWithHash('체인소 맨 극장판 레제편 팝업 스토어 아크릴 스탠드 피규어 - 덴지', 'dddddddddddddddd', $ipId, $cateId);
+
+        $this->assertSame([], $service->imageMergeGroups(5));
+    }
+
     public function test_image_merge_is_blocked_by_scale_accessory_variant_and_character_guards(): void
     {
         $service = $this->app->make(CrawlSyncService::class);
