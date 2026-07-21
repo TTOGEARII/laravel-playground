@@ -411,7 +411,11 @@ class CrawlSyncService
                 continue;
             }
             $ct = $cand['tokens'];
-            if (count($ct) < self::FUZZY_MIN_SHARED || ! self::tokensSimilar($tokens, $ct)) {
+            // 버킷은 이미 같은 IP(ok_product_ip_id)로 필터돼 모든 후보가 IP를 공통으로 갖는다.
+            // IP명은 변별 시그니처에서 제외되므로(별도 축, "IP 유무로 안 갈림" 이점), 그 "보장된 공통 1개"를
+            // 여기서 되살려 변별 토큰은 FUZZY_MIN_SHARED-1 개만 겹쳐도 동일 상품으로 본다.
+            // (이게 없으면 '각성하라' vs '각성입니다' 같은 어미차이가 공통을 3→2로 떨어뜨려 동일 상품이 미병합.)
+            if (count($ct) < self::FUZZY_MIN_SHARED || ! self::tokensSimilar($tokens, $ct, self::FUZZY_MIN_SHARED - 1)) {
                 continue;
             }
             // 가장 많이 겹치는(공통 토큰 최다) 후보를 동일 상품으로 선택

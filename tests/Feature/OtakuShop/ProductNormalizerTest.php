@@ -165,11 +165,15 @@ class ProductNormalizerTest extends TestCase
     {
         $n = $this->normalizer();
 
-        $tokens = $n->signatureTokens('[예약] 블루 아카이브 아스나 교복 메모리얼 로비 피규어');
+        $title = '[예약] 블루 아카이브 아스나 교복 메모리얼 로비 피규어';
+        $tokens = $n->signatureTokens($title);
         // 노이즈(예약/피규어/단독숫자)는 빠지고 변별 토큰만, 정렬되어 반환.
         $this->assertContains('아스나', $tokens);
-        $this->assertContains('블루아카이브', $tokens);
         $this->assertNotContains('피규어', $tokens);
+        // IP명(블루아카이브)은 시그니처 토큰에서 제외 — 매칭은 별도 축(extractIpCode/ok_product_ip_id)이 담당해
+        // 제목에 IP명이 있냐 없냐로 시그니처가 갈라지지 않게 한다.
+        $this->assertNotContains('블루아카이브', $tokens);
+        $this->assertSame('블루아카이브', $n->extractIpCode($title));
         $sorted = $tokens;
         sort($sorted, SORT_STRING);
         $this->assertSame($sorted, $tokens);
