@@ -12,16 +12,16 @@
 .tb-head h1 { margin: 0; font-size: var(--ds-fs-2xl); font-weight: var(--ds-fw-bold); }
 .tb-head h1 small { font-size: var(--ds-fs-xs); color: var(--ds-primary); margin-left: 6px; letter-spacing: var(--ds-btn-tracking); }
 
-.tb-lead { color: var(--text-secondary); font-size: var(--ds-fs-sm); line-height: 1.6; margin-bottom: var(--ds-space-xl); }
+.tb-lead { color: var(--text-secondary); font-size: var(--ds-fs-sm); line-height: 1.6; margin-bottom: var(--ds-space-xl); text-align: center; }
 
-/* 로비 */
-.tb-lobby-actions { display: flex; flex-direction: column; gap: var(--ds-space-md); max-width: 380px; }
+/* 로비 — 컨테이너 가운데 정렬 */
+.tb-lobby-actions { display: flex; flex-direction: column; gap: var(--ds-space-md); max-width: 380px; margin: 0 auto; }
 .tb-join { display: flex; gap: var(--ds-space-sm); }
 .tb-quick { font-size: var(--ds-fs-md); padding: 14px 20px; }
 .tb-or { text-align: center; color: var(--text-secondary); font-size: var(--ds-fs-xs); }
 .tb-matching {
     display: flex; align-items: center; gap: var(--ds-space-md); max-width: 380px;
-    margin-bottom: var(--ds-space-lg); padding: var(--ds-space-md) var(--ds-space-lg);
+    margin: 0 auto var(--ds-space-lg); padding: var(--ds-space-md) var(--ds-space-lg);
     background: var(--ds-surface); border: 1px solid var(--ds-primary);
     border-radius: var(--ds-round-lg); font-size: var(--ds-fs-sm);
 }
@@ -50,7 +50,7 @@
     box-shadow: var(--ds-shadow-inset); outline: none;
 }
 .tb-input:focus { border-color: var(--ds-primary); }
-.tb-error { color: var(--ds-negative); font-size: var(--ds-fs-sm); margin-top: var(--ds-space-md); }
+.tb-error { color: var(--ds-negative); font-size: var(--ds-fs-sm); margin-top: var(--ds-space-md); text-align: center; }
 
 /* 방 바 */
 .tb-room-bar {

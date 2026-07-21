@@ -35,6 +35,7 @@
     font-size: var(--ds-fs-sm);
     line-height: 1.6;
     margin-bottom: var(--ds-space-xl);
+    text-align: center;
 }
 
 .tv-lobby-actions {
@@ -42,6 +43,7 @@
     flex-direction: column;
     gap: var(--ds-space-md);
     max-width: 360px;
+    margin: 0 auto; /* 로비 액션을 컨테이너 가운데로 */
 }
 .tv-join { display: flex; gap: var(--ds-space-sm); }
 .tv-quick { font-size: var(--ds-fs-md); padding: 14px 20px; }
@@ -52,7 +54,7 @@
     align-items: center;
     gap: var(--ds-space-md);
     max-width: 360px;
-    margin-bottom: var(--ds-space-lg);
+    margin: 0 auto var(--ds-space-lg);
     padding: var(--ds-space-md) var(--ds-space-lg);
     background: var(--ds-surface);
     border: 1px solid var(--ds-primary);
@@ -109,7 +111,7 @@
 }
 .tv-input:focus { border-color: var(--ds-primary); }
 
-.tv-error { color: var(--ds-negative); font-size: var(--ds-fs-sm); margin-top: var(--ds-space-md); }
+.tv-error { color: var(--ds-negative); font-size: var(--ds-fs-sm); margin-top: var(--ds-space-md); text-align: center; }
 
 /* 방 */
 .tv-room-bar {
