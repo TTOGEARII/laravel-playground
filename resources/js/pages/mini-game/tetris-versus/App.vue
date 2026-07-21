@@ -193,6 +193,7 @@ let lastTs = 0;
 let dropAcc = 0;
 let snapTimer = null;
 let repeatTimer = null; // 가상 키패드 좌우/소프트 반복 입력
+let playStart = 0;      // 이번 판 시작 시각(ms) — 시간 가속 계산용
 
 // 참가자 = 입장순(id) 앞 2명
 const sortedIds = computed(() => members.value.map((m) => m.id).sort((a, b) => a - b));
@@ -336,7 +337,7 @@ function beginGame() {
   myReady.value = false;
   oppReady.value = false;
   gamePhase.value = 'playing';
-  lastTs = 0; dropAcc = 0;
+  lastTs = 0; dropAcc = 0; playStart = Date.now();
   window.addEventListener('keydown', handleKey);
   snapTimer = setInterval(sendSnapshot, 150);
   rafId = requestAnimationFrame(loop);
@@ -364,7 +365,12 @@ function resetForRematch() {
 }
 
 // ── 게임 루프 · 입력 ────────────────────────────────
-function dropInterval() { return Math.max(120, 800 - myLines.value * 18); }
+// 낙하 간격: 지운 줄 + 시간 경과(공격적) 둘 다로 가속. 시간만 흘러도 후반엔 매우 빨라져 판이 결착된다.
+function dropInterval() {
+  const elapsed = playStart ? Date.now() - playStart : 0;
+  const timeSpeedup = Math.min(Math.floor(elapsed / 8000) * 45, 680); // 8초마다 -45ms(최대 -680)
+  return Math.max(90, 800 - myLines.value * 18 - timeSpeedup);
+}
 
 function loop(ts) {
   if (gamePhase.value !== 'playing' || !engine) return;

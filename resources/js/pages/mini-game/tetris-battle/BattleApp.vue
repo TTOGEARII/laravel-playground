@@ -174,6 +174,7 @@ let snapTimer = null;
 let repeatTimer = null;
 let gatherTimer = null;
 let gatherTick = null;
+let playStart = 0; // 이번 판 시작 시각(ms) — 시간 가속 계산용
 
 // ── 멤버/역할 ──
 const sortedMembers = computed(() => [...members.value].sort((a, b) => a.id - b.id));
@@ -307,7 +308,7 @@ function beginGame() {
   });
   myLines.value = 0; garbageIn.value = 0;
   gamePhase.value = 'playing';
-  lastTs = 0; dropAcc = 0;
+  lastTs = 0; dropAcc = 0; playStart = Date.now();
   window.addEventListener('keydown', handleKey);
   snapTimer = setInterval(sendSnapshot, 150);
   rafId = requestAnimationFrame(loop);
@@ -357,7 +358,12 @@ function endGame() {
 }
 
 // ── 루프/입력 ──
-function dropInterval() { return Math.max(120, 800 - myLines.value * 18); }
+// 낙하 간격: 지운 줄 + 시간 경과(배틀은 더 공격적) 둘 다로 가속 → 후반엔 매우 빨라져 자연스럽게 결착.
+function dropInterval() {
+  const elapsed = playStart ? Date.now() - playStart : 0;
+  const timeSpeedup = Math.min(Math.floor(elapsed / 6000) * 50, 720); // 6초마다 -50ms(최대 -720)
+  return Math.max(80, 800 - myLines.value * 18 - timeSpeedup);
+}
 function loop(ts) {
   if (gamePhase.value !== 'playing' || !engine) return;
   if (!lastTs) lastTs = ts;
