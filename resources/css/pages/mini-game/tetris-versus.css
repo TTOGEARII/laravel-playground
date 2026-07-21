@@ -1,0 +1,146 @@
+/* 테트리스 실시간 대전 — 로비/방 (design-system 토큰 사용) */
+.tv-root {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--ds-space-xl) var(--ds-space-lg) var(--ds-space-40);
+    color: var(--text-primary);
+}
+
+.tv-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--ds-space-md);
+    margin-bottom: var(--ds-space-xl);
+}
+.tv-back {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: var(--ds-fs-sm);
+}
+.tv-back:hover { color: var(--ds-text-accent); }
+.tv-head h1 {
+    margin: 0;
+    font-size: var(--ds-fs-2xl);
+    font-weight: var(--ds-fw-bold);
+}
+.tv-head h1 small {
+    font-size: var(--ds-fs-xs);
+    color: var(--ds-primary);
+    margin-left: 6px;
+    letter-spacing: var(--ds-btn-tracking);
+}
+
+.tv-lead {
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-sm);
+    line-height: 1.6;
+    margin-bottom: var(--ds-space-xl);
+}
+
+.tv-lobby-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-lg);
+    max-width: 360px;
+}
+.tv-join { display: flex; gap: var(--ds-space-sm); }
+
+/* 버튼 */
+.tv-btn {
+    padding: 10px 20px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--ds-surface-2);
+    color: var(--text-primary);
+    font-weight: var(--ds-fw-bold);
+    letter-spacing: var(--ds-btn-tracking);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.tv-btn:hover:not(:disabled) { border-color: var(--ds-primary); }
+.tv-btn:disabled { opacity: 0.5; cursor: default; }
+.tv-btn-primary {
+    background: var(--ds-primary);
+    color: var(--ds-on-accent);
+    border-color: transparent;
+}
+.tv-btn-primary:hover:not(:disabled) { background: var(--ds-primary-press); }
+.tv-btn-sm { padding: 6px 14px; font-size: var(--ds-fs-sm); }
+.tv-leave { color: var(--ds-negative); }
+
+.tv-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 16px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: var(--ds-fs-md);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    box-shadow: var(--ds-shadow-inset);
+    outline: none;
+}
+.tv-input:focus { border-color: var(--ds-primary); }
+
+.tv-error { color: var(--ds-negative); font-size: var(--ds-fs-sm); margin-top: var(--ds-space-md); }
+
+/* 방 */
+.tv-room-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-md);
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    background: var(--ds-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-lg);
+    box-shadow: var(--ds-shadow-medium);
+    margin-bottom: var(--ds-space-lg);
+    flex-wrap: wrap;
+}
+.tv-code { font-size: var(--ds-fs-md); }
+.tv-code b { color: var(--ds-primary); letter-spacing: 2px; font-size: var(--ds-fs-lg); }
+.tv-copied { color: var(--ds-text-accent); font-size: var(--ds-fs-sm); }
+.tv-room-bar .tv-leave { margin-left: auto; }
+
+.tv-members {
+    background: var(--ds-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-lg);
+    padding: var(--ds-space-lg);
+    box-shadow: var(--ds-shadow-medium);
+    margin-bottom: var(--ds-space-lg);
+}
+.tv-members-title {
+    font-size: var(--ds-fs-sm);
+    color: var(--text-secondary);
+    font-weight: var(--ds-fw-bold);
+    margin-bottom: var(--ds-space-md);
+}
+.tv-members ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tv-members li {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    font-size: var(--ds-fs-md);
+}
+.tv-members li.is-me { font-weight: var(--ds-fw-bold); }
+.tv-role {
+    padding: 2px 10px;
+    border-radius: var(--ds-round-pill);
+    font-size: var(--ds-fs-xs);
+    font-weight: var(--ds-fw-bold);
+}
+.tv-role.is-player { background: var(--ds-primary); color: var(--ds-on-accent); }
+.tv-role.is-spec { background: var(--ds-surface-2); color: var(--text-secondary); }
+.tv-waiting { color: var(--text-secondary); font-size: var(--ds-fs-sm); margin: var(--ds-space-md) 0 0; }
+
+/* 핑박스(다음 단계에서 게임 보드로 교체) */
+.tv-pingbox {
+    background: var(--ds-surface);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--ds-round-lg);
+    padding: var(--ds-space-lg);
+}
+.tv-pinglog { margin-top: var(--ds-space-md); display: flex; flex-direction: column; gap: 4px; font-size: var(--ds-fs-sm); color: var(--text-secondary); }

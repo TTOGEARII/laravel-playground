@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\MiniGame\MainController;
 use App\Http\Controllers\MiniGame\ScoreController;
+use App\Http\Controllers\MiniGame\TetrisVersusController;
 
 Route::get('/', [MainController::class, 'index'])->name('mini-game.index');
 
@@ -15,6 +16,13 @@ Route::prefix('vampire-survival')->group(function () {
 
 Route::prefix('tetris')->group(function () {
     Route::get('/', [MainController::class, 'tetris'])->name('mini-game.tetris.index');
+
+    // 실시간 대전(Reverb) — presence 인증 단순화를 위해 로그인 전용.
+    Route::middleware('auth')->group(function () {
+        Route::get('versus', [TetrisVersusController::class, 'index'])->name('mini-game.tetris.versus');
+        Route::post('rooms', [TetrisVersusController::class, 'createRoom'])
+            ->middleware('throttle:30,1')->name('mini-game.tetris.rooms.create');
+    });
 });
 
 Route::prefix('doom')->group(function () {

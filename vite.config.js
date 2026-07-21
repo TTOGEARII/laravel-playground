@@ -7,7 +7,7 @@ import obfuscator from 'vite-plugin-javascript-obfuscator';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/pages/otaku-shop.js', 'resources/js/pages/my-wife-bot.js', 'resources/js/pages/auth.js', 'resources/js/pages/user.js', 'resources/js/pages/mini-game/vampire-survival.js', 'resources/js/pages/subculture-info.js', 'resources/js/pages/subculture-agent.js'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/pages/otaku-shop.js', 'resources/js/pages/my-wife-bot.js', 'resources/js/pages/auth.js', 'resources/js/pages/user.js', 'resources/js/pages/mini-game/vampire-survival.js', 'resources/js/pages/mini-game/tetris-versus.js', 'resources/js/pages/subculture-info.js', 'resources/js/pages/subculture-agent.js'],
             refresh: true,
         }),
         vue({

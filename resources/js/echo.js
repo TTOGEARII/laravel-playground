@@ -20,6 +20,9 @@ export function createEcho() {
     const scheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
     const port = Number(import.meta.env.VITE_REVERB_PORT ?? (scheme === 'https' ? 443 : 80));
 
+    // private/presence 채널 인증(/broadcasting/auth)은 web 그룹이라 CSRF 토큰이 필요하다.
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
     instance = new Echo({
         broadcaster: 'reverb',
         key: import.meta.env.VITE_REVERB_APP_KEY,
@@ -28,6 +31,7 @@ export function createEcho() {
         wssPort: port,
         forceTLS: scheme === 'https',
         enabledTransports: ['ws', 'wss'],
+        auth: { headers: { 'X-CSRF-TOKEN': csrf } },
     });
 
     return instance;
