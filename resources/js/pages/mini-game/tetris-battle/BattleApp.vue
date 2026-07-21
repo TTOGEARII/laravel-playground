@@ -71,6 +71,8 @@
               </div>
             </div>
             <div class="tb-next-row">
+              <span class="tb-mini-label">홀드</span>
+              <canvas ref="holdCanvas" :width="4 * 14" :height="4 * 14" class="tb-mini"></canvas>
               <span class="tb-mini-label">다음</span>
               <canvas ref="nextCanvas" :width="4 * 14" :height="4 * 14" class="tb-mini"></canvas>
               <span class="tb-alive">생존 {{ aliveCount }}</span>
@@ -158,6 +160,7 @@ const autoStartIn = ref(null);
 
 const myCanvas = ref(null);
 const nextCanvas = ref(null);
+const holdCanvas = ref(null);
 const oppCanvases = {}; // pid -> canvas el (비반응)
 const oppSnaps = {};    // pid -> 스냅샷 (비반응)
 
@@ -403,6 +406,8 @@ function renderMine() {
   if (ctx && engine) drawBoard(ctx, engine, MY_CELL.value);
   const nctx = nextCanvas.value?.getContext('2d');
   if (nctx && engine) drawNext(nctx, engine.queue[0], 14);
+  const hctx = holdCanvas.value?.getContext('2d');
+  if (hctx && engine) drawNext(hctx, engine.hold, 14); // 홀드 미리보기(null 이면 빈칸)
 }
 function renderOpp(pid) {
   const el = oppCanvases[pid];

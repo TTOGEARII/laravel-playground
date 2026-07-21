@@ -84,10 +84,12 @@
           </div>
 
           <div class="tv-mid">
+            <div class="tv-mini-label">홀드</div>
+            <canvas ref="holdCanvas" :width="4 * 16" :height="4 * 16" class="tv-mini"></canvas>
             <div class="tv-mini-label">다음</div>
             <canvas ref="nextCanvas" :width="4 * 16" :height="4 * 16" class="tv-mini"></canvas>
             <div class="tv-controls-hint">
-              ← → 이동 · ↓ 소프트 · Space 하드<br />Z/↑ 회전 · Shift 홀드
+              ← → 이동 · ↓ 소프트 · Space 하드<br />Z/↑ 회전 · Shift/C 홀드
             </div>
           </div>
 
@@ -178,6 +180,7 @@ const oppSnap = ref(null);
 const myCanvas = ref(null);
 const oppCanvas = ref(null);
 const nextCanvas = ref(null);
+const holdCanvas = ref(null);
 const specBoards = ref({}); // 관전용: { [playerId]: 스냅샷 }
 const spec1Canvas = ref(null);
 const spec2Canvas = ref(null);
@@ -422,6 +425,8 @@ function renderMine() {
   if (ctx && engine) drawBoard(ctx, engine, MY_CELL.value);
   const nctx = nextCanvas.value?.getContext('2d');
   if (nctx && engine) drawNext(nctx, engine.queue[0], 16);
+  const hctx = holdCanvas.value?.getContext('2d');
+  if (hctx && engine) drawNext(hctx, engine.hold, 16); // 홀드 미리보기(null 이면 빈칸)
 }
 function renderOpp() {
   const ctx = oppCanvas.value?.getContext('2d');
