@@ -563,7 +563,7 @@ class CrawlSyncServiceTest extends TestCase
         $a = $this->figureWithHash('블루 아카이브 POP UP PARADE 하나오카 유즈 메이드 Ver.', 'ffffffffffffffff', $ipId, $cateId);
         $b = $this->figureWithHash('블루 아카이브 팝업 퍼레이드 유즈 메이드 논스케일 피규어', 'ffffffffffffffff', $ipId, $cateId);
 
-        $groups = $service->imageMergeGroups(5);
+        $groups = $service->imageMergeGroups(7);
 
         $this->assertCount(1, $groups);
         $this->assertEqualsCanonicalizing([$a->ok_product_id, $b->ok_product_id], $groups[0]);
@@ -579,7 +579,7 @@ class CrawlSyncServiceTest extends TestCase
         $a = $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', 'aaaaaaaaaaaaaaaa', $ipId, $cateId);
         $b = $this->figureWithHash('[입고완료][골든헤드+][블루 아카이브] 프라나 1/7', 'aaaaaaaaaaaaaaaa', $ipId, $cateId);
 
-        $groups = $service->imageMergeGroups(5);
+        $groups = $service->imageMergeGroups(7);
 
         $this->assertCount(1, $groups);
         $this->assertEqualsCanonicalizing([$a->ok_product_id, $b->ok_product_id], $groups[0]);
@@ -594,7 +594,7 @@ class CrawlSyncServiceTest extends TestCase
         $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', '0000000000000000', $ipId, $cateId);
         $this->figureWithHash('[블루 아카이브] 프라나 1/7', 'ffffffffffffffff', $ipId, $cateId);
 
-        $this->assertSame([], $service->imageMergeGroups(5));
+        $this->assertSame([], $service->imageMergeGroups(7));
     }
 
     public function test_image_hash_does_not_merge_different_single_token_characters_even_when_hash_identical(): void
@@ -607,7 +607,7 @@ class CrawlSyncServiceTest extends TestCase
         $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', 'cccccccccccccccc', $ipId, $cateId);
         $this->figureWithHash('블루 아카이브 호시노 1/7 피규어', 'cccccccccccccccc', $ipId, $cateId);
 
-        $this->assertSame([], $service->imageMergeGroups(5));
+        $this->assertSame([], $service->imageMergeGroups(7));
     }
 
     public function test_image_hash_does_not_merge_flat_goods_mislabeled_as_figure(): void
@@ -623,7 +623,7 @@ class CrawlSyncServiceTest extends TestCase
         $this->figureWithHash('체인소 맨 극장판 레제편 팝업 스토어 아크릴 스탠드 피규어 - 빔', 'dddddddddddddddd', $ipId, $cateId);
         $this->figureWithHash('체인소 맨 극장판 레제편 팝업 스토어 아크릴 스탠드 피규어 - 덴지', 'dddddddddddddddd', $ipId, $cateId);
 
-        $this->assertSame([], $service->imageMergeGroups(5));
+        $this->assertSame([], $service->imageMergeGroups(7));
     }
 
     public function test_image_merge_is_blocked_by_scale_accessory_variant_and_character_guards(): void
@@ -643,7 +643,7 @@ class CrawlSyncServiceTest extends TestCase
         $this->figureWithHash('블루 아카이브 미카 1/7 피규어', $hash, $ipId, $cateId);
         $this->figureWithHash('블루 아카이브 미카 수영복 1/7 피규어', $hash, $ipId, $cateId);
 
-        $this->assertSame([], $service->imageMergeGroups(5), '가드가 모든 쌍을 막아 병합 그룹이 없어야 함');
+        $this->assertSame([], $service->imageMergeGroups(7), '가드가 모든 쌍을 막아 병합 그룹이 없어야 함');
     }
 
     public function test_image_merge_ignores_non_figure_and_missing_or_bad_hashes(): void
@@ -659,7 +659,66 @@ class CrawlSyncServiceTest extends TestCase
         $this->figureWithHash('블루 아카이브 히나 1/7 피규어', 'zzzz', $ipId, $cateId);
         $this->figureWithHash('블루 아카이브 히나 1/7 스케일 피규어', '', $ipId, $cateId);
 
-        $this->assertSame([], $service->imageMergeGroups(5));
+        $this->assertSame([], $service->imageMergeGroups(7));
+    }
+
+    public function test_image_merge_threshold_seven_includes_hamming_seven(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 같은 프라나 1/7 인데 쇼핑몰 사진이 살짝 달라 dHash 해밍거리 7(하위 바이트 0x7f = 7비트) — 임계값 7이면 병합.
+        $a = $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', '0000000000000000', $ipId, $cateId);
+        $b = $this->figureWithHash('[블루 아카이브] 프라나 1/7', '000000000000007f', $ipId, $cateId);
+
+        $groups = $service->imageMergeGroups(7);
+
+        $this->assertCount(1, $groups);
+        $this->assertEqualsCanonicalizing([$a->ok_product_id, $b->ok_product_id], $groups[0]);
+    }
+
+    public function test_image_merge_threshold_seven_excludes_hamming_eight(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 해밍거리 8(하위 바이트 0xff = 8비트)은 임계값 7을 넘어 병합하지 않는다.
+        $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', '0000000000000000', $ipId, $cateId);
+        $this->figureWithHash('[블루 아카이브] 프라나 1/7', '00000000000000ff', $ipId, $cateId);
+
+        $this->assertSame([], $service->imageMergeGroups(7));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1/N 스케일 = 피규어: 동기화 시 카테고리 승격(스케일 표기 + 부속품 아님 → 피규어).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function test_scale_title_is_promoted_to_figure_category_on_sync(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+        $figureCateId = (int) OtakuCategory::where('ok_category_code', 'figure')->first()->ok_category_id;
+
+        // 쇼핑몰이 '기타(other)'로 라벨링한 스케일 피규어 — 제목에 "피규어" 단어가 없어도 1/N 스케일이면 피규어로 승격.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[골든헤드+][블루 아카이브] 프라나 1/7', 250000, categoryCode: 'other'),
+        ], incremental: false);
+
+        $this->assertSame($figureCateId, (int) OtakuProduct::first()->ok_product_cate_id);
+    }
+
+    public function test_scale_accessory_is_not_promoted_to_figure_on_sync(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+        $otherCateId = (int) OtakuCategory::where('ok_category_code', 'other')->first()->ok_category_id;
+
+        // 스케일 표기가 있어도 부속품(전용 디스플레이 케이스)은 피규어로 승격하지 않는다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 프라나 1/7 스케일 피규어 LED 디스플레이 케이스', 90000, categoryCode: 'other'),
+        ], incremental: false);
+
+        $this->assertSame($otherCateId, (int) OtakuProduct::first()->ok_product_cate_id);
     }
 
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void

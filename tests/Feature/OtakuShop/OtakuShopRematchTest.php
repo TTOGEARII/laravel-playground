@@ -224,6 +224,81 @@ class OtakuShopRematchTest extends TestCase
         $this->assertSame(2, OtakuProduct::count(), 'dry-run 은 이미지 병합도 수행하지 않아야 함');
     }
 
+    public function test_rematch_image_merges_hamming_seven_at_default_threshold(): void
+    {
+        Http::fake();
+
+        // 쇼핑몰 사진이 살짝 달라 dHash 해밍거리 7 인 같은 프라나 1/7 — 기본 임계값(7)에서 병합돼야 한다.
+        $this->figureWithImage('p1', '블루 아카이브 프라나 1/7 피규어', $this->shopA, 'A1', 250000, '0000000000000000');
+        $this->figureWithImage('p2', '[블루 아카이브] 프라나 1/7', $this->shopB, 'B1', 240000, '000000000000007f');
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(1, OtakuProduct::count(), '해밍 7 은 기본 임계값에서 병합돼야 함');
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
+    public function test_rematch_promotes_scale_non_figure_to_figure_but_not_accessory(): void
+    {
+        Http::fake();
+        $otherCateId = OtakuCategory::create(['ok_category_code' => 'other', 'ok_category_label' => '기타', 'ok_category_sort' => 99])->ok_category_id;
+
+        // '기타'로 오분류된 스케일 피규어(부속품 아님) → 피규어로 소급 승격.
+        $body = OtakuProduct::create([
+            'ok_product_code' => 'body', 'ok_product_title' => '[골든헤드+][블루 아카이브] 프라나 1/7',
+            'ok_product_active_flg' => true, 'ok_product_cate_id' => $otherCateId, 'ok_product_ip_id' => $this->ipId,
+        ]);
+        // 스케일 표기가 있어도 부속품(케이스)은 승격 제외.
+        $case = OtakuProduct::create([
+            'ok_product_code' => 'case', 'ok_product_title' => '블루 아카이브 프라나 1/7 스케일 피규어 전용 아크릴 케이스',
+            'ok_product_active_flg' => true, 'ok_product_cate_id' => $otherCateId, 'ok_product_ip_id' => $this->ipId,
+        ]);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame($this->cateId, (int) $body->fresh()->ok_product_cate_id, '스케일 피규어는 피규어로 승격');
+        $this->assertSame((int) $otherCateId, (int) $case->fresh()->ok_product_cate_id, '스케일이 있어도 부속품은 승격 금지');
+    }
+
+    public function test_rematch_dry_run_does_not_promote_category(): void
+    {
+        Http::fake();
+        $otherCateId = OtakuCategory::create(['ok_category_code' => 'other', 'ok_category_label' => '기타', 'ok_category_sort' => 99])->ok_category_id;
+
+        $body = OtakuProduct::create([
+            'ok_product_code' => 'body', 'ok_product_title' => '[블루 아카이브] 프라나 1/7',
+            'ok_product_active_flg' => true, 'ok_product_cate_id' => $otherCateId, 'ok_product_ip_id' => $this->ipId,
+        ]);
+
+        $this->artisan('otaku-shop:rematch --dry-run')->assertSuccessful();
+
+        $this->assertSame((int) $otherCateId, (int) $body->fresh()->ok_product_cate_id, 'dry-run 은 카테고리 승격도 하지 않아야 함');
+    }
+
+    public function test_rematch_promotes_then_image_merges_scale_figure_mislabeled_as_other(): void
+    {
+        Http::fake();
+        $otherCateId = OtakuCategory::create(['ok_category_code' => 'other', 'ok_category_label' => '기타', 'ok_category_sort' => 99])->ok_category_id;
+
+        // 실측 사례(id 106315) 재현: 한쪽은 정상 피규어, 한쪽은 "피규어" 단어가 없어 '기타'로 분류된 스케일 피규어.
+        // 소급 카테고리 승격으로 둘 다 피규어 버킷에 들어와, 이미지 근접(동일 해시)이면 한 상품으로 병합된다.
+        $p1 = $this->figureWithImage('p1', '블루 아카이브 프라나 1/7 피규어', $this->shopA, 'A1', 250000, 'aaaaaaaaaaaaaaaa');
+        $p2 = OtakuProduct::create([
+            'ok_product_code' => 'p2', 'ok_product_title' => '[입고완료][골든헤드+][블루 아카이브] 프라나 1/7',
+            'ok_product_active_flg' => true, 'ok_product_cate_id' => $otherCateId, 'ok_product_ip_id' => $this->ipId,
+            'ok_product_image_url' => 'https://example.com/p2.jpg', 'ok_product_image_hash' => 'aaaaaaaaaaaaaaaa',
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $p2->ok_product_id, 'ok_offer_shop_id' => $this->shopB, 'ok_offer_external_id' => 'B1',
+            'ok_offer_currency' => 'KRW', 'ok_offer_price' => 240000, 'ok_offer_available_flg' => true,
+        ]);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(1, OtakuProduct::count(), '기타로 오분류된 스케일 피규어가 승격 후 이미지로 병합돼야 함');
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
     public function test_dry_run_does_not_merge(): void
     {
         $this->product('p1', '블루 아카이브 넨도로이드 2611 아스나', 'nendo_2611', $this->shopA, 'A1', 70000);

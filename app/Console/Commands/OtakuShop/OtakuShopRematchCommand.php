@@ -55,9 +55,13 @@ class OtakuShopRematchCommand extends Command
 
         if ($dryRun) {
             $this->previewGroups($groups);
+            // 스케일 피규어 카테고리 승격 대상 건수만 보고(실제 갱신 안 함).
+            $this->promoteScaleFiguresToFigure(dryRun: true);
             // 이미지 확증 병합 후보도 미리보기(해시는 캐시 계산하되 실제 병합은 하지 않음).
+            // 주의: dry-run 은 카테고리를 실제로 승격하지 않으므로, 승격에 의존하는 이미지 병합은
+            // 미리보기에 안 잡힐 수 있다(실제 실행 시 승격 후 병합됨).
             $this->imageMergePass($sync, $imageHasher, dryRun: true);
-            $this->warn('[dry-run] 실제 병합은 수행하지 않았습니다.');
+            $this->warn('[dry-run] 실제 병합/승격은 수행하지 않았습니다.');
 
             return self::SUCCESS;
         }
@@ -65,17 +69,57 @@ class OtakuShopRematchCommand extends Command
         $this->info('3. 제목 기반 병합 실행...');
         $this->mergeGroups($sync, $groups);
 
-        // 4. 이미지 dHash 확증 자동 병합 — 제목이 갈려 안 묶인 동일 피규어(논스케일/단일 토큰)를 회수한다.
-        //    제목 병합 후 남은 상품 집합에 대해 수행(중복 처리 방지).
-        $this->info('4. 이미지 확증 자동 병합...');
+        // 4. 카테고리 보정 — 1/N 스케일 표기가 있고 부속품이 아닌 상품을 피규어로 승격한다.
+        //    (쇼핑몰이 '기타'로 라벨링한 스케일 피규어가 이미지 병합 후보 버킷에 들어오게 하는 소급 보정.)
+        $this->info('4. 스케일 피규어 카테고리 보정...');
+        $this->promoteScaleFiguresToFigure(dryRun: false);
+
+        // 5. 이미지 dHash 확증 자동 병합 — 제목이 갈려 안 묶인 동일 피규어(논스케일/단일 토큰)를 회수한다.
+        //    카테고리 보정 후 수행해야 승격된 스케일 피규어도 후보에 포함된다.
+        $this->info('5. 이미지 확증 자동 병합...');
         $this->imageMergePass($sync, $imageHasher, dryRun: false);
 
-        $this->info('5. 최저가 플래그 재계산...');
+        $this->info('6. 최저가 플래그 재계산...');
         $sync->refreshLowestPriceFlags();
 
         $this->info("완료: 제목 {$mergeCount}개 + 이미지 병합으로 중복 상품을 정리했습니다.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * 1/N 스케일 표기가 있고 부속품이 아닌 비(非)피규어 상품을 피규어 카테고리로 승격한다(소급 보정).
+     * 쇼핑몰이 '기타/굿즈'로 라벨링했어도 스케일 피규어는 사실상 피규어 본체이며, 승격해야 이미지 병합
+     * 후보(같은 IP 피규어 버킷)에 들어온다. 가드: looksLikeScaleFigure(스케일 있음 + 부속품 아님)만.
+     *
+     * @return int 승격 대상(또는 dry-run 이면 예정) 건수
+     */
+    private function promoteScaleFiguresToFigure(bool $dryRun): int
+    {
+        $figureCateId = OtakuCategory::where('ok_category_code', 'figure')->value('ok_category_id');
+        if ($figureCateId === null) {
+            return 0;
+        }
+
+        $promoted = 0;
+        OtakuProduct::query()
+            ->where(function ($q) use ($figureCateId) {
+                $q->whereNull('ok_product_cate_id')->orWhere('ok_product_cate_id', '!=', $figureCateId);
+            })
+            ->select(['ok_product_id', 'ok_product_title'])
+            ->chunkById(1000, function ($rows) use (&$promoted, $dryRun, $figureCateId) {
+                // 스케일 있음 + 부속품 아님(LED 디스플레이 케이스/스탠드 등은 스케일 표기가 있어도 제외).
+                $ids = $rows->filter(fn ($p) => CrawlSyncService::looksLikeScaleFigure((string) $p->ok_product_title))
+                    ->pluck('ok_product_id');
+                $promoted += $ids->count();
+                if (! $dryRun && $ids->isNotEmpty()) {
+                    OtakuProduct::whereIn('ok_product_id', $ids)->update(['ok_product_cate_id' => $figureCateId]);
+                }
+            }, 'ok_product_id');
+
+        $this->line('  스케일 피규어 승격(비피규어→피규어): '.$promoted.'건'.($dryRun ? ' (dry-run, 미갱신)' : ''));
+
+        return $promoted;
     }
 
     /**
@@ -271,8 +315,12 @@ class OtakuShopRematchCommand extends Command
         return array_values($byIp);
     }
 
-    /** 이미지 dHash 확증 자동 병합: 해밍 거리 허용치(64bit 중 다른 비트 수). 리포트 시절(6)보다 타이트하게. */
-    private const IMAGE_AUTO_MERGE_HAMMING_MAX = 5;
+    /**
+     * 이미지 dHash 확증 자동 병합: 해밍 거리 허용치(64bit 중 다른 비트 수).
+     * 같은 피규어라도 쇼핑몰이 서로 다른 각도/보정의 사진을 써 해밍 6~7 이 나오는 사례를 회수하기 위해 7.
+     * (소폭 과병합 위험은 감수 — 대신 스케일·부속품·변형·캐릭터 가드가 1차로 다른 상품을 걸러낸다.)
+     */
+    private const IMAGE_AUTO_MERGE_HAMMING_MAX = 7;
 
     /** 회당 신규 이미지 해시 다운로드 상한(장시간 실행 방지 — 해시는 저장돼 다음 회차가 이어간다). */
     private const IMAGE_HASH_BUDGET = 3000;

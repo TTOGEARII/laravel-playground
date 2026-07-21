@@ -253,6 +253,12 @@ class CrawlSyncService
         $ipCode = $this->normalizer->extractIpCode($dto->title);
         $ipId = $ipCode !== null ? ($ipIdByCode[$ipCode] ?? null) : null;
         $categoryId = $dto->categoryCode ? ($categoryByCode[$dto->categoryCode] ?? null) : null;
+        // 1/N 스케일 표기가 있고 부속품이 아니면 사실상 피규어 본체 — 쇼핑몰이 '기타/굿즈'로 라벨링해도
+        // 피규어로 승격한다(스케일 상품이 피규어 버킷에 들어가야 이미지 병합·퍼지 매칭 대상이 된다).
+        $figureCateId = $categoryByCode[self::FUZZY_CATEGORY] ?? null;
+        if ($figureCateId !== null && self::looksLikeScaleFigure($dto->title)) {
+            $categoryId = $figureCateId;
+        }
         $tokens = $this->normalizer->signatureTokens($dto->title);
         $matchSig = $tokens === [] ? null : implode(' ', $tokens);
 
@@ -303,8 +309,9 @@ class CrawlSyncService
         // 굿즈류(클리어파일/스티커/케이스 등)는 캐릭터·번호만 다른 변형이 많아 오병합 위험이 커,
         // 이름이 충분히 변별적인 '피규어' 카테고리에만 적용한다.
         $scale = self::extractScale($dto->title);
-        if ($product === null && $makerCode === null && $ipId !== null && $categoryId !== null
-            && $dto->categoryCode === self::FUZZY_CATEGORY && self::looksLikeScaleFigure($dto->title)
+        if ($product === null && $makerCode === null && $ipId !== null
+            && $figureCateId !== null && (int) $categoryId === (int) $figureCateId
+            && self::looksLikeScaleFigure($dto->title)
             && count($tokens) >= self::FUZZY_MIN_SHARED) {
             $product = $this->fuzzyMatchProduct($ipId, (int) $categoryId, $tokens, $scale);
         }
