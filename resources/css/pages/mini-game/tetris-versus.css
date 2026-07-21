@@ -136,11 +136,53 @@
 .tv-role.is-spec { background: var(--ds-surface-2); color: var(--text-secondary); }
 .tv-waiting { color: var(--text-secondary); font-size: var(--ds-fs-sm); margin: var(--ds-space-md) 0 0; }
 
-/* 핑박스(다음 단계에서 게임 보드로 교체) */
-.tv-pingbox {
-    background: var(--ds-surface);
-    border: 1px dashed var(--border-color);
-    border-radius: var(--ds-round-lg);
-    padding: var(--ds-space-lg);
+/* ── 게임 아레나 ── */
+.tv-arena {
+    display: flex;
+    gap: var(--ds-space-lg);
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
 }
-.tv-pinglog { margin-top: var(--ds-space-md); display: flex; flex-direction: column; gap: 4px; font-size: var(--ds-fs-sm); color: var(--text-secondary); }
+.tv-side { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-sm); }
+.tv-board-label { font-size: var(--ds-fs-sm); color: var(--text-secondary); }
+.tv-board-label b { color: var(--text-primary); }
+
+.tv-canvas-wrap { position: relative; }
+.tv-canvas {
+    display: block;
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-sm);
+    background: #0d0d0d;
+    box-shadow: var(--ds-shadow-medium);
+}
+.tv-canvas.is-opp { opacity: 0.92; }
+
+.tv-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ds-space-md);
+    background: rgba(0, 0, 0, 0.72);
+    border-radius: var(--ds-round-sm);
+    text-align: center;
+    padding: var(--ds-space-md);
+    color: var(--text-secondary);
+    font-size: var(--ds-fs-sm);
+}
+.tv-ovbig { font-size: 28px; font-weight: var(--ds-fw-bold); color: var(--text-primary); }
+.tv-ovbig.tv-count { font-size: 56px; color: var(--ds-primary); }
+.tv-ovbig.is-win { color: var(--ds-primary); }
+.tv-ovbig.is-lose { color: var(--ds-negative); }
+.tv-ready-state { font-size: var(--ds-fs-xs); }
+
+.tv-mid { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-sm); padding-top: 22px; min-width: 84px; }
+.tv-mini-label { font-size: var(--ds-fs-xs); color: var(--text-secondary); }
+.tv-mini { background: #111; border: 1px solid var(--border-color); border-radius: var(--ds-round-xs); }
+.tv-controls-hint { font-size: var(--ds-fs-xs); color: var(--text-secondary); line-height: 1.7; text-align: center; margin-top: var(--ds-space-md); }
+
+.tv-stat { font-size: var(--ds-fs-sm); color: var(--text-secondary); }
+.tv-gwarn { color: var(--ds-warning, #f2913d); margin-left: 6px; font-weight: var(--ds-fw-bold); }
