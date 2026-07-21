@@ -523,6 +523,62 @@ class CrawlSyncService
     }
 
     /**
+     * 이미지 확증 병합의 스케일 가드 — 둘 다 논스케일(null)이거나 같은 스케일이면 병합 가능.
+     * scalesCompatible 과 달리 '둘 다 null'(논스케일 피규어끼리)도 호환으로 본다(이미지가 동일성을 확증).
+     * 단 한쪽만 스케일이 있으면(1/7 스케일판 vs 논스케일 프라이즈) 다른 상품이므로 불호환.
+     */
+    public static function scalesEqual(?string $a, ?string $b): bool
+    {
+        return $a === $b;
+    }
+
+    /**
+     * 제목에 등장하는 의상/버전 변형 키워드 집합(정렬·중복제거). 이미지 확증 병합에서 두 상품의
+     * 변형 키워드 집합이 정확히 같아야(둘 다 메이드, 둘 다 없음 등) 병합 대상이 된다.
+     *
+     * @return array<int, string>
+     */
+    public static function variantKeywordSet(string $title): array
+    {
+        $found = [];
+        foreach (self::variantKeywords() as $keyword) {
+            if (mb_stripos($title, $keyword) !== false) {
+                $found[$keyword] = true;
+            }
+        }
+        $keys = array_keys($found);
+        sort($keys, SORT_STRING);
+
+        return $keys;
+    }
+
+    /** 두 제목의 의상/버전 변형 키워드 집합이 정확히 일치하는지(기본판 vs 수영복판 오병합 차단). */
+    public static function variantKeywordsMatch(string $a, string $b): bool
+    {
+        return self::variantKeywordSet($a) === self::variantKeywordSet($b);
+    }
+
+    /**
+     * 두 변별 토큰 집합이 '다른 캐릭터/구성'으로 충돌하는지 — 이미지 확증 병합의 캐릭터 가드.
+     * tokensSimilar 와 달리 최소 공유 수를 요구하지 않는다(이미지가 동일성을 확증하므로 토큰은
+     * '충돌만 아니면' 통과). 양쪽 모두 상대에 없는 고유 토큰이 남고 그것들이 서로 '같은 단어의 다른
+     * 표기'로 화해되지 않으면(아스나 vs 시로코, 프라나 vs 호시노) 충돌 = 병합 금지.
+     * 한쪽이 완전 포함(고유 0)이거나 양쪽 다 토큰이 없으면 충돌 아님.
+     *
+     * @param  array<int, string>  $a
+     * @param  array<int, string>  $b
+     */
+    public static function tokensConflict(array $a, array $b): bool
+    {
+        [, $uniqA, $uniqB] = self::tokenDiff(array_values(array_unique($a)), array_values(array_unique($b)));
+        if ($uniqA === [] || $uniqB === []) {
+            return false;  // 포함관계(또는 양쪽 공백) — 충돌 아님
+        }
+
+        return ! self::uniquesReconcilable($uniqA, $uniqB);
+    }
+
+    /**
      * 두 토큰 집합이 동일 상품으로 볼 만큼 유사한가.
      * 규칙: 공통 코어 ≥ FUZZY_MIN_SHARED(정확일치 + 분할결합 흡수) 이고,
      *   - 한쪽이 완전 포함(고유 토큰 0)이거나
@@ -708,6 +764,118 @@ class CrawlSyncService
         }
 
         return $prefix >= 2;
+    }
+
+    /**
+     * 이미지 dHash 확증 자동 병합 그룹을 산출한다(네트워크 미사용 — 저장된 ok_product_image_hash 만 읽음).
+     *
+     * 대상: 같은 IP(ok_product_ip_id) + 피규어 카테고리. 각 쌍에 대해
+     *   1) 스케일 동일(scalesEqual — 논스케일끼리=둘 다 null 포함)
+     *   2) 부속품 여부 일치(looksLikeAccessory)
+     *   3) 의상 변형 키워드 집합 일치(variantKeywordsMatch)
+     *   4) 변별 토큰 비충돌(tokensConflict — 다른 캐릭터면 이미지가 같아도 제외)
+     *   5) dHash 해밍거리 ≤ $hammingMax
+     * 를 모두 통과하면 union-find 로 같은 그룹으로 묶는다. 교량 상품('유즈 메이드')이 있으면
+     * 제목 조각이 갈린 상품들(하나오카 유즈 / 메유즈)도 전이적으로 한 상품으로 이어진다.
+     *
+     * 굿즈류는 캐릭터 일러스트를 공유해 이미지가 비슷한 변형이 많아(과병합 위험) 피규어로 제한한다.
+     * 이미지가 없거나 해시가 실패('')/형식 오류(16자 아님)인 상품은 병합에 참여하지 않는다.
+     *
+     * @return array<int, array<int, int>> 병합 그룹(각 2건 이상)
+     */
+    public function imageMergeGroups(int $hammingMax): array
+    {
+        $figureCateId = OtakuCategory::where('ok_category_code', self::FUZZY_CATEGORY)->value('ok_category_id');
+        if ($figureCateId === null) {
+            return [];
+        }
+
+        $groups = [];
+        OtakuProduct::query()
+            ->whereNotNull('ok_product_ip_id')
+            ->where('ok_product_cate_id', $figureCateId)
+            ->whereNotNull('ok_product_image_hash')
+            ->where('ok_product_image_hash', '!=', '')
+            ->orderBy('ok_product_ip_id')
+            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_image_hash', 'ok_product_title'])
+            ->groupBy('ok_product_ip_id')
+            ->each(function ($bucket) use ($hammingMax, &$groups) {
+                foreach ($this->clusterByImage($bucket, $hammingMax) as $cluster) {
+                    if (count($cluster) > 1) {
+                        $groups[] = $cluster;
+                    }
+                }
+            });
+
+        return $groups;
+    }
+
+    /**
+     * 한 IP 버킷의 피규어 상품들을 이미지 확증 가드로 union-find 클러스터링한다.
+     *
+     * @param  \Illuminate\Support\Collection<int, OtakuProduct>  $bucket
+     * @return array<int, array<int, int>>
+     */
+    private function clusterByImage($bucket, int $hammingMax): array
+    {
+        $items = $bucket
+            ->map(fn ($p) => [
+                'id' => (int) $p->ok_product_id,
+                'title' => (string) $p->ok_product_title,
+                'scale' => self::extractScale((string) $p->ok_product_title),
+                'hash' => (string) $p->ok_product_image_hash,
+                'tokens' => $this->normalizer->primaryTokens((string) $p->ok_product_title),
+            ])
+            ->filter(fn ($it) => strlen($it['hash']) === 16)  // 실패 마커('')·형식 오류 제외
+            ->values()
+            ->all();
+
+        $n = count($items);
+        if ($n < 2) {
+            return [];
+        }
+
+        $parent = range(0, $n - 1);
+        $find = function (int $x) use (&$parent): int {
+            while ($parent[$x] !== $x) {
+                $parent[$x] = $parent[$parent[$x]];
+                $x = $parent[$x];
+            }
+
+            return $x;
+        };
+
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                if (! self::scalesEqual($items[$i]['scale'], $items[$j]['scale'])) {
+                    continue;
+                }
+                if (self::looksLikeAccessory($items[$i]['title']) !== self::looksLikeAccessory($items[$j]['title'])) {
+                    continue;
+                }
+                if (! self::variantKeywordsMatch($items[$i]['title'], $items[$j]['title'])) {
+                    continue;
+                }
+                if (self::tokensConflict($items[$i]['tokens'], $items[$j]['tokens'])) {
+                    continue;
+                }
+                if (ImageHasher::distance($items[$i]['hash'], $items[$j]['hash']) > $hammingMax) {
+                    continue;
+                }
+                $pi = $find($i);
+                $pj = $find($j);
+                if ($pi !== $pj) {
+                    $parent[$pi] = $pj;
+                }
+            }
+        }
+
+        $clusters = [];
+        for ($i = 0; $i < $n; $i++) {
+            $clusters[$find($i)][] = $items[$i]['id'];
+        }
+
+        return array_values($clusters);
     }
 
     /** 새로/매칭된 상품을 버킷 캐시에 반영해 같은 런의 후속 상품이 이어서 묶이도록 한다. */

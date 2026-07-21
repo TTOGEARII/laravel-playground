@@ -44,28 +44,47 @@ class OtakuShopRematchCommand extends Command
         $ipIdByCode = OtakuIp::pluck('ok_ip_id', 'ok_ip_code')->all();
         $this->reclassify($normalizer, $ipIdByCode, $force);
 
-        $this->info('2. 병합 그룹 산출...');
+        $this->info('2. 제목 기반 병합 그룹 산출...');
         $groups = array_merge(
             $this->makerCodeGroups(),
             $this->sigEqualityGroups(),
             $this->containmentGroups(),
         );
-
-        // 이미지 확증은 자동 병합에 쓰지 않는다 — 시리즈 상품이 대표 이미지를 공유하고(단체샷),
-        // 변형판(마스크 Ver./데카 사이즈)은 일러스트가 같아 dry-run 에서 오병합이 실측됐다.
-        // 대신 "사람 확인용 후보 리포트"로 출력한다(같은 상품인데 안 묶인 롱테일 회수용).
-        $this->reportImageCandidates($imageHasher, $groups);
         $mergeCount = array_sum(array_map(fn ($g) => count($g) - 1, $groups));
-        $this->line('  병합 그룹: '.count($groups).'개 · 사라질 중복 상품: '.$mergeCount.'개');
+        $this->line('  제목 기반 병합 그룹: '.count($groups).'개 · 사라질 중복 상품: '.$mergeCount.'개');
 
         if ($dryRun) {
             $this->previewGroups($groups);
+            // 이미지 확증 병합 후보도 미리보기(해시는 캐시 계산하되 실제 병합은 하지 않음).
+            $this->imageMergePass($sync, $imageHasher, dryRun: true);
             $this->warn('[dry-run] 실제 병합은 수행하지 않았습니다.');
 
             return self::SUCCESS;
         }
 
-        $this->info('3. 병합 실행...');
+        $this->info('3. 제목 기반 병합 실행...');
+        $this->mergeGroups($sync, $groups);
+
+        // 4. 이미지 dHash 확증 자동 병합 — 제목이 갈려 안 묶인 동일 피규어(논스케일/단일 토큰)를 회수한다.
+        //    제목 병합 후 남은 상품 집합에 대해 수행(중복 처리 방지).
+        $this->info('4. 이미지 확증 자동 병합...');
+        $this->imageMergePass($sync, $imageHasher, dryRun: false);
+
+        $this->info('5. 최저가 플래그 재계산...');
+        $sync->refreshLowestPriceFlags();
+
+        $this->info("완료: 제목 {$mergeCount}개 + 이미지 병합으로 중복 상품을 정리했습니다.");
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * 병합 그룹을 실제로 병합한다(오퍼 최다 상품을 canonical 로).
+     *
+     * @param  array<int, array<int, int>>  $groups
+     */
+    private function mergeGroups(CrawlSyncService $sync, array $groups): void
+    {
         $bar = $this->output->createProgressBar(count($groups));
         $bar->start();
         foreach ($groups as $ids) {
@@ -82,13 +101,6 @@ class OtakuShopRematchCommand extends Command
         }
         $bar->finish();
         $this->newLine(2);
-
-        $this->info('4. 최저가 플래그 재계산...');
-        $sync->refreshLowestPriceFlags();
-
-        $this->info("완료: {$mergeCount}개 중복 상품을 병합했습니다.");
-
-        return self::SUCCESS;
     }
 
     /**
@@ -259,146 +271,72 @@ class OtakuShopRematchCommand extends Command
         return array_values($byIp);
     }
 
-    /**
-     * maker_code 없는 상품을 (ip,카테고리) 버킷 안에서 포함관계로 묶은 그룹(2건 이상).
-     * 큰(구체적인) 상품을 시드로 두고, 작은 상품이 시드의 부분집합(토큰 차이 ≤ 2)이면 그 시드에 합류시킨다.
-     * 서로 부분집합이 아닌 두 시드는 합쳐지지 않아 다른 상품의 오병합을 막는다.
-     *
-     * @return array<int, array<int, int>>
-     */
-    /** 이미지 확증 병합: 해밍 거리 허용치(64bit 중 다른 비트 수). 보수적으로 낮게 유지. */
-    private const IMAGE_HAMMING_MAX = 6;
-
-    /** 이미지 확증 병합: 최소 공유 토큰 수(기존 퍼지 3 에서 이미지 일치 시 2 로 완화). */
-    private const IMAGE_MIN_SHARED = 2;
+    /** 이미지 dHash 확증 자동 병합: 해밍 거리 허용치(64bit 중 다른 비트 수). 리포트 시절(6)보다 타이트하게. */
+    private const IMAGE_AUTO_MERGE_HAMMING_MAX = 5;
 
     /** 회당 신규 이미지 해시 다운로드 상한(장시간 실행 방지 — 해시는 저장돼 다음 회차가 이어간다). */
     private const IMAGE_HASH_BUDGET = 3000;
 
-    /** 후보 쌍 생성 시 무시할 흔한 토큰의 등장 상한(넨도로이드 등 — 쌍 폭발 방지). */
-    private const IMAGE_TOKEN_MAX_PRODUCTS = 120;
+    /**
+     * 이미지 dHash 확증 자동 병합 패스 — 제목이 갈려 안 묶인 동일 피규어(논스케일/단일 토큰)를 회수한다.
+     *  1) 같은 IP 피규어 버킷에 2건 이상인, 해시 미계산 상품의 dHash 를 지연 계산(예산 내, 실패는 '' 마커).
+     *  2) CrawlSyncService::imageMergeGroups 가 스케일·부속품·변형·캐릭터 가드 + 해밍거리로 병합 그룹 산출.
+     *  3) dry-run 이면 미리보기만, 아니면 실제 병합.
+     * 이미지 없거나 해시 실패면 병합하지 않는다(제목 폴백 유지). 이미지 불일치는 분리 증거로 쓰지 않는다.
+     */
+    private function imageMergePass(CrawlSyncService $sync, \App\Services\OtakuShop\Crawler\ImageHasher $hasher, bool $dryRun): void
+    {
+        $hashed = $this->hashFigureProductsForMerge($hasher);
+        $groups = $sync->imageMergeGroups(self::IMAGE_AUTO_MERGE_HAMMING_MAX);
+        $mergeCount = array_sum(array_map(fn ($g) => count($g) - 1, $groups));
+        $this->line('  이미지 병합 그룹: '.count($groups).'개 · 신규 해시 '.$hashed.'개 · 사라질 중복 상품: '.$mergeCount.'개');
+
+        if ($dryRun) {
+            $this->previewGroups($groups);
+
+            return;
+        }
+
+        $this->mergeGroups($sync, $groups);
+    }
 
     /**
-     * 이미지 확증 후보 리포트 — 토큰 조건이 아깝게 미달(공유 2개, 카테고리 무관)인 같은 IP 쌍 중,
-     * 안전장치(변형 키워드·고유 토큰 화해·스케일·부속품)를 통과하고 이미지 dHash 까지 일치하는 쌍.
-     * 시리즈 공통 이미지·미세 변형판 때문에 자동 병합엔 쓰지 않고 사람 확인용으로만 출력한다.
-     * 이미지 불일치는 분리 증거로 쓰지 않는다(자체 촬영/배너 합성 대응 — 판단 보류).
+     * 이미지 병합 후보 피규어의 dHash 를 지연 계산해 저장한다(유일한 네트워크 구간).
+     * 같은 IP 버킷에 2건 이상(=쌍이 될 수 있는) 피규어 중 아직 해시가 없는 것만 예산 내에서 다운로드한다.
+     * 해시는 영속되므로 예산을 넘긴 나머지는 다음 회차가 이어서 계산한다(점진 커버리지).
      *
-     * @param  array<int, array<int, int>>  $mergeGroups  이미 병합 예정인 그룹(리포트에서 제외)
+     * @return int 이번 회차에 새로 계산한 해시 수
      */
-    private function reportImageCandidates(\App\Services\OtakuShop\Crawler\ImageHasher $hasher, array $mergeGroups): void
+    private function hashFigureProductsForMerge(\App\Services\OtakuShop\Crawler\ImageHasher $hasher): int
     {
-        $products = OtakuProduct::query()
+        $figureCateId = OtakuCategory::where('ok_category_code', 'figure')->value('ok_category_id');
+        if ($figureCateId === null) {
+            return 0;
+        }
+
+        $rows = OtakuProduct::query()
             ->whereNotNull('ok_product_ip_id')
-            ->whereNotNull('ok_product_match_sig')
+            ->where('ok_product_cate_id', $figureCateId)
             ->whereNotNull('ok_product_image_url')
             ->where('ok_product_image_url', '!=', '')
-            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_match_sig', 'ok_product_image_url', 'ok_product_image_hash', 'ok_product_title']);
+            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_image_url', 'ok_product_image_hash']);
 
-        $tokensById = [];
-        $byToken = []; // "ip|token" => [product_id...]
-        foreach ($products as $p) {
-            $tokens = array_values(array_filter(explode(' ', (string) $p->ok_product_match_sig)));
-            if (count($tokens) < 2) {
-                continue;
-            }
-            $tokensById[$p->ok_product_id] = $tokens;
-            foreach ($tokens as $token) {
-                $byToken[$p->ok_product_ip_id.'|'.$token][] = (int) $p->ok_product_id;
-            }
-        }
+        $countByIp = $rows->groupBy('ok_product_ip_id')->map->count();
+        $needHash = $rows->filter(fn ($p) => $p->ok_product_image_hash === null
+            && ($countByIp[$p->ok_product_ip_id] ?? 0) >= 2);
 
-        // 같은 IP 에서 토큰을 2개 이상 공유하는 쌍만 후보로
-        $sharedCount = [];
-        foreach ($byToken as $ids) {
-            $n = count($ids);
-            if ($n < 2 || $n > self::IMAGE_TOKEN_MAX_PRODUCTS) {
-                continue;
-            }
-            sort($ids);
-            for ($i = 0; $i < $n; $i++) {
-                for ($j = $i + 1; $j < $n; $j++) {
-                    $sharedCount[$ids[$i].'-'.$ids[$j]] = ($sharedCount[$ids[$i].'-'.$ids[$j]] ?? 0) + 1;
-                }
-            }
-        }
-
-        // 토큰 안전장치(변형 키워드·고유 토큰 화해) 통과 쌍만 이미지 검증 대상으로
-        $pairs = [];
-        $needHash = [];
-        $productById = $products->keyBy('ok_product_id');
-        foreach ($sharedCount as $key => $count) {
-            if ($count < self::IMAGE_MIN_SHARED) {
-                continue;
-            }
-            [$a, $b] = array_map('intval', explode('-', $key));
-            if (! CrawlSyncService::tokensSimilar($tokensById[$a], $tokensById[$b], self::IMAGE_MIN_SHARED)) {
-                continue;
-            }
-            // 이미지로는 구분이 안 되는 차이 가드: 스케일(1/7 vs 1/4)과 부속품(본체 vs 전용 케이스)
-            $titleA = (string) $productById[$a]->ok_product_title;
-            $titleB = (string) $productById[$b]->ok_product_title;
-            if (! CrawlSyncService::scalesCompatible(CrawlSyncService::extractScale($titleA), CrawlSyncService::extractScale($titleB))) {
-                continue;
-            }
-            if (CrawlSyncService::looksLikeAccessory($titleA) !== CrawlSyncService::looksLikeAccessory($titleB)) {
-                continue;
-            }
-            $pairs[] = [$a, $b];
-            foreach ([$a, $b] as $id) {
-                if ($productById[$id]->ok_product_image_hash === null) {
-                    $needHash[$id] = true;
-                }
-            }
-        }
-
-        // 지연 해시 계산(상한 내) — 실패는 '' 마커로 저장해 재시도하지 않는다
         $hashed = 0;
-        foreach (array_keys($needHash) as $id) {
+        foreach ($needHash as $product) {
             if ($hashed >= self::IMAGE_HASH_BUDGET) {
                 break;
             }
-            $product = $productById[$id];
             $hash = $hasher->hashFromUrl((string) $product->ok_product_image_url);
-            $product->ok_product_image_hash = $hash ?? '';
+            $product->ok_product_image_hash = $hash ?? '';  // 실패는 '' 로 저장해 다음 회차 재시도 안 함
             $product->save();
             $hashed++;
         }
 
-        // 이미 병합 예정인 상품은 리포트에서 제외
-        $inMergeGroup = [];
-        foreach ($mergeGroups as $ids) {
-            foreach ($ids as $id) {
-                $inMergeGroup[$id] = true;
-            }
-        }
-
-        $matched = [];
-        foreach ($pairs as [$a, $b]) {
-            if (isset($inMergeGroup[$a]) || isset($inMergeGroup[$b])) {
-                continue;
-            }
-            $ha = (string) $productById[$a]->ok_product_image_hash;
-            $hb = (string) $productById[$b]->ok_product_image_hash;
-            if (strlen($ha) !== 16 || strlen($hb) !== 16) {
-                continue; // 미계산(예산 초과)/실패 — 다음 회차로
-            }
-            if (\App\Services\OtakuShop\Crawler\ImageHasher::distance($ha, $hb) <= self::IMAGE_HAMMING_MAX) {
-                $matched[] = [$a, $b];
-            }
-        }
-
-        $this->line('  이미지 확증 후보(수동 확인용): 후보 쌍 '.count($pairs).' · 신규 해시 '.$hashed.' · 이미지 일치 '.count($matched).'쌍');
-        foreach (array_slice($matched, 0, 20) as [$a, $b]) {
-            $this->line('   ? #'.$a.' '.mb_substr((string) $productById[$a]->ok_product_title, 0, 55));
-            $this->line('     #'.$b.' '.mb_substr((string) $productById[$b]->ok_product_title, 0, 55));
-        }
-        if (count($matched) > 20) {
-            $this->line('   ... 외 '.(count($matched) - 20).'쌍');
-        }
-        if ($matched !== []) {
-            $this->line('  → 같은 상품이 확인되면 정규화 사전(token_aliases/stopwords)에 규칙을 추가해 다음 rematch 에서 병합하세요.');
-        }
+        return $hashed;
     }
 
     /**
@@ -457,6 +395,13 @@ class OtakuShopRematchCommand extends Command
         return implode('.', $nums);
     }
 
+    /**
+     * maker_code 없는 상품을 (ip,카테고리) 버킷 안에서 포함관계로 묶은 그룹(2건 이상).
+     * 큰(구체적인) 상품을 시드로 두고, 작은 상품이 시드의 부분집합(토큰 차이 ≤ 2)이면 그 시드에 합류시킨다.
+     * 서로 부분집합이 아닌 두 시드는 합쳐지지 않아 다른 상품의 오병합을 막는다.
+     *
+     * @return array<int, array<int, int>>
+     */
     private function containmentGroups(): array
     {
         // 굿즈류 오병합을 막기 위해 이름이 변별적인 '피규어' 카테고리에만 적용.

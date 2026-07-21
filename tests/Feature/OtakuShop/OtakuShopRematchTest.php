@@ -8,6 +8,7 @@ use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
 use App\Models\OtakuShop\OtakuShop;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class OtakuShopRematchTest extends TestCase
@@ -140,6 +141,87 @@ class OtakuShopRematchTest extends TestCase
 
         $this->assertSame(1, OtakuProduct::count());
         $this->assertSame(2, OtakuOffer::count());
+    }
+
+    /** 이미지 해시를 미리 세팅한 피규어 상품+오퍼를 시딩(엔드투엔드 이미지 병합 검증, 다운로드 미발생). */
+    private function figureWithImage(string $code, string $title, int $shopId, string $extId, float $price, string $hash): OtakuProduct
+    {
+        $p = OtakuProduct::create([
+            'ok_product_code' => $code,
+            'ok_product_title' => $title,
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $this->cateId,
+            'ok_product_ip_id' => $this->ipId,
+            'ok_product_image_url' => 'https://example.com/'.$extId.'.jpg',
+            'ok_product_image_hash' => $hash,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $p->ok_product_id,
+            'ok_offer_shop_id' => $shopId,
+            'ok_offer_external_id' => $extId,
+            'ok_offer_currency' => 'KRW',
+            'ok_offer_price' => $price,
+            'ok_offer_available_flg' => true,
+        ]);
+
+        return $p;
+    }
+
+    public function test_rematch_image_merges_single_token_figures(): void
+    {
+        Http::fake(); // 해시가 이미 있어 다운로드는 없지만, 혹시 모를 외부 요청을 차단한다.
+
+        // 그룹 B: 프라나 1/7 — 변별 토큰이 하나뿐이라 미병합되던 두 상품이 이미지로 병합.
+        $this->figureWithImage('p1', '블루 아카이브 프라나 1/7 피규어', $this->shopA, 'A1', 250000, 'aaaaaaaaaaaaaaaa');
+        $this->figureWithImage('p2', '[입고완료][골든헤드+][블루 아카이브] 프라나 1/7', $this->shopB, 'B1', 240000, 'aaaaaaaaaaaaaaaa');
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(1, OtakuProduct::count(), '같은 프라나 1/7 이 이미지로 병합돼야 함');
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
+    public function test_rematch_image_merges_nonscale_popup_parade_via_bridge(): void
+    {
+        Http::fake();
+        $shopC = OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true])->ok_shop_id;
+
+        // 그룹 A: 같은 팝업퍼레이드 유즈(메이드) 논스케일 피규어. 제목 조각이 달라(하나오카/메유즈) 정규화로는
+        // 안 묶이지만, '유즈 메이드'(p2)가 교량이 돼 이미지 병합이 셋을 한 상품으로 잇는다.
+        $hash = 'bbbbbbbbbbbbbbbb';
+        $this->figureWithImage('p1', '[블루 아카이브] POP UP PARADE 하나오카 유즈 메이드 Ver.', $this->shopA, 'A1', 60000, $hash);
+        $this->figureWithImage('p2', '[예약] 블루 아카이브 팝업 퍼레이드 유즈 (메이드)', $this->shopB, 'B1', 58000, $hash);
+        $this->figureWithImage('p3', '블루 아카이브 팝업 퍼레이드 피규어 - 메이드 유즈 / 메유즈', $shopC, 'C1', 59000, $hash);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(1, OtakuProduct::count(), '세 표기가 이미지로 한 상품에 묶여야 함');
+        $this->assertSame(3, OtakuOffer::count());
+    }
+
+    public function test_rematch_does_not_image_merge_far_hashes(): void
+    {
+        Http::fake();
+
+        // 이미지가 다르면(해밍 64) 병합하지 않는다.
+        $this->figureWithImage('p1', '블루 아카이브 프라나 1/7 피규어', $this->shopA, 'A1', 250000, '0000000000000000');
+        $this->figureWithImage('p2', '[블루 아카이브] 프라나 1/7', $this->shopB, 'B1', 240000, 'ffffffffffffffff');
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(2, OtakuProduct::count());
+    }
+
+    public function test_rematch_dry_run_does_not_image_merge(): void
+    {
+        Http::fake();
+
+        $this->figureWithImage('p1', '블루 아카이브 프라나 1/7 피규어', $this->shopA, 'A1', 250000, 'aaaaaaaaaaaaaaaa');
+        $this->figureWithImage('p2', '[블루 아카이브] 프라나 1/7', $this->shopB, 'B1', 240000, 'aaaaaaaaaaaaaaaa');
+
+        $this->artisan('otaku-shop:rematch --dry-run')->assertSuccessful();
+
+        $this->assertSame(2, OtakuProduct::count(), 'dry-run 은 이미지 병합도 수행하지 않아야 함');
     }
 
     public function test_dry_run_does_not_merge(): void

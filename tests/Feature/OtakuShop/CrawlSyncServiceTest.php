@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\OtakuShop;
 
+use App\Models\OtakuShop\OtakuCategory;
 use App\Models\OtakuShop\OtakuIp;
 use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
@@ -521,6 +522,128 @@ class CrawlSyncServiceTest extends TestCase
 
         $this->assertSame(0, $soldOut);
         $this->assertTrue((bool) OtakuOffer::where('ok_offer_external_id', 'B1')->first()->ok_offer_available_flg);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 이미지 dHash 자동 병합 (같은 IP + 피규어 + 스케일동일 + 부속품일치 + 변형키워드일치 +
+    //  변별토큰 비충돌 가드 통과 + 해밍거리 근접). 네트워크 없이 해시를 직접 세팅해 검증한다.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** 피규어 상품을 이미지 해시와 함께 직접 시딩(이미지 병합 로직 단위 검증용, 네트워크 미사용). */
+    private function figureWithHash(string $title, string $hash, int $ipId, int $cateId): OtakuProduct
+    {
+        return OtakuProduct::create([
+            'ok_product_code' => 'p_'.substr(md5($title), 0, 16),
+            'ok_product_title' => $title,
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $cateId,
+            'ok_product_ip_id' => $ipId,
+            'ok_product_image_hash' => $hash,
+        ]);
+    }
+
+    /** @return array{0:int, 1:int} [블루아카이브 ip_id, figure cate_id] */
+    private function figureRefs(CrawlSyncService $service): array
+    {
+        $this->seedRefs($service);
+
+        return [
+            (int) OtakuIp::where('ok_ip_code', '블루아카이브')->first()->ok_ip_id,
+            (int) OtakuCategory::where('ok_category_code', 'figure')->first()->ok_category_id,
+        ];
+    }
+
+    public function test_image_hash_merges_nonscale_figures_with_divergent_titles(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 같은 팝업퍼레이드 유즈(메이드) 논스케일 피규어인데 제목 조각이 갈려(하나오카 유무) 정규화 키로 안 묶인다.
+        // 이미지가 거의 동일하면(해밍 0) 이미지 확증으로 병합돼야 한다.
+        $a = $this->figureWithHash('블루 아카이브 POP UP PARADE 하나오카 유즈 메이드 Ver.', 'ffffffffffffffff', $ipId, $cateId);
+        $b = $this->figureWithHash('블루 아카이브 팝업 퍼레이드 유즈 메이드 논스케일 피규어', 'ffffffffffffffff', $ipId, $cateId);
+
+        $groups = $service->imageMergeGroups(5);
+
+        $this->assertCount(1, $groups);
+        $this->assertEqualsCanonicalizing([$a->ok_product_id, $b->ok_product_id], $groups[0]);
+    }
+
+    public function test_image_hash_merges_single_distinctive_token_figures(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 프라나 1/7 — 변별 토큰이 캐릭터명 하나뿐이라 시그니처가 비어(퍼지 불가) 미병합되던 실제 사례.
+        // 이미지가 거의 동일하면 병합된다.
+        $a = $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', 'aaaaaaaaaaaaaaaa', $ipId, $cateId);
+        $b = $this->figureWithHash('[입고완료][골든헤드+][블루 아카이브] 프라나 1/7', 'aaaaaaaaaaaaaaaa', $ipId, $cateId);
+
+        $groups = $service->imageMergeGroups(5);
+
+        $this->assertCount(1, $groups);
+        $this->assertEqualsCanonicalizing([$a->ok_product_id, $b->ok_product_id], $groups[0]);
+    }
+
+    public function test_image_hash_does_not_merge_far_hashes(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 같은 캐릭터·스케일이라도 이미지가 다르면(해밍 64) 병합하지 않는다.
+        $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', '0000000000000000', $ipId, $cateId);
+        $this->figureWithHash('[블루 아카이브] 프라나 1/7', 'ffffffffffffffff', $ipId, $cateId);
+
+        $this->assertSame([], $service->imageMergeGroups(5));
+    }
+
+    public function test_image_hash_does_not_merge_different_single_token_characters_even_when_hash_identical(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 변별 토큰이 캐릭터명 하나뿐인 서로 다른 캐릭터(프라나 vs 호시노)는 해시가 같아도 병합 금지
+        // (단일 토큰이라도 캐릭터 충돌 가드가 막는다 — 과병합 방어의 핵심).
+        $this->figureWithHash('블루 아카이브 프라나 1/7 피규어', 'cccccccccccccccc', $ipId, $cateId);
+        $this->figureWithHash('블루 아카이브 호시노 1/7 피규어', 'cccccccccccccccc', $ipId, $cateId);
+
+        $this->assertSame([], $service->imageMergeGroups(5));
+    }
+
+    public function test_image_merge_is_blocked_by_scale_accessory_variant_and_character_guards(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+
+        // 모두 같은 IP·피규어·동일 해시지만, 각 쌍은 가드로 막혀 어떤 것도 병합되면 안 된다.
+        $hash = 'dddddddddddddddd';
+        // 스케일 다름(1/7 vs 1/4)
+        $this->figureWithHash('블루 아카이브 아스나 1/7 피규어', $hash, $ipId, $cateId);
+        $this->figureWithHash('블루 아카이브 아스나 1/4 피규어', $hash, $ipId, $cateId);
+        // 부속품 vs 본체(같은 시로코)
+        $this->figureWithHash('블루 아카이브 시로코 1/7 피규어', $hash, $ipId, $cateId);
+        $this->figureWithHash('블루 아카이브 시로코 1/7 피규어 전용 아크릴 케이스', $hash, $ipId, $cateId);
+        // 의상 변형 불일치(같은 미카, 기본 vs 수영복)
+        $this->figureWithHash('블루 아카이브 미카 1/7 피규어', $hash, $ipId, $cateId);
+        $this->figureWithHash('블루 아카이브 미카 수영복 1/7 피규어', $hash, $ipId, $cateId);
+
+        $this->assertSame([], $service->imageMergeGroups(5), '가드가 모든 쌍을 막아 병합 그룹이 없어야 함');
+    }
+
+    public function test_image_merge_ignores_non_figure_and_missing_or_bad_hashes(): void
+    {
+        $service = $this->app->make(CrawlSyncService::class);
+        [$ipId, $cateId] = $this->figureRefs($service);
+        $goodsCateId = (int) OtakuCategory::where('ok_category_code', 'goods')->first()->ok_category_id;
+
+        // 굿즈 카테고리는 캐릭터 일러스트를 공유하는 변형이 많아 이미지 자동병합 대상에서 제외.
+        $this->figureWithHash('블루 아카이브 아로나 클리어 파일', 'eeeeeeeeeeeeeeee', $ipId, $goodsCateId);
+        $this->figureWithHash('블루 아카이브 아로나 클리어 파일 라지', 'eeeeeeeeeeeeeeee', $ipId, $goodsCateId);
+        // 해시 형식이 잘못됐거나(길이 미달) 실패 마커('')는 후보에서 제외.
+        $this->figureWithHash('블루 아카이브 히나 1/7 피규어', 'zzzz', $ipId, $cateId);
+        $this->figureWithHash('블루 아카이브 히나 1/7 스케일 피규어', '', $ipId, $cateId);
+
+        $this->assertSame([], $service->imageMergeGroups(5));
     }
 
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void

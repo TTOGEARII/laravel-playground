@@ -195,6 +195,21 @@ class ProductNormalizer
     }
 
     /**
+     * 변별 토큰(정렬·중복제거)을 토큰 1개여도 그대로 반환한다.
+     * signatureTokens 는 과매칭 방지로 2개 미만이면 []를 주지만, 이미지 확증 병합의 '캐릭터 충돌'
+     * 판정에는 단일 캐릭터명(프라나 등)도 살려야 서로 다른 캐릭터(프라나 vs 호시노)를 구분할 수 있다.
+     *
+     * @return array<int, string>
+     */
+    public function primaryTokens(string $title): array
+    {
+        $tokens = $this->distinctiveTokens($this->normalizeTitle($title));
+        sort($tokens, SORT_STRING);
+
+        return $tokens;
+    }
+
+    /**
      * 정규화된 제목에서 변별 토큰(불용어·단독 숫자·1글자 제외, 중복 제거)을 뽑는다.
      *
      * @return array<int, string>
