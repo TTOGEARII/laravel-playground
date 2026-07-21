@@ -19,10 +19,14 @@ use Illuminate\View\View;
  */
 class TetrisVersusController extends Controller
 {
-    /** 대전 페이지(방 생성/입장 + 게임). 로그인 필요. */
-    public function index(): View
+    /** 대전 페이지(방 생성/입장 + 게임). 로그인 사용자·게스트 모두 가능(EnsureTetrisIdentity 가 신원 부여). */
+    public function index(Request $request): View
     {
-        return view('mini-game.tetris.versus');
+        $me = $request->user(); // User 또는 GuestParticipant
+
+        return view('mini-game.tetris.versus', [
+            'me' => ['id' => (int) $me->getAuthIdentifier(), 'name' => $me->name],
+        ]);
     }
 
     /**

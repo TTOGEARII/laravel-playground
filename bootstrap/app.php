@@ -9,8 +9,13 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+    )
+    // 브로드캐스팅 인증(/broadcasting/auth)에 게스트 신원 미들웨어를 얹어
+    // 비로그인 방문자도 대전 presence 채널에 입장할 수 있게 한다(대전 라우트와 동일 신원).
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['web', \App\Http\Middleware\EnsureTetrisIdentity::class]],
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // nginx 리버스 프록시(127.0.0.1) 뒤 — X-Forwarded-Proto(https) 신뢰 → 자산 URL https 생성.

@@ -165,7 +165,7 @@
 .tv-arena {
     display: flex;
     gap: var(--ds-space-lg);
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     flex-wrap: wrap;
 }
@@ -204,7 +204,7 @@
 .tv-ovbig.is-lose { color: var(--ds-negative); }
 .tv-ready-state { font-size: var(--ds-fs-xs); }
 
-.tv-mid { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-sm); padding-top: 22px; min-width: 84px; }
+.tv-mid { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-sm); min-width: 84px; }
 .tv-mini-label { font-size: var(--ds-fs-xs); color: var(--text-secondary); }
 .tv-mini { background: #111; border: 1px solid var(--border-color); border-radius: var(--ds-round-xs); }
 .tv-controls-hint { font-size: var(--ds-fs-xs); color: var(--text-secondary); line-height: 1.7; text-align: center; margin-top: var(--ds-space-md); }

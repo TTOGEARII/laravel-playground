@@ -6,8 +6,8 @@
     @vite(['resources/js/pages/mini-game/tetris-versus.js'])
     <div
         id="tetris-versus-app"
-        data-user-id="{{ auth()->id() }}"
-        data-user-name="{{ auth()->user()->name }}"
+        data-user-id="{{ $me['id'] }}"
+        data-user-name="{{ $me['name'] }}"
         data-home-url="{{ route('mini-game.index') }}"
         data-create-room-url="{{ route('mini-game.tetris.rooms.create') }}"
         data-matchmake-url="{{ route('mini-game.tetris.matchmake') }}"

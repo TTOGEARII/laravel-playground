@@ -142,12 +142,14 @@ const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 function computeCellSizes() {
   const w = window.innerWidth;
-  if (w >= 560) { MY_CELL.value = 22; OPP_CELL.value = 13; return; }
+  // 데스크톱: 두 보드 동일 크기로 대칭(쏠림 방지).
+  if (w >= 560) { MY_CELL.value = 20; OPP_CELL.value = 20; return; }
+  // 모바일: 나·상대 보드를 같은 크기로 나란히 + 가운데 다음 + 하단 키패드가 한 화면에.
   const vh = window.innerHeight;
-  const byW = Math.floor((w - 96) / COLS);        // 좌우 여백 + 상대 미니보드 공간
-  const byH = Math.floor((vh * 0.5) / ROWS);      // 보드 높이 ≤ 뷰포트의 절반
-  MY_CELL.value = Math.max(12, Math.min(20, byW, byH));
-  OPP_CELL.value = Math.max(7, Math.round(MY_CELL.value * 0.55));
+  const byW = Math.floor((w - 108) / (COLS * 2));  // 두 보드 나란히 + 중앙 여백
+  const byH = Math.floor((vh * 0.5) / ROWS);       // 보드 높이 ≤ 뷰포트의 절반
+  const cell = Math.max(9, Math.min(16, byW, byH));
+  MY_CELL.value = cell; OPP_CELL.value = cell;
 }
 computeCellSizes();
 
