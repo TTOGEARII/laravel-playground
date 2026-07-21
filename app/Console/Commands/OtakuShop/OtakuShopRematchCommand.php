@@ -108,8 +108,9 @@ class OtakuShopRematchCommand extends Command
             })
             ->select(['ok_product_id', 'ok_product_title'])
             ->chunkById(1000, function ($rows) use (&$promoted, $dryRun, $figureCateId) {
-                // 스케일 있음 + 부속품 아님(LED 디스플레이 케이스/스탠드 등은 스케일 표기가 있어도 제외).
-                $ids = $rows->filter(fn ($p) => CrawlSyncService::looksLikeScaleFigure((string) $p->ok_product_title))
+                // 엄격한 피규어 스케일(분자 1의 1/N, N=2~12) + 부속품 아님. 느슨한 스케일(날짜 25/05 등)
+                // 오탐으로 봉제인형·CD·메달이 승격되던 것을 isFigureScale 로 차단.
+                $ids = $rows->filter(fn ($p) => CrawlSyncService::isFigureScale((string) $p->ok_product_title))
                     ->pluck('ok_product_id');
                 $promoted += $ids->count();
                 if (! $dryRun && $ids->isNotEmpty()) {
@@ -317,10 +318,11 @@ class OtakuShopRematchCommand extends Command
 
     /**
      * 이미지 dHash 확증 자동 병합: 해밍 거리 허용치(64bit 중 다른 비트 수).
-     * 같은 피규어라도 쇼핑몰이 서로 다른 각도/보정의 사진을 써 해밍 6~7 이 나오는 사례를 회수하기 위해 7.
-     * (소폭 과병합 위험은 감수 — 대신 스케일·부속품·변형·캐릭터 가드가 1차로 다른 상품을 걸러낸다.)
+     * 5로 유지 — dry-run 검수에서 7은 같은 캐릭터의 다른 버전/컬렉션(귀멸 월드콜렉터블 네즈코
+     * 컬렉션2/3 등)까지 이미지가 근접해 과병합됨이 확인돼, 안전한 5를 쓴다. 대신 쇼핑몰이 서로
+     * 다른 사진을 쓰는(해밍 6~7) 케이스는 자동 병합 대상이 아니다(수동 병합으로 처리).
      */
-    private const IMAGE_AUTO_MERGE_HAMMING_MAX = 7;
+    private const IMAGE_AUTO_MERGE_HAMMING_MAX = 5;
 
     /** 회당 신규 이미지 해시 다운로드 상한(장시간 실행 방지 — 해시는 저장돼 다음 회차가 이어간다). */
     private const IMAGE_HASH_BUDGET = 3000;

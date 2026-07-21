@@ -721,6 +721,20 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame($otherCateId, (int) OtakuProduct::first()->ok_product_cate_id);
     }
 
+    public function test_is_figure_scale_accepts_1_over_n_but_rejects_dates_and_ratios(): void
+    {
+        // 승격은 분자 1의 1/N(N=2~12)만 — 날짜(25/05)·비율(2/3)·대형모델(1/144)·부속품은 제외해
+        // 봉제인형·CD·메달이 피규어로 오승격되던 것을 막는다.
+        $this->assertTrue(CrawlSyncService::isFigureScale('블루 아카이브 프라나 1/7 피규어'));
+        $this->assertTrue(CrawlSyncService::isFigureScale('코토부키야 걸판처 다즐링 1/8 스케일'));
+        $this->assertTrue(CrawlSyncService::isFigureScale('바니 아오이 1/6'));
+
+        $this->assertFalse(CrawlSyncService::isFigureScale('윈브레 봉제인형 사쿠라 하루카 ~25/05/03'), '날짜');
+        $this->assertFalse(CrawlSyncService::isFigureScale('공식 앨범 CD 토모다치 2/3 특전'), '분자 1 아닌 비율');
+        $this->assertFalse(CrawlSyncService::isFigureScale('건담 RG 1/144 프라모델'), 'N>12 대형 모델');
+        $this->assertFalse(CrawlSyncService::isFigureScale('프라나 1/7 스케일 LED 디스플레이 케이스'), '부속품');
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();

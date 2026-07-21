@@ -256,7 +256,7 @@ class CrawlSyncService
         // 1/N 스케일 표기가 있고 부속품이 아니면 사실상 피규어 본체 — 쇼핑몰이 '기타/굿즈'로 라벨링해도
         // 피규어로 승격한다(스케일 상품이 피규어 버킷에 들어가야 이미지 병합·퍼지 매칭 대상이 된다).
         $figureCateId = $categoryByCode[self::FUZZY_CATEGORY] ?? null;
-        if ($figureCateId !== null && self::looksLikeScaleFigure($dto->title)) {
+        if ($figureCateId !== null && self::isFigureScale($dto->title)) {
             $categoryId = $figureCateId;
         }
         $tokens = $this->normalizer->signatureTokens($dto->title);
@@ -479,6 +479,21 @@ class CrawlSyncService
     public static function looksLikeScaleFigure(string $title): bool
     {
         if (self::extractScale($title) === null) {
+            return false;
+        }
+
+        return ! self::looksLikeAccessory($title);
+    }
+
+    /**
+     * 카테고리 승격(비피규어→피규어)용 엄격한 피규어 스케일 판정.
+     * 피규어 스케일은 분자 1의 1/N(N=2~12: 1/4·1/6·1/7·1/8·1/10·1/12 등)이다. 느슨한 extractScale
+     * 은 날짜("~25/05/03"→5/05)·비율("2/3")까지 잡아 봉제인형·CD·메달을 오승격시키므로, 승격에는
+     * 분자 1 + N=2~12 만 인정하고 부속품(케이스/스탠드)은 제외한다.
+     */
+    public static function isFigureScale(string $title): bool
+    {
+        if (! preg_match('#(?<!\d)1\s*/\s*(1[0-2]|[2-9])(?!\d)#u', $title)) {
             return false;
         }
 

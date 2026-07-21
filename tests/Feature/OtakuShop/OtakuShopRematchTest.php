@@ -224,17 +224,18 @@ class OtakuShopRematchTest extends TestCase
         $this->assertSame(2, OtakuProduct::count(), 'dry-run 은 이미지 병합도 수행하지 않아야 함');
     }
 
-    public function test_rematch_image_merges_hamming_seven_at_default_threshold(): void
+    public function test_rematch_image_merges_close_hash_at_default_threshold(): void
     {
         Http::fake();
 
-        // 쇼핑몰 사진이 살짝 달라 dHash 해밍거리 7 인 같은 프라나 1/7 — 기본 임계값(7)에서 병합돼야 한다.
+        // 쇼핑몰 사진이 살짝 달라 dHash 해밍거리 5(0x1f=5비트) 인 같은 프라나 1/7 — 기본 임계값(5)에서
+        // 병합돼야 한다. (해밍 6~7 로 벌어지는 경우는 기본값에서 병합 안 함 — WCF 과병합 방지로 5 유지.)
         $this->figureWithImage('p1', '블루 아카이브 프라나 1/7 피규어', $this->shopA, 'A1', 250000, '0000000000000000');
-        $this->figureWithImage('p2', '[블루 아카이브] 프라나 1/7', $this->shopB, 'B1', 240000, '000000000000007f');
+        $this->figureWithImage('p2', '[블루 아카이브] 프라나 1/7', $this->shopB, 'B1', 240000, '000000000000001f');
 
         $this->artisan('otaku-shop:rematch')->assertSuccessful();
 
-        $this->assertSame(1, OtakuProduct::count(), '해밍 7 은 기본 임계값에서 병합돼야 함');
+        $this->assertSame(1, OtakuProduct::count(), '해밍 5 는 기본 임계값에서 병합돼야 함');
         $this->assertSame(2, OtakuOffer::count());
     }
 
