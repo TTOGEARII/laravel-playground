@@ -211,3 +211,14 @@
 
 .tv-stat { font-size: var(--ds-fs-sm); color: var(--text-secondary); }
 .tv-gwarn { color: var(--ds-warning, #f2913d); margin-left: 6px; font-weight: var(--ds-fw-bold); }
+
+/* 관전 */
+.tv-spectate {
+    background: var(--ds-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-lg);
+    padding: var(--ds-space-lg);
+    box-shadow: var(--ds-shadow-medium);
+}
+.tv-spectate .tv-members-title { text-align: center; margin-bottom: var(--ds-space-lg); }
+.tv-vs { font-size: var(--ds-fs-xl); font-weight: var(--ds-fw-bold); color: var(--ds-primary); align-self: center; }

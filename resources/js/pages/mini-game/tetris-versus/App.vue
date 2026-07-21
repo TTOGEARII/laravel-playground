@@ -36,10 +36,23 @@
         <button class="tv-btn tv-btn-sm tv-leave" @click="leaveRoom">나가기</button>
       </div>
 
-      <!-- 관전자(3번째 이후): 안내만(다인/관전 UI는 다음 단계) -->
-      <div v-if="!amPlayer" class="tv-members">
-        <div class="tv-members-title">관전 중 — 참가자 {{ playerIds.length }}/2</div>
-        <p class="tv-waiting">이 방은 이미 두 명이 대전 중입니다. 관전 화면은 준비 중이에요.</p>
+      <!-- 관전자(참가자 2명 외): 두 플레이어 보드를 실시간으로 본다 -->
+      <div v-if="!amPlayer" class="tv-spectate">
+        <div class="tv-members-title">👁 관전 중 — 참가자 {{ playerIds.length }}/2</div>
+        <div class="tv-arena">
+          <div class="tv-side">
+            <div class="tv-board-label">{{ playerNameAt(0) || 'P1' }}</div>
+            <canvas ref="spec1Canvas" :width="COLS * OPP_CELL" :height="ROWS * OPP_CELL" class="tv-canvas is-opp"></canvas>
+            <div class="tv-stat">줄 {{ specBoards[playerIds[0]]?.ln ?? 0 }}</div>
+          </div>
+          <div class="tv-mid"><div class="tv-vs">VS</div></div>
+          <div class="tv-side">
+            <div class="tv-board-label">{{ playerNameAt(1) || 'P2' }}</div>
+            <canvas ref="spec2Canvas" :width="COLS * OPP_CELL" :height="ROWS * OPP_CELL" class="tv-canvas is-opp"></canvas>
+            <div class="tv-stat">줄 {{ specBoards[playerIds[1]]?.ln ?? 0 }}</div>
+          </div>
+        </div>
+        <p v-if="playerIds.length < 2" class="tv-waiting">대전 시작을 기다리는 중…</p>
       </div>
 
       <template v-else>
@@ -135,6 +148,9 @@ const oppSnap = ref(null);
 const myCanvas = ref(null);
 const oppCanvas = ref(null);
 const nextCanvas = ref(null);
+const specBoards = ref({}); // 관전용: { [playerId]: 스냅샷 }
+const spec1Canvas = ref(null);
+const spec2Canvas = ref(null);
 
 let echo = null;
 let channel = null;
@@ -151,6 +167,7 @@ const amPlayer = computed(() => playerIds.value.includes(props.me.id));
 const isHost = computed(() => playerIds.value.length > 0 && props.me.id === playerIds.value[0]);
 const opponentId = computed(() => playerIds.value.find((id) => id !== props.me.id) ?? null);
 const opponentName = computed(() => members.value.find((m) => m.id === opponentId.value)?.name ?? '');
+function playerNameAt(i) { return members.value.find((m) => m.id === playerIds.value[i])?.name ?? ''; }
 
 // 두 명이 모이면 대기→준비
 function refreshPhase() {
@@ -233,9 +250,18 @@ function enterRoom(code) {
     })
     .listenForWhisper('ready', () => { oppReady.value = true; maybeStart(); })
     .listenForWhisper('go', (e) => startCountdown(e.at))
-    .listenForWhisper('garbage', (e) => { if (engine && gamePhase.value === 'playing') { engine.receiveGarbage(e.n); garbageIn.value = engine.garbageQueue; } })
-    .listenForWhisper('board', (e) => { oppSnap.value = e.snap; renderOpp(); })
-    .listenForWhisper('dead', () => { if (gamePhase.value === 'playing') endGame('win'); })
+    .listenForWhisper('garbage', (e) => {
+      if (amPlayer.value && engine && gamePhase.value === 'playing' && e.from === opponentId.value) {
+        engine.receiveGarbage(e.n); garbageIn.value = engine.garbageQueue;
+      }
+    })
+    .listenForWhisper('board', (e) => {
+      if (!amPlayer.value) { specBoards.value = { ...specBoards.value, [e.from]: e.snap }; renderSpec(); }
+      else if (e.from === opponentId.value) { oppSnap.value = e.snap; renderOpp(); }
+    })
+    .listenForWhisper('dead', (e) => {
+      if (amPlayer.value && gamePhase.value === 'playing' && e.from === opponentId.value) endGame('win');
+    })
     .error(() => { error.value = '실시간 연결에 실패했어요(로그인/네트워크 확인).'; });
 }
 
@@ -268,8 +294,8 @@ function startCountdown(at) {
 
 function beginGame() {
   engine = new TetrisEngine({
-    onLineClear: (n, eng) => { myLines.value = eng.lines; if (n > 0) channel?.whisper('garbage', { n }); garbageIn.value = eng.garbageQueue; },
-    onTopOut: () => { channel?.whisper('dead', {}); endGame('lose'); },
+    onLineClear: (n, eng) => { myLines.value = eng.lines; if (n > 0) channel?.whisper('garbage', { n, from: props.me.id }); garbageIn.value = eng.garbageQueue; },
+    onTopOut: () => { channel?.whisper('dead', { from: props.me.id }); endGame('lose'); },
     onChange: (eng) => { myLines.value = eng.lines; garbageIn.value = eng.garbageQueue; },
   });
   result.value = null;
@@ -349,7 +375,14 @@ function renderOpp() {
 function renderAll() { renderMine(); renderOpp(); }
 
 function sendSnapshot() {
-  if (engine && channel) channel.whisper('board', { snap: engine.serialize() });
+  if (engine && channel) channel.whisper('board', { snap: engine.serialize(), from: props.me.id });
+}
+
+function renderSpec() {
+  const c1 = spec1Canvas.value?.getContext('2d');
+  if (c1) drawSnapshot(c1, specBoards.value[playerIds.value[0]], OPP_CELL);
+  const c2 = spec2Canvas.value?.getContext('2d');
+  if (c2) drawSnapshot(c2, specBoards.value[playerIds.value[1]], OPP_CELL);
 }
 
 // ── 방 나가기/링크 ──────────────────────────────────
