@@ -16,6 +16,7 @@
                 <div class="game-menu" id="gameMenuMain">
                     <button id="startGameBtn" class="game-menu-btn game-menu-btn--primary">게임 시작</button>
                     <a href="{{ route('mini-game.tetris.versus') }}" class="game-menu-btn game-menu-btn--versus">👥 멀티 대전 <small>실시간 1:1</small></a>
+                    <a href="{{ route('mini-game.tetris.battle') }}" class="game-menu-btn game-menu-btn--versus">🏆 배틀로얄 <small>최대 6인</small></a>
                     <button type="button" class="game-menu-btn" data-menu="options">옵션</button>
                     <button type="button" class="game-menu-btn" data-menu="controls">조작법</button>
                     <a href="{{ route('mini-game.index') }}" class="game-menu-btn game-menu-btn--danger"

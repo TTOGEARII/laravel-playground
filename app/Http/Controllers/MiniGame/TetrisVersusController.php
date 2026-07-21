@@ -19,6 +19,12 @@ use Illuminate\View\View;
  */
 class TetrisVersusController extends Controller
 {
+    /** 배틀로얄 한 방 최대 인원. */
+    private const BATTLE_MAX = 6;
+
+    /** 배틀로얄 모집 방(open) 캐시 TTL(초) — 지나면 자가정리돼 새 방으로 모집. */
+    private const BATTLE_OPEN_TTL = 20;
+
     /** 대전 페이지(방 생성/입장 + 게임). 로그인 사용자·게스트 모두 가능(EnsureTetrisIdentity 가 신원 부여). */
     public function index(Request $request): View
     {
@@ -27,6 +33,44 @@ class TetrisVersusController extends Controller
         return view('mini-game.tetris.versus', [
             'me' => ['id' => (int) $me->getAuthIdentifier(), 'name' => $me->name],
         ]);
+    }
+
+    /** 배틀로얄(1:N, 최대 BATTLE_MAX) 페이지. 로그인·게스트 모두. */
+    public function battle(Request $request): View
+    {
+        $me = $request->user();
+
+        return view('mini-game.tetris.battle', [
+            'me' => ['id' => (int) $me->getAuthIdentifier(), 'name' => $me->name],
+            'maxPlayers' => self::BATTLE_MAX,
+        ]);
+    }
+
+    /**
+     * 배틀로얄 빠른 매칭 — 모집 중인 공개 방(최대 BATTLE_MAX)에 합류시킨다.
+     * 1:1 과 달리 즉시 방 코드를 돌려주고(폴링 불필요), 실제 인원/자동시작은 presence 로 프론트가 다룬다.
+     * count 는 방 배정용 근사치(TTL 자가정리) — 정확한 참가자 수는 presence 멤버가 담당한다.
+     */
+    public function battleMatchmake(Request $request): JsonResponse
+    {
+        $ttl = now()->addSeconds(self::BATTLE_OPEN_TTL);
+        $open = Cache::get('tetris:battle:open');
+
+        if (is_array($open) && ($open['count'] ?? 0) < self::BATTLE_MAX) {
+            $open['count']++;
+            if ($open['count'] >= self::BATTLE_MAX) {
+                Cache::forget('tetris:battle:open'); // 다 찼으면 다음 매칭은 새 방으로
+            } else {
+                Cache::put('tetris:battle:open', $open, $ttl);
+            }
+
+            return response()->json(['data' => ['code' => $open['code']]]);
+        }
+
+        $code = $this->generateCode();
+        Cache::put('tetris:battle:open', ['code' => $code, 'count' => 1], $ttl);
+
+        return response()->json(['data' => ['code' => $code]]);
     }
 
     /**

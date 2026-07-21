@@ -28,6 +28,11 @@ Route::prefix('tetris')->group(function () {
             ->middleware('throttle:90,1')->name('mini-game.tetris.matchmake');
         Route::post('matchmake/cancel', [TetrisVersusController::class, 'cancelMatchmake'])
             ->middleware('throttle:30,1')->name('mini-game.tetris.matchmake.cancel');
+
+        // 배틀로얄(1:N) — 페이지 + 빠른 매칭(모집 방 합류). 친구방은 rooms(코드) 재사용.
+        Route::get('battle', [TetrisVersusController::class, 'battle'])->name('mini-game.tetris.battle');
+        Route::post('battle/matchmake', [TetrisVersusController::class, 'battleMatchmake'])
+            ->middleware('throttle:60,1')->name('mini-game.tetris.battle.matchmake');
     });
 });
 
