@@ -28,6 +28,25 @@ services:
             - mysql
             - redis
             - selenium
+    # 실시간 멀티플레이(테트리스 대전) WebSocket 서버. 앱과 같은 이미지로 reverb:start 상시 구동.
+    # 브라우저는 nginx(/app WS 프록시)를 통해 접속(운영), 로컬은 FORWARD_REVERB_PORT 로 직접 접속.
+    reverb:
+        image: sail-8.5/app
+        command: php artisan reverb:start --host=0.0.0.0 --port=8080
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '127.0.0.1:${FORWARD_REVERB_PORT:-8080}:8080'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            TZ: '${TZ:-Asia/Seoul}'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
     mysql:
         image: 'mysql:8.4'
         # default-time-zone(+09:00)은 tz 테이블 없이도 NOW()/CURRENT_TIMESTAMP 를 KST 로 맞춘다.
