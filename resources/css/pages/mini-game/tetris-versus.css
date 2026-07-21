@@ -40,10 +40,35 @@
 .tv-lobby-actions {
     display: flex;
     flex-direction: column;
-    gap: var(--ds-space-lg);
+    gap: var(--ds-space-md);
     max-width: 360px;
 }
 .tv-join { display: flex; gap: var(--ds-space-sm); }
+.tv-quick { font-size: var(--ds-fs-md); padding: 14px 20px; }
+.tv-or { text-align: center; color: var(--text-secondary); font-size: var(--ds-fs-xs); }
+
+.tv-matching {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-md);
+    max-width: 360px;
+    margin-bottom: var(--ds-space-lg);
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-primary);
+    border-radius: var(--ds-round-lg);
+    font-size: var(--ds-fs-sm);
+}
+.tv-matching b { color: var(--ds-primary); min-width: 24px; display: inline-block; }
+.tv-matching .tv-btn { margin-left: auto; }
+.tv-spin {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--ds-primary);
+    border-radius: 50%;
+    animation: tv-spin 0.8s linear infinite;
+}
+@keyframes tv-spin { to { transform: rotate(360deg); } }
 
 /* 버튼 */
 .tv-btn {

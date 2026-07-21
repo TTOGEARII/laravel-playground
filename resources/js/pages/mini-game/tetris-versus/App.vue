@@ -7,12 +7,21 @@
 
     <!-- 로비 -->
     <section v-if="view === 'lobby'" class="tv-lobby">
-      <p class="tv-lead">친구와 1:1 실시간 대전. 방을 만들어 링크를 공유하거나, 코드로 입장하세요.</p>
+      <p class="tv-lead">아무나와 빠르게 붙거나, 친구와 방을 만들어 대전하세요.</p>
+
+      <!-- 빠른 대전(자동 매칭) -->
+      <div v-if="matching" class="tv-matching">
+        <span class="tv-spin"></span>
+        <span>상대를 찾는 중… <b>{{ matchDots }}</b></span>
+        <button class="tv-btn tv-btn-sm" @click="cancelMatchmaking">취소</button>
+      </div>
       <div class="tv-lobby-actions">
-        <button class="tv-btn tv-btn-primary" :disabled="busy" @click="createRoom">방 만들기</button>
+        <button class="tv-btn tv-btn-primary tv-quick" :disabled="busy || matching" @click="startMatchmaking">⚡ 빠른 대전</button>
+        <div class="tv-or">또는</div>
+        <button class="tv-btn" :disabled="busy || matching" @click="createRoom">방 만들기</button>
         <div class="tv-join">
-          <input v-model.trim="joinCode" maxlength="6" placeholder="방 코드 6자리" class="tv-input" @keyup.enter="joinRoom" />
-          <button class="tv-btn" :disabled="busy || joinCode.length < 4" @click="joinRoom">입장</button>
+          <input v-model.trim="joinCode" maxlength="6" placeholder="방 코드 6자리" class="tv-input" :disabled="matching" @keyup.enter="joinRoom" />
+          <button class="tv-btn" :disabled="busy || matching || joinCode.length < 4" @click="joinRoom">입장</button>
         </div>
       </div>
       <p v-if="error" class="tv-error">{{ error }}</p>
@@ -92,6 +101,8 @@ const props = defineProps({
   me: { type: Object, required: true },
   homeUrl: { type: String, default: '/mini-game' },
   createRoomUrl: { type: String, required: true },
+  matchmakeUrl: { type: String, default: '' },
+  cancelMatchmakeUrl: { type: String, default: '' },
   csrf: { type: String, required: true },
 });
 
@@ -106,6 +117,10 @@ const joinCode = ref('');
 const roomCode = ref('');
 const members = ref([]);
 const copied = ref(false);
+const matching = ref(false);
+const matchDots = ref('');
+let matchTimer = null;
+let dotsTimer = null;
 
 // 게임 상태
 const gamePhase = ref('waiting'); // waiting | ready | countdown | playing | result
@@ -144,6 +159,35 @@ function refreshPhase() {
   gamePhase.value = playerIds.value.length >= 2 ? 'ready' : 'waiting';
 }
 
+// ── 빠른 대전(자동 매칭, 폴링) ──────────────────────
+function mmHeaders() {
+  return { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': props.csrf, Accept: 'application/json' };
+}
+function startMatchmaking() {
+  if (!props.matchmakeUrl || matching.value) return;
+  matching.value = true; error.value = '';
+  let n = 0;
+  dotsTimer = setInterval(() => { n = (n + 1) % 4; matchDots.value = '.'.repeat(n); }, 400);
+  pollMatch();
+  matchTimer = setInterval(pollMatch, 2000);
+}
+async function pollMatch() {
+  try {
+    const res = await fetch(props.matchmakeUrl, { method: 'POST', headers: mmHeaders() });
+    const { data } = await res.json();
+    if (data.status === 'matched') { stopMatchmaking(); enterRoom(data.code); }
+  } catch { /* 다음 폴에서 재시도 */ }
+}
+function cancelMatchmaking() {
+  stopMatchmaking();
+  if (props.cancelMatchmakeUrl) fetch(props.cancelMatchmakeUrl, { method: 'POST', headers: mmHeaders() }).catch(() => {});
+}
+function stopMatchmaking() {
+  matching.value = false;
+  if (matchTimer) { clearInterval(matchTimer); matchTimer = null; }
+  if (dotsTimer) { clearInterval(dotsTimer); dotsTimer = null; }
+}
+
 // ── 방 입장/네트워킹 ────────────────────────────────
 async function createRoom() {
   busy.value = true; error.value = '';
@@ -166,6 +210,7 @@ function joinRoom() {
 }
 
 function enterRoom(code) {
+  stopMatchmaking();
   roomCode.value = code;
   view.value = 'room';
   const url = new URL(window.location.href);
@@ -334,6 +379,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopGameLoop();
+  if (matching.value) cancelMatchmaking();
   if (echo && roomCode.value) echo.leave(CHANNEL_PREFIX + roomCode.value);
 });
 </script>

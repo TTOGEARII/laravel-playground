@@ -22,6 +22,11 @@ Route::prefix('tetris')->group(function () {
         Route::get('versus', [TetrisVersusController::class, 'index'])->name('mini-game.tetris.versus');
         Route::post('rooms', [TetrisVersusController::class, 'createRoom'])
             ->middleware('throttle:30,1')->name('mini-game.tetris.rooms.create');
+        // 빠른 대전(폴링) — 2초 간격 폴이라 스로틀 여유있게.
+        Route::post('matchmake', [TetrisVersusController::class, 'matchmake'])
+            ->middleware('throttle:90,1')->name('mini-game.tetris.matchmake');
+        Route::post('matchmake/cancel', [TetrisVersusController::class, 'cancelMatchmake'])
+            ->middleware('throttle:30,1')->name('mini-game.tetris.matchmake.cancel');
     });
 });
 

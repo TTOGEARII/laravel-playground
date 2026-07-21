@@ -8,6 +8,8 @@ if (el) {
         me: { id: Number(el.dataset.userId), name: el.dataset.userName },
         homeUrl: el.dataset.homeUrl,
         createRoomUrl: el.dataset.createRoomUrl,
+        matchmakeUrl: el.dataset.matchmakeUrl,
+        cancelMatchmakeUrl: el.dataset.cancelMatchmakeUrl,
         csrf: el.dataset.csrf,
     }).mount('#tetris-versus-app');
 }

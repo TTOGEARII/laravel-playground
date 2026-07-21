@@ -10,6 +10,8 @@
         data-user-name="{{ auth()->user()->name }}"
         data-home-url="{{ route('mini-game.index') }}"
         data-create-room-url="{{ route('mini-game.tetris.rooms.create') }}"
+        data-matchmake-url="{{ route('mini-game.tetris.matchmake') }}"
+        data-cancel-matchmake-url="{{ route('mini-game.tetris.matchmake.cancel') }}"
         data-csrf="{{ csrf_token() }}"
     ></div>
 @endsection

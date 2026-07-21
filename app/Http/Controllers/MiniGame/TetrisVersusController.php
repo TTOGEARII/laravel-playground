@@ -5,6 +5,7 @@ namespace App\Http\Controllers\MiniGame;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 /**
@@ -33,6 +34,55 @@ class TetrisVersusController extends Controller
         $code = $this->generateCode();
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    /**
+     * 빠른 대전 매칭(폴링). 대기자가 있으면 방을 배정하고, 없으면 내가 대기자가 된다.
+     * 브로드캐스트/큐 워커 없이 Redis 만으로 처리 — 클라이언트가 2초 간격 폴링하며, 경합은 다음 폴에서 자가치유된다.
+     */
+    public function matchmake(Request $request): JsonResponse
+    {
+        $me = (string) $request->user()->id;
+        $ttl = now()->addSeconds(30);
+
+        // 1) 이미 나에게 배정된 방이 있으면(대기 중 매칭됨) 그 코드로 입장.
+        if ($code = Cache::pull("tetris:mm:room:{$me}")) {
+            Cache::forget('tetris:mm:waiting');
+
+            return response()->json(['data' => ['status' => 'matched', 'code' => $code]]);
+        }
+
+        // 2) 대기 슬롯을 원자적으로 점유(add 는 없을 때만 성공) → 내가 첫 대기자.
+        if (Cache::add('tetris:mm:waiting', $me, $ttl)) {
+            return response()->json(['data' => ['status' => 'queued']]);
+        }
+
+        // 3) 이미 대기자가 있음. 나 아니면 매칭(방 코드를 상대에게 배정하고 나도 입장).
+        $waiting = Cache::get('tetris:mm:waiting');
+        if ($waiting !== null && $waiting !== $me) {
+            Cache::forget('tetris:mm:waiting');
+            $code = $this->generateCode();
+            Cache::put("tetris:mm:room:{$waiting}", $code, $ttl); // 상대가 다음 폴에서 받음
+
+            return response()->json(['data' => ['status' => 'matched', 'code' => $code]]);
+        }
+
+        // 4) 대기자가 나 자신(이전 폴) → 계속 대기(TTL 갱신).
+        Cache::put('tetris:mm:waiting', $me, $ttl);
+
+        return response()->json(['data' => ['status' => 'queued']]);
+    }
+
+    /** 빠른 대전 취소 — 대기열/배정에서 나를 제거. */
+    public function cancelMatchmake(Request $request): JsonResponse
+    {
+        $me = (string) $request->user()->id;
+        if (Cache::get('tetris:mm:waiting') === $me) {
+            Cache::forget('tetris:mm:waiting');
+        }
+        Cache::forget("tetris:mm:room:{$me}");
+
+        return response()->json(['data' => ['ok' => true]]);
     }
 
     /** 혼동되는 글자(0/O/1/I/L) 제외한 6자리 방 코드. */
