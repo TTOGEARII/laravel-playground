@@ -53,6 +53,27 @@
     box-shadow: 0 4px 15px rgba(20, 184, 166, 0.4);
 }
 
+/* 멀티 대전 진입 버튼 — teal 아웃라인 강조(게임 시작 다음가는 CTA) */
+.tetris-page .game-menu-btn--versus {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.08);
+    border: 1px solid rgba(45, 212, 191, 0.55);
+}
+.tetris-page .game-menu-btn--versus:hover {
+    background: rgba(45, 212, 191, 0.18);
+    border-color: #2dd4bf;
+    color: #ecfeff;
+}
+.tetris-page .game-menu-btn--versus small {
+    font-size: 0.72em;
+    font-weight: 400;
+    opacity: 0.75;
+}
+
 /* 게임 캔버스가 남은 공간 전부를 채움 */
 .tetris-page #game-container {
     flex: 1 1 auto;
@@ -73,18 +94,18 @@
     touch-action: none;
 }
 
-/* ---------------------------------------------------------------- 가상 키패드 */
+/* ---------------------------------------------------------------- 가상 키패드
+   flex 흐름의 마지막 항목으로 캔버스(#game-container) 아래에 자리를 차지한다.
+   절대위치(bottom:0) 오버레이로 두면 모바일 브라우저 하단 툴바·홈 인디케이터에
+   버튼 하단이 가려져(짤림) 이렇게 흐름에 포함시켜 항상 화면 안에 들어오게 한다. */
 .tetris-page .touch-controls {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: clamp(92px, 15dvh, 160px);
+    flex: 0 0 auto;
+    /* 높이는 버튼+패딩에 맞춰 자동 → 고정 높이 안에서 버튼이 넘쳐 잘리는 일 없음 */
     display: none; /* JS가 터치 기기일 때 flex로 표시 */
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 10px calc(12px + env(safe-area-inset-bottom, 0px));
     pointer-events: none; /* 버튼 그룹만 입력 받음 */
     z-index: 5;
 }

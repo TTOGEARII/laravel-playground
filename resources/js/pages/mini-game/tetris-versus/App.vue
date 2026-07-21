@@ -99,6 +99,20 @@
             <div class="tv-stat">줄 {{ oppSnap?.ln ?? 0 }}</div>
           </div>
         </div>
+
+        <!-- 모바일 가상 키패드(터치 기기·플레이 중) — 데스크톱은 키보드 -->
+        <div v-if="isTouch && gamePhase === 'playing'" class="tv-touch">
+          <div class="tv-tc-group">
+            <button class="tv-tc-btn" aria-label="왼쪽 이동" @touchstart.prevent="pressStart('left')" @touchend.prevent="pressEnd" @touchcancel.prevent="pressEnd" @mousedown.prevent="pressStart('left')" @mouseup.prevent="pressEnd" @mouseleave="pressEnd">◀</button>
+            <button class="tv-tc-btn" aria-label="소프트드롭" @touchstart.prevent="pressStart('softdrop')" @touchend.prevent="pressEnd" @touchcancel.prevent="pressEnd" @mousedown.prevent="pressStart('softdrop')" @mouseup.prevent="pressEnd" @mouseleave="pressEnd">▼</button>
+            <button class="tv-tc-btn" aria-label="오른쪽 이동" @touchstart.prevent="pressStart('right')" @touchend.prevent="pressEnd" @touchcancel.prevent="pressEnd" @mousedown.prevent="pressStart('right')" @mouseup.prevent="pressEnd" @mouseleave="pressEnd">▶</button>
+          </div>
+          <div class="tv-tc-group">
+            <button class="tv-tc-btn" aria-label="회전" @touchstart.prevent="doAction('rotate')" @mousedown.prevent="doAction('rotate')">↻</button>
+            <button class="tv-tc-btn tv-tc-wide" aria-label="홀드" @touchstart.prevent="doAction('hold')" @mousedown.prevent="doAction('hold')">HOLD</button>
+            <button class="tv-tc-btn tv-tc-hard" aria-label="하드드롭" @touchstart.prevent="doAction('harddrop')" @mousedown.prevent="doAction('harddrop')">⤓</button>
+          </div>
+        </div>
       </template>
     </section>
   </div>
@@ -119,9 +133,23 @@ const props = defineProps({
   csrf: { type: String, required: true },
 });
 
-const MY_CELL = 22;
-const OPP_CELL = 13;
+// 셀 크기는 반응형: 데스크톱은 크게, 모바일(좁은 화면)은 보드+상대+가상키패드가
+// 한 화면에 들어오도록 줄인다(computeCellSizes).
+const MY_CELL = ref(22);
+const OPP_CELL = ref(13);
 const CHANNEL_PREFIX = 'tetris-room.';
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+function computeCellSizes() {
+  const w = window.innerWidth;
+  if (w >= 560) { MY_CELL.value = 22; OPP_CELL.value = 13; return; }
+  const vh = window.innerHeight;
+  const byW = Math.floor((w - 96) / COLS);        // 좌우 여백 + 상대 미니보드 공간
+  const byH = Math.floor((vh * 0.5) / ROWS);      // 보드 높이 ≤ 뷰포트의 절반
+  MY_CELL.value = Math.max(12, Math.min(20, byW, byH));
+  OPP_CELL.value = Math.max(7, Math.round(MY_CELL.value * 0.55));
+}
+computeCellSizes();
 
 const view = ref('lobby');
 const busy = ref(false);
@@ -159,6 +187,7 @@ let rafId = null;
 let lastTs = 0;
 let dropAcc = 0;
 let snapTimer = null;
+let repeatTimer = null; // 가상 키패드 좌우/소프트 반복 입력
 
 // 참가자 = 입장순(id) 앞 2명
 const sortedIds = computed(() => members.value.map((m) => m.id).sort((a, b) => a - b));
@@ -319,6 +348,7 @@ function endGame(outcome) {
 function stopGameLoop() {
   if (rafId) cancelAnimationFrame(rafId), (rafId = null);
   if (snapTimer) clearInterval(snapTimer), (snapTimer = null);
+  pressEnd();
   window.removeEventListener('keydown', handleKey);
 }
 
@@ -361,16 +391,39 @@ function handleKey(e) {
   renderMine();
 }
 
+// ── 모바일 가상 키패드 ──────────────────────────────
+function doAction(act) {
+  if (gamePhase.value !== 'playing' || !engine) return;
+  if (act === 'left') engine.move(-1, 0);
+  else if (act === 'right') engine.move(1, 0);
+  else if (act === 'softdrop') { engine.softDrop(); dropAcc = 0; }
+  else if (act === 'rotate') engine.rotate(1);
+  else if (act === 'hold') engine.holdPiece();
+  else if (act === 'harddrop') { engine.hardDrop(); dropAcc = 0; }
+  renderMine();
+}
+function pressStart(act) {
+  doAction(act);
+  // 이동/소프트드롭은 누르고 있는 동안 반복(DAS 유사)
+  if (act === 'left' || act === 'right' || act === 'softdrop') {
+    clearInterval(repeatTimer);
+    repeatTimer = setInterval(() => doAction(act), 110);
+  }
+}
+function pressEnd() {
+  if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = null; }
+}
+
 // ── 렌더 ────────────────────────────────────────────
 function renderMine() {
   const ctx = myCanvas.value?.getContext('2d');
-  if (ctx && engine) drawBoard(ctx, engine, MY_CELL);
+  if (ctx && engine) drawBoard(ctx, engine, MY_CELL.value);
   const nctx = nextCanvas.value?.getContext('2d');
   if (nctx && engine) drawNext(nctx, engine.queue[0], 16);
 }
 function renderOpp() {
   const ctx = oppCanvas.value?.getContext('2d');
-  if (ctx) drawSnapshot(ctx, oppSnap.value, OPP_CELL);
+  if (ctx) drawSnapshot(ctx, oppSnap.value, OPP_CELL.value);
 }
 function renderAll() { renderMine(); renderOpp(); }
 
@@ -380,9 +433,17 @@ function sendSnapshot() {
 
 function renderSpec() {
   const c1 = spec1Canvas.value?.getContext('2d');
-  if (c1) drawSnapshot(c1, specBoards.value[playerIds.value[0]], OPP_CELL);
+  if (c1) drawSnapshot(c1, specBoards.value[playerIds.value[0]], OPP_CELL.value);
   const c2 = spec2Canvas.value?.getContext('2d');
-  if (c2) drawSnapshot(c2, specBoards.value[playerIds.value[1]], OPP_CELL);
+  if (c2) drawSnapshot(c2, specBoards.value[playerIds.value[1]], OPP_CELL.value);
+}
+
+function onResize() {
+  const prevMy = MY_CELL.value, prevOpp = OPP_CELL.value;
+  computeCellSizes();
+  if (MY_CELL.value !== prevMy || OPP_CELL.value !== prevOpp) {
+    nextTick(() => { renderAll(); if (!amPlayer.value) renderSpec(); });
+  }
 }
 
 // ── 방 나가기/링크 ──────────────────────────────────
@@ -406,12 +467,14 @@ function copyLink() {
 }
 
 onMounted(() => {
+  window.addEventListener('resize', onResize);
   const code = new URL(window.location.href).searchParams.get('room');
   if (code) enterRoom(code.toUpperCase());
 });
 
 onBeforeUnmount(() => {
   stopGameLoop();
+  window.removeEventListener('resize', onResize);
   if (matching.value) cancelMatchmaking();
   if (echo && roomCode.value) echo.leave(CHANNEL_PREFIX + roomCode.value);
 });

@@ -15,6 +15,7 @@
 
                 <div class="game-menu" id="gameMenuMain">
                     <button id="startGameBtn" class="game-menu-btn game-menu-btn--primary">게임 시작</button>
+                    <a href="{{ route('mini-game.tetris.versus') }}" class="game-menu-btn game-menu-btn--versus">👥 멀티 대전 <small>실시간 1:1</small></a>
                     <button type="button" class="game-menu-btn" data-menu="options">옵션</button>
                     <button type="button" class="game-menu-btn" data-menu="controls">조작법</button>
                     <a href="{{ route('mini-game.index') }}" class="game-menu-btn game-menu-btn--danger"
@@ -188,10 +189,9 @@ class TetrisScene extends Phaser.Scene {
         const pad = Math.round(Math.min(W, H) * 0.02) + 6;
         this.pad = pad;
 
-        // 터치 기기는 하단 가상 키패드 높이만큼 보드 영역에서 비워둔다.
-        const ctrlEl = document.getElementById('touchControls');
-        const controlsH = (this.isTouch && ctrlEl) ? ctrlEl.offsetHeight : 0;
-        const usableH = H - controlsH;
+        // 가상 키패드는 flex 흐름에서 캔버스(#game-container) 아래에 위치하므로
+        // 캔버스 높이(H)에 키패드 영역이 이미 빠져 있다 → 추가로 뺄 필요 없음.
+        const usableH = H;
         const portrait = H >= W * 1.05;
         this.portrait = portrait;
 

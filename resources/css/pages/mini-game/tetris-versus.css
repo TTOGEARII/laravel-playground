@@ -212,6 +212,51 @@
 .tv-stat { font-size: var(--ds-fs-sm); color: var(--text-secondary); }
 .tv-gwarn { color: var(--ds-warning, #f2913d); margin-left: 6px; font-weight: var(--ds-fw-bold); }
 
+/* ── 모바일 가상 키패드(대전 플레이 중, 터치 기기) ── */
+.tv-touch {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    max-width: 480px;
+    margin: var(--ds-space-lg) auto 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tv-tc-group { display: flex; gap: 6px; }
+.tv-tc-btn {
+    width: clamp(42px, 13.5vw, 60px);
+    height: clamp(42px, 13.5vw, 60px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    font-size: clamp(18px, 5vw, 24px);
+    font-weight: var(--ds-fw-bold);
+    color: var(--text-primary);
+    background: var(--ds-surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--ds-round-md);
+    box-shadow: var(--ds-shadow-medium);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    user-select: none;
+    cursor: pointer;
+}
+.tv-tc-btn:active { background: var(--ds-primary); color: var(--ds-on-accent); border-color: transparent; }
+.tv-tc-wide { width: clamp(50px, 15.5vw, 74px); font-size: clamp(11px, 3vw, 14px); letter-spacing: 0.3px; }
+.tv-tc-hard { font-size: clamp(20px, 6vw, 28px); }
+
+/* 좁은 화면: 셀이 작아져(App.vue computeCellSizes) 나·상대 보드가 한 줄에 들어온다.
+   키보드 안내는 숨기고(터치 패드 사용) 여백을 줄여 보드+상대+패드가 한 화면에. */
+@media (max-width: 560px) {
+    .tv-root { padding: var(--ds-space-md) var(--ds-space-sm) var(--ds-space-lg); }
+    .tv-arena { gap: var(--ds-space-sm); align-items: flex-start; flex-wrap: nowrap; }
+    .tv-mid { padding-top: 18px; min-width: 0; gap: 4px; }
+    .tv-controls-hint { display: none; }
+    .tv-head { margin-bottom: var(--ds-space-md); }
+    .tv-room-bar { margin-bottom: var(--ds-space-md); }
+}
+
 /* 관전 */
 .tv-spectate {
     background: var(--ds-surface);
