@@ -322,8 +322,16 @@ class OtakuShopRematchCommand extends Command
             ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_image_url', 'ok_product_image_hash']);
 
         $countByIp = $rows->groupBy('ok_product_ip_id')->map->count();
+        // 이미 해시가 채워진(거의 완성된) IP 버킷을 먼저 처리한다. 그러지 않으면 product_id 순 예산
+        // 소진으로 최근 추가된 고ID 상품이 매 회차 뒤로 밀려 영영 미계산 → 짝(같은 상품)이 있어도
+        // 병합되지 못한다. 완성 임박 버킷을 먼저 끝내 잔량이 남지 않게 한다.
+        $hashedByIp = $rows
+            ->filter(fn ($p) => $p->ok_product_image_hash !== null && $p->ok_product_image_hash !== '')
+            ->groupBy('ok_product_ip_id')->map->count();
         $needHash = $rows->filter(fn ($p) => $p->ok_product_image_hash === null
-            && ($countByIp[$p->ok_product_ip_id] ?? 0) >= 2);
+            && ($countByIp[$p->ok_product_ip_id] ?? 0) >= 2)
+            ->sortByDesc(fn ($p) => $hashedByIp[$p->ok_product_ip_id] ?? 0)
+            ->values();
 
         $hashed = 0;
         foreach ($needHash as $product) {
