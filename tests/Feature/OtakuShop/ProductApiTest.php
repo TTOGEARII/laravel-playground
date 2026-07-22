@@ -399,4 +399,82 @@ class ProductApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.total', 1);
     }
+
+    /** 해외관 검증용: 해외 샵(JPY) + 해외 오퍼만 가진 상품 + JPY 환율 시딩. */
+    private function seedGlobalShop(array $data): \App\Models\OtakuShop\OtakuShop
+    {
+        $global = OtakuShop::create([
+            'ok_shop_code' => 'amiami',
+            'ok_shop_name' => '아미아미',
+            'ok_shop_region' => 'global',
+            'ok_shop_currency' => 'JPY',
+            'ok_shop_active_flg' => true,
+        ]);
+        $overseasOnly = OtakuProduct::create([
+            'ok_product_code' => 'pr_jp_only',
+            'ok_product_title' => 'Blue Archive Toki Bunny Girl 1/7 Figure',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $overseasOnly->ok_product_id,
+            'ok_offer_shop_id' => $global->ok_shop_id,
+            'ok_offer_external_id' => 'FIGURE-1',
+            'ok_offer_currency' => 'JPY',
+            'ok_offer_price' => 13980,
+            'ok_offer_available_flg' => true,
+        ]);
+        \App\Models\OtakuShop\OtakuExchangeRate::create(['ok_rate_currency' => 'JPY', 'ok_rate_krw' => 9.0]);
+
+        return $global;
+    }
+
+    public function test_region_filter_splits_domestic_and_global_products(): void
+    {
+        $data = $this->seedCatalog();          // 국내 샵 오퍼 상품(pr_aaa)
+        $this->seedGlobalShop($data);          // 해외 샵 오퍼 상품(pr_jp_only)
+
+        // 국내관: 국내 오퍼 보유 상품만.
+        $this->getJson('/api/otaku-shop/products?region=kr')
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
+
+        // 해외관: 해외 오퍼 보유 상품만.
+        $this->getJson('/api/otaku-shop/products?region=global')
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_jp_only');
+
+        // region 없으면 전체(하위 호환).
+        $this->getJson('/api/otaku-shop/products')->assertOk()->assertJsonPath('meta.total', 2);
+    }
+
+    public function test_global_offer_includes_krw_converted_price(): void
+    {
+        $data = $this->seedCatalog();
+        $this->seedGlobalShop($data);
+
+        $res = $this->getJson('/api/otaku-shop/products?region=global')->assertOk();
+        $offer = $res->json('data.0.offers.0');
+
+        $this->assertSame('JPY', $offer['ok_offer_currency']);
+        $this->assertEqualsWithDelta(125820.0, $offer['ok_offer_price_krw'], 0.01, '¥13,980 × ₩9.0 환산가 병기');
+    }
+
+    public function test_shops_endpoint_filters_by_region(): void
+    {
+        $data = $this->seedCatalog();
+        $this->seedGlobalShop($data);
+
+        $this->getJson('/api/otaku-shop/shops?region=global')
+            ->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.ok_shop_code', 'amiami');
+        $this->getJson('/api/otaku-shop/shops?region=kr')
+            ->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    public function test_global_page_renders(): void
+    {
+        $this->get('/otaku-shop/global')->assertOk()->assertSee('해외관');
+        $this->get('/otaku-shop')->assertOk()->assertSee('otaku-shop-app', false);
+    }
 }

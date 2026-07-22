@@ -14,7 +14,10 @@ use Illuminate\Database\Eloquent\Collection;
 
 class ProductService
 {
-    public function __construct(private ProductNormalizer $normalizer) {}
+    public function __construct(
+        private ProductNormalizer $normalizer,
+        private ExchangeRateService $exchangeRates,
+    ) {}
 
     /**
      * 필터용 카테고리 목록 (정렬 순).
@@ -25,11 +28,14 @@ class ProductService
     }
 
     /**
-     * 필터용 사용 중인 샵 목록.
+     * 필터용 사용 중인 샵 목록. region(kr/global)을 주면 해당 지역 샵만(해외관 필터용).
      */
-    public function getShopsForFilter(): Collection
+    public function getShopsForFilter(?string $region = null): Collection
     {
-        return OtakuShop::where('ok_shop_active_flg', true)->orderBy('ok_shop_name')->get();
+        return OtakuShop::where('ok_shop_active_flg', true)
+            ->when($region !== null, fn ($q) => $q->where('ok_shop_region', $region))
+            ->orderBy('ok_shop_name')
+            ->get();
     }
 
     /**
@@ -63,6 +69,13 @@ class ProductService
 
         if (! empty($filters['keyword'])) {
             $this->applyKeyword($query, (string) $filters['keyword']);
+        }
+
+        // 지역 필터: 해당 지역 샵의 오퍼가 1개 이상인 상품(국내관 kr / 해외관 global).
+        // 상품은 공통이라, 교차 매칭된 상품은 양쪽 페이지에 다 뜨고 오퍼 목록에 두 지역 가격이 함께 보인다.
+        if (! empty($filters['region'])) {
+            $region = $filters['region'];
+            $query->whereHas('offers.shop', fn ($q) => $q->where('ok_shop_region', $region));
         }
 
         if (! empty($filters['brand'])) {
@@ -124,8 +137,9 @@ class ProductService
         $sort = $filters['sort'] ?? 'created_desc';
         if ($sort === 'price_asc' || $sort === 'price_desc') {
             // 가격은 offer 테이블에 있으므로 판매중 오퍼의 최저가를 상관 서브쿼리로 끌어와 정렬한다.
+            // 해외 오퍼(JPY 등)는 원화 환산 기준으로 비교해야 하므로 통화별 환산율 CASE 를 곱한다.
             $minPriceSub = OtakuOffer::query()
-                ->selectRaw('MIN(ok_offer_price)')
+                ->selectRaw('MIN(ok_offer_price * '.$this->currencyToKrwCaseSql().')')
                 ->whereColumn('ok_offer_product_id', 'otaku_product.ok_product_id')
                 ->where('ok_offer_available_flg', true);
 
@@ -147,7 +161,36 @@ class ProductService
             $query->orderByDesc('ok_product_id');
         }
 
-        return $query->paginate($perPage);
+        $paginator = $query->paginate($perPage);
+
+        // 해외 오퍼(KRW 외 통화)에 원화 환산가를 실어준다(표시용 — ¥12,800 (약 ₩116,000)).
+        foreach ($paginator->items() as $product) {
+            foreach ($product->offers as $offer) {
+                $currency = (string) ($offer->ok_offer_currency ?? 'KRW');
+                if ($currency !== '' && strtoupper($currency) !== 'KRW') {
+                    $offer->setAttribute('ok_offer_price_krw', $this->exchangeRates->toKrw((float) $offer->ok_offer_price, $currency));
+                }
+            }
+        }
+
+        return $paginator;
+    }
+
+    /**
+     * 통화 코드 → 원화 환산율 CASE SQL(가격 정렬용). 환율 미보유 통화는 1로 두어 정렬만 흔들리지 않게 한다.
+     * 환산율은 상수로 인라인되는 소수라 SQL 인젝션 여지가 없다(모두 float 캐스팅).
+     */
+    private function currencyToKrwCaseSql(): string
+    {
+        $cases = '';
+        foreach (\App\Models\OtakuShop\OtakuExchangeRate::pluck('ok_rate_krw', 'ok_rate_currency') as $currency => $rate) {
+            $cases .= " WHEN '".preg_replace('/[^A-Z]/', '', strtoupper((string) $currency))."' THEN ".(float) $rate;
+        }
+        if ($cases === '') {
+            return '1'; // 환율 미수집 상태 — WHEN 없는 CASE 는 SQL 문법 오류라 환산 없이 원값 비교
+        }
+
+        return '(CASE ok_offer_currency'.$cases.' ELSE 1 END)';
     }
 
     /**

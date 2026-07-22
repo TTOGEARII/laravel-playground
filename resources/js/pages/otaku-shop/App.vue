@@ -373,6 +373,7 @@ import { otakuShopApi } from './api.js';
 
 const props = defineProps({
   loggedIn: { type: Boolean, default: false },
+  region: { type: String, default: 'kr' }, // kr=국내관, global=해외관
 });
 
 const categories = ref([]);
@@ -528,6 +529,10 @@ function formatPrice(offer) {
 }
 
 function priceSub(offer) {
+  // 해외 오퍼(JPY 등)는 서버가 실어준 원화 환산가를 병기한다(환율 기준, 배송비 별도).
+  if (offer.ok_offer_price_krw != null) {
+    return `약 ₩${Math.round(Number(offer.ok_offer_price_krw)).toLocaleString()} · 배송비 별도`;
+  }
   const fee = offer.ok_offer_shipping_fee;
   return fee ? `배송비 ${Number(fee).toLocaleString()}원` : '배송비 별도';
 }
@@ -604,7 +609,7 @@ async function fetchIps() {
 
 async function fetchShops() {
   try {
-    const res = await otakuShopApi.getShops();
+    const res = await otakuShopApi.getShops(props.region);
     shops.value = res.data || [];
     if (selectedShopIds.value.length === 0 && shops.value.length) {
       selectedShopIds.value = shops.value.map((s) => s.ok_shop_id);
@@ -629,6 +634,7 @@ async function fetchProducts(page = 1) {
       compared_only: comparedOnly.value,
       upcoming: upcomingOnly.value,
       in_stock_only: inStockOnly.value,
+      region: props.region,
     });
     products.value = res.data || [];
     meta.value = res.meta || meta.value;

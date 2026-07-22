@@ -6,5 +6,8 @@ axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.headers.common['Accept'] = 'application/json';
 
 const el = document.getElementById('otaku-shop-app');
-const app = createApp(App, { loggedIn: !!el?.dataset.loggedIn });
+const app = createApp(App, {
+    loggedIn: !!el?.dataset.loggedIn,
+    region: el?.dataset.region || 'kr', // kr=국내관, global=해외관
+});
 app.mount('#otaku-shop-app');

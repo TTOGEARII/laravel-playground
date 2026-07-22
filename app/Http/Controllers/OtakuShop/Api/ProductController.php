@@ -32,6 +32,8 @@ class ProductController extends Controller
             'sort' => $request->input('sort', 'created_desc'),
             'compared_only' => $request->boolean('compared_only'),
             'in_stock_only' => $request->boolean('in_stock_only'),
+            // 지역(kr=국내관, global=해외관). 허용값 외에는 무시.
+            'region' => in_array($request->input('region'), ['kr', 'global'], true) ? $request->input('region') : null,
         ];
         $shopIds = $request->input('shop_id', []);
         if (is_array($shopIds) && $shopIds !== []) {
@@ -66,12 +68,14 @@ class ProductController extends Controller
     }
 
     /**
-     * 필터용 샵 목록.
+     * 필터용 샵 목록. ?region=kr|global 로 지역 샵만(해외관 필터용).
      */
-    public function shops(): JsonResponse
+    public function shops(Request $request): JsonResponse
     {
+        $region = in_array($request->input('region'), ['kr', 'global'], true) ? $request->input('region') : null;
+
         return response()->json([
-            'data' => $this->productService->getShopsForFilter(),
+            'data' => $this->productService->getShopsForFilter($region),
         ]);
     }
 

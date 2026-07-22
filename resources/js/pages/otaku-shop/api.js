@@ -27,6 +27,7 @@ export const otakuShopApi = {
     if (params.sort) q.set('sort', params.sort);
     if (params.compared_only) q.set('compared_only', '1');
     if (params.in_stock_only) q.set('in_stock_only', '1');
+    if (params.region) q.set('region', params.region); // kr=국내관, global=해외관
     (params.shop_id || []).forEach((id) => q.append('shop_id[]', id));
     const { data } = await axios.get(`${BASE}/products?${q}`);
     return data;
@@ -44,9 +45,9 @@ export const otakuShopApi = {
     return data;
   },
 
-  /** 필터용 샵 목록 */
-  async getShops() {
-    const { data } = await axios.get(`${BASE}/shops`);
+  /** 필터용 샵 목록 (region: kr|global 로 지역 샵만) */
+  async getShops(region) {
+    const { data } = await axios.get(`${BASE}/shops${region ? `?region=${region}` : ''}`);
     return data;
   },
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\OtakuShop\MainController;
 use App\Http\Controllers\OtakuShop\WishController;
 
 Route::get('/', [MainController::class, 'index'])->name('otaku-shop.index');
+Route::get('/global', [MainController::class, 'global'])->name('otaku-shop.global');
 
 // 찜(재입고 알림) — 로그인 전용, 세션 인증이라 web 그룹
 Route::middleware('auth')->group(function () {

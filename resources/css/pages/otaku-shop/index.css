@@ -1279,3 +1279,21 @@
     font-size: 0.8rem;
 }
 
+
+/* 국내관 ↔ 해외관 전환 링크(헤더 소개문 안) */
+.region-switch {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 12px;
+    border: 1px solid var(--ds-primary);
+    border-radius: var(--ds-round-pill);
+    color: var(--ds-text-accent);
+    font-weight: 700;
+    font-size: 0.85em;
+    text-decoration: none;
+    transition: background 0.15s ease;
+}
+.region-switch:hover {
+    background: var(--ds-primary);
+    color: var(--ds-on-accent);
+}
