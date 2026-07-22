@@ -192,16 +192,21 @@ class ProductService
             // 단일 토큰 안에 별칭이 섞인 표기("블아굿즈" 등)도 기존처럼 인식
             $ipCode ??= $this->normalizer->extractIpCode($tokens[$i]);
 
-            $rawLike = '%'.addcslashes(implode(' ', array_slice($tokens, $i, $consumed)), '%_\\').'%';
+            $phrase = implode(' ', array_slice($tokens, $i, $consumed));
+            $rawLike = '%'.addcslashes($phrase, '%_\\').'%';
+            // 붙여쓴 검색어 ↔ 띄어쓴 제목 흡수("카가미네린" → "카가미네 린 …"): 공백 제거한 제목과도 대조.
+            // 캐릭터명은 IP 와 달리 별칭 사전이 없어, 이 일반 규칙이 붙여쓰기 차이를 담당한다.
+            $compactLike = '%'.addcslashes(str_replace(' ', '', $phrase), '%_\\').'%';
 
             if ($ipCode !== null) {
                 $ipIdByCode ??= OtakuIp::pluck('ok_ip_id', 'ok_ip_code')->all();
                 $ipId = $ipIdByCode[$ipCode] ?? null;
                 $variants = array_merge([$ipCode], (array) ($aliases[$ipCode] ?? []));
-                $query->where(function ($q) use ($rawLike, $ipId, $variants) {
+                $query->where(function ($q) use ($rawLike, $compactLike, $ipId, $variants) {
                     $q->where('ok_product_title', 'like', $rawLike)
                         ->orWhere('ok_product_subtitle', 'like', $rawLike)
-                        ->orWhere('ok_product_brand_label', 'like', $rawLike);
+                        ->orWhere('ok_product_brand_label', 'like', $rawLike)
+                        ->orWhereRaw("REPLACE(ok_product_title, ' ', '') like ?", [$compactLike]);
                     if ($ipId !== null) {
                         $q->orWhere('ok_product_ip_id', $ipId);
                     }
@@ -210,10 +215,11 @@ class ProductService
                     }
                 });
             } else {
-                $query->where(function ($q) use ($rawLike) {
+                $query->where(function ($q) use ($rawLike, $compactLike) {
                     $q->where('ok_product_title', 'like', $rawLike)
                         ->orWhere('ok_product_subtitle', 'like', $rawLike)
-                        ->orWhere('ok_product_brand_label', 'like', $rawLike);
+                        ->orWhere('ok_product_brand_label', 'like', $rawLike)
+                        ->orWhereRaw("REPLACE(ok_product_title, ' ', '') like ?", [$compactLike]);
                 });
             }
         }

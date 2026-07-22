@@ -377,4 +377,26 @@ class ProductApiTest extends TestCase
         $this->assertSame(3, $compact, '붙여쓴 IP 검색은 IP 상품 3개 전부');
         $this->assertSame($compact, $spaced, '띄어쓴 IP 검색과 붙여쓴 IP 검색 결과가 같아야 함');
     }
+
+    public function test_compact_character_name_matches_spaced_title(): void
+    {
+        $data = $this->seedCatalog();
+        OtakuProduct::create([
+            'ok_product_code' => 'pr_rin',
+            'ok_product_title' => '보컬로이드 카가미네 린 넨도로이드',  // 캐릭터명이 띄어쓰기된 제목
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+
+        // 캐릭터명은 IP 별칭 사전이 없으므로, 붙여쓴 검색("카가미네린")은 공백 제거 제목 대조로 찾아야 한다.
+        $this->getJson('/api/otaku-shop/products?keyword='.urlencode('카가미네린'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_rin');
+
+        // 띄어쓴 검색과 결과 동일.
+        $this->getJson('/api/otaku-shop/products?keyword='.urlencode('카가미네 린'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+    }
 }
