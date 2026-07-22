@@ -14,7 +14,6 @@ final class CrawledProductDto
         public ?string $subtitle,
         public ?string $brandLabel,
         public float $price,
-        public string $currency,
         public ?string $productUrl,
         public ?string $categoryCode,
         public ?string $releaseDate = null,
@@ -23,5 +22,8 @@ final class CrawledProductDto
         public bool $available = true,
         public ?string $makerCode = null,
         public ?string $maker = null,
+        // 가격 통화(ISO 4217). 국내 샵은 기본 KRW, 해외 샵(아미아미 등)은 현지 통화 원가를 그대로 담는다.
+        // 환산은 크롤·저장 단계가 아니라 표시층(최저가 비교는 CrawlSyncService 환산 비교) 몫이다.
+        public string $currency = 'KRW',
     ) {}
 }

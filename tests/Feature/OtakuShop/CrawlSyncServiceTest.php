@@ -784,6 +784,44 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(2, OtakuProduct::count(), '같은 캐릭터라도 피규어와 봉제인형은 분리돼야 함');
     }
 
+    public function test_seia_name_variants_and_gsc_abbrev_merge(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        OtakuShop::create(['ok_shop_code' => 'goodsmilekr', 'ok_shop_name' => '굿스마일코리아', 'ok_shop_active_flg' => true]);
+        OtakuShop::create(['ok_shop_code' => 'comicsart', 'ok_shop_name' => '코믹스아트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 실측 사례: 성('유리조노')·소속 수식('티파티') 유무와 "(G.S.C)" 약어(1글자 토큰 g/s/c 잔류)로
+        // 같은 초코푸니 세이아 인형 4표기가 갈리던 것 — 별칭·약어 제거로 한 상품이 돼야 한다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[굿스마일컴퍼니][블루 아카이브] 초코푸니 인형 유리조노 세이아', 30000, categoryCode: 'plush'),
+            $this->dto('animate', 'B1', '[예약]블루 아카이브 쵸코푸니 인형 티파티 세이아', 31000, categoryCode: 'plush'),
+            $this->dto('goodsmilekr', 'C1', '블루 아카이브 블아 굿스마일 컴퍼니 초코푸니 누이 봉제인형 - 세이아', 29000, categoryCode: 'plush'),
+            $this->dto('comicsart', 'D1', '굿스마일 컴퍼니 (G.S.C) 초코푸니 누이구루미 굿즈 블루 아카이브 세이아', 32000, categoryCode: 'plush'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '세이아 표기 4종이 한 상품으로 병합돼야 함');
+        $this->assertSame(4, OtakuOffer::count());
+    }
+
+    public function test_attached_ver_and_english_maker_variants_merge(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 실측 사례: "수영복 Ver."(띄움) vs "수영복ver."(붙음) + "세가 (SEGA)" 영문 병기로 갈리던
+        // XStellar 세이아 — ver 접미 제거·sega 불용어로 한 상품이 돼야 한다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '[세가][블루 아카이브] XStellar 피규어 유리조노 세이아 수영복 Ver.', 45000, categoryCode: 'figure'),
+            $this->dto('animate', 'B1', '세가 (SEGA) 블루 아카이브 XStellar 피규어 유리조노 세이아 수영복ver.', 46000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), 'ver 접미·영문 메이커 병기 차이는 병합돼야 함');
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();

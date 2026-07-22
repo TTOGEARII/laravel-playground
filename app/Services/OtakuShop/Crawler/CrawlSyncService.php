@@ -9,7 +9,9 @@ use App\Models\OtakuShop\OtakuProduct;
 use App\Models\OtakuShop\OtakuShop;
 use App\Models\OtakuShop\OtakuWish;
 use App\Services\OtakuShop\Crawler\DTO\CrawledProductDto;
+use App\Services\OtakuShop\ExchangeRateService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * 크롤 결과를 otaku_shop, otaku_category, otaku_product, otaku_offer 에 동기화.
@@ -30,7 +32,8 @@ class CrawlSyncService
     private ?bool $anyWishExists = null;
 
     public function __construct(
-        private ProductNormalizer $normalizer
+        private ProductNormalizer $normalizer,
+        private ExchangeRateService $exchangeRates,
     ) {}
 
     /**
@@ -266,7 +269,13 @@ class CrawlSyncService
         $matchSig = $tokens === [] ? null : implode(' ', $tokens);
 
         $product = $this->resolveProductByExistingOffers($bundle['offers'])
-            ?? OtakuProduct::where('ok_product_code', $bundle['key'])->first();
+            ?? OtakuProduct::where('ok_product_code', $bundle['key'])->first()
+            // JAN 교차(런 간) 폴백: 해외 샵(아미아미 등)은 영문 제목이라 IP 추출이 안 돼
+            // 번들 키에 IP 접미가 붙지 않는다. 국내 상품은 같은 JAN 이어도 IP 접미 키라
+            // 정확 키로는 영원히 못 만나므로(런이 달라 absorbIplessBundles 도 무력),
+            // JAN(전세계 고유 바코드) 소유 상품이 정확히 1개일 때만 그 상품을 재사용한다.
+            // 아래 IP 충돌 가드·부속품 앵커 가드는 이 폴백 결과에도 그대로 적용된다.
+            ?? $this->resolveProductByJanCode($makerCode);
 
         // IP 충돌 가드: 앵커/키로 찾은 기존 상품이라도 IP(작품)가 둘 다 있고 서로 다르면 재사용하지 않는다.
         // 품번 번호는 제조사가 다르면 겹칠 수 있어(넨도 No.3057 미쿠 vs 니케 라피), 같은 품번이라도 다른 작품이면
@@ -350,7 +359,11 @@ class CrawlSyncService
         }
 
         // 기존 상품: 키가 바뀌었으면 최신 정규화 키로 갱신하고, 비어 있는 분류값을 채운다(재크롤 점진 보강).
-        if ($product->ok_product_code !== $bundle['key']) {
+        // 단, 이번 제목에서 IP 를 못 뽑았는데(영문 해외 제목·IP 무표기) 상품은 이미 IP 분류돼 있으면
+        // 키를 갱신하지 않는다 — IP 정보가 더 적은 쪽 표기가 IP 접미 키를 벗겨내면, 국내/해외 크롤이
+        // 번갈아 돌 때마다 키가 왕복(드리프트)하므로 IP 를 아는 쪽 키를 유지한다.
+        if ($product->ok_product_code !== $bundle['key']
+            && ! ($ipCode === null && $product->ok_product_ip_id !== null)) {
             // 그 키(maker code 등)를 이미 다른 상품이 점유 중이면, 같은 실물 상품이 두 행으로
             // 갈라진 것이므로 덮어쓰기(유니크 키 충돌, SQLSTATE 23000) 대신 병합한다.
             // 키를 가진 쪽을 canonical 로 두고 현재 상품을 그쪽으로 합친다.
@@ -390,6 +403,23 @@ class CrawlSyncService
         $stats['products_matched']++;
 
         return $product;
+    }
+
+    /**
+     * JAN 바코드로 기존 상품을 찾는다(런 간 교차 매칭 폴백).
+     * JAN 은 실물 상품 단위의 전세계 고유값이라 제목·IP 표기와 무관하게 동일 상품을 보장한다.
+     * 단 과거 오염 데이터 방어로 소유 상품이 "정확히 1개"일 때만 재사용한다(2개 이상이면 판단 불가 → 미병합).
+     * 라인넘버형 품번(nendo_ 등)은 제조사 간 충돌이 있어 이 폴백을 태우지 않는다(jan_ 전용).
+     */
+    private function resolveProductByJanCode(?string $makerCode): ?OtakuProduct
+    {
+        if ($makerCode === null || ! str_starts_with($makerCode, 'jan_')) {
+            return null;
+        }
+
+        $owners = OtakuProduct::where('ok_product_maker_code', $makerCode)->limit(2)->get();
+
+        return $owners->count() === 1 ? $owners->first() : null;
     }
 
     /** 두 IP id가 둘 다 있고 서로 다르면 true — 다른 작품 = 다른 상품(병합/재사용 금지). */
@@ -962,7 +992,8 @@ class CrawlSyncService
             'ok_offer_external_id' => $dto->externalId,
             'ok_offer_currency' => $dto->currency,
             'ok_offer_price' => $dto->price,
-            // 현지가: KRW 샵이라 판매가와 동일. 배송비는 리스트에 없으면 null(상세 보강 시 채워짐).
+            // 현지가: 샵 통화 기준 판매가(국내=원화, 해외=현지 통화 원가 — 환산은 표시층 몫).
+            // 배송비는 리스트에 없으면 null(상세 보강 시 채워짐).
             'ok_offer_local_price' => $dto->price,
             'ok_offer_shipping_fee' => $dto->shippingFee,
             'ok_offer_available_flg' => $dto->available,
@@ -1128,21 +1159,56 @@ class CrawlSyncService
     }
 
     /**
-     * 상품별 최저가 플래그 갱신.
+     * 상품별 최저가 플래그 갱신 — 통화 환산(KRW 기준) 비교.
+     *
+     * 해외관 도입으로 한 상품에 KRW·JPY 오퍼가 섞이는데, 원시 숫자 비교는
+     * ¥20,000(≈₩18.2만) < ₩150,000 처럼 저액면 통화가 최저가를 가로챈다.
+     * 통화별 원화 환산율을 1회 로드해 곱한 값으로 비교하고(KRW=1.0, 국내 전용 데이터는 회귀 없음),
+     * 환율 미보유 통화 오퍼는 비교 불가라 제외하고 로그를 남긴다.
      */
     private function updateLowestPriceFlags(): void
     {
         OtakuOffer::query()->update(['ok_offer_lowest_flg' => false]);
-        $minPrices = OtakuOffer::query()
-            ->where('ok_offer_available_flg', true)
-            ->selectRaw('ok_offer_product_id, MIN(ok_offer_price) as min_price')
-            ->groupBy('ok_offer_product_id')
-            ->pluck('min_price', 'ok_offer_product_id');
 
-        foreach ($minPrices as $productId => $minPrice) {
-            OtakuOffer::where('ok_offer_product_id', $productId)
-                ->where('ok_offer_price', $minPrice)
-                ->update(['ok_offer_lowest_flg' => true]);
+        $rates = ['KRW' => 1.0];   // 통화 => 1통화당 원화(런 1회 로드 캐시). 미보유는 null.
+        $missingCurrencies = [];
+
+        $minByProduct = [];        // product_id => 최저 환산가
+        $lowestIdsByProduct = [];  // product_id => 최저 환산가 동률 오퍼 id 목록
+
+        $offers = OtakuOffer::query()
+            ->where('ok_offer_available_flg', true)
+            ->select(['ok_offer_id', 'ok_offer_product_id', 'ok_offer_price', 'ok_offer_currency']);
+        foreach ($offers->cursor() as $offer) {
+            $currency = strtoupper(trim((string) $offer->ok_offer_currency)) ?: 'KRW';
+            if (! array_key_exists($currency, $rates)) {
+                $rates[$currency] = $this->exchangeRates->rateFor($currency);
+            }
+            if ($rates[$currency] === null) {
+                $missingCurrencies[$currency] = true;
+
+                continue; // 환산 불가 통화는 최저가 비교에서 제외(원시 숫자 비교 오판 방지)
+            }
+
+            $converted = (float) $offer->ok_offer_price * $rates[$currency];
+            $productId = (int) $offer->ok_offer_product_id;
+            if (! isset($minByProduct[$productId]) || $converted < $minByProduct[$productId]) {
+                $minByProduct[$productId] = $converted;
+                $lowestIdsByProduct[$productId] = [(int) $offer->ok_offer_id];
+            } elseif ($converted === $minByProduct[$productId]) {
+                $lowestIdsByProduct[$productId][] = (int) $offer->ok_offer_id; // 동률(같은 가격)은 모두 최저가
+            }
+        }
+
+        if ($missingCurrencies !== []) {
+            Log::warning('오타쿠샵 최저가 비교: 환율 미보유 통화 오퍼 제외', [
+                'currencies' => array_keys($missingCurrencies),
+            ]);
+        }
+
+        $lowestIds = $lowestIdsByProduct === [] ? [] : array_merge(...array_values($lowestIdsByProduct));
+        foreach (array_chunk($lowestIds, 500) as $chunk) {
+            OtakuOffer::whereIn('ok_offer_id', $chunk)->update(['ok_offer_lowest_flg' => true]);
         }
     }
 }
