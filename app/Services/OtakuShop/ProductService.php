@@ -153,41 +153,69 @@ class ProductService
     /**
      * 키워드 검색: 공백으로 나눈 토큰별 AND — 각 토큰이 제목/부제/브랜드 어딘가에 있으면 매칭되므로
      * 어순·붙여쓰기가 달라도 찾아진다("블루 아카이브 프라나" ↔ "블루아카이브 ... 프라나").
-     * 토큰이 IP(작품) 줄임말/별칭(블아·프세카 등)이면 크롤 매칭과 같은 ip_aliases 사전으로 확장해
-     * 해당 IP로 분류된 상품(ok_product_ip_id)과 별칭 표기 제목도 함께 매칭한다.
+     * IP(작품)명은 여러 토큰에 걸쳐 있어도 인식한다: 연속 토큰을 붙여 ip_aliases 사전과 대조해
+     * ("블루"+"아카이브" → 블루아카이브) 띄어쓴 검색과 붙여쓴 검색의 결과가 갈리지 않게 하고,
+     * 해당 IP로 분류된 상품(ok_product_ip_id)과 별칭 표기(블아 등) 제목도 함께 매칭한다.
      */
     private function applyKeyword(Builder $query, string $keyword): void
     {
         $tokens = preg_split('/\s+/u', trim($keyword)) ?: [];
         $tokens = array_slice(array_values(array_filter($tokens, fn ($t) => $t !== '')), 0, 8); // 토큰 폭주 방어
+        if ($tokens === []) {
+            return;
+        }
 
-        $ipIdByCode = null;   // 필요할 때 1회만 로드
-        $aliases = null;
+        // 공백 제거·소문자 표기 → IP 코드 (여러 토큰에 걸친 IP명 인식용)
+        $aliases = (array) config('otaku-crawler.product_match.ip_aliases', []);
+        $codeByCompact = [];
+        foreach ($aliases as $code => $variants) {
+            foreach (array_merge([$code], (array) $variants) as $v) {
+                $codeByCompact[str_replace(' ', '', mb_strtolower($v))] = $code;
+            }
+        }
 
-        foreach ($tokens as $token) {
-            $like = '%'.addcslashes($token, '%_\\').'%'; // LIKE 와일드카드 이스케이프
+        $ipIdByCode = null; // 필요할 때 1회만 로드
+        $total = count($tokens);
 
-            // 토큰이 IP 별칭/줄임말이면 표준 IP와 그 표기 변형들로 확장
-            $ipId = null;
-            $variants = [];
-            if (($ipCode = $this->normalizer->extractIpCode($token)) !== null) {
+        for ($i = 0; $i < $total; $i += $consumed) {
+            // 연속 토큰(긴 결합 우선, 최대 3개)을 붙여 IP명/별칭과 대조.
+            $ipCode = null;
+            $consumed = 1;
+            for ($len = min(3, $total - $i); $len >= 1; $len--) {
+                $compact = str_replace(' ', '', mb_strtolower(implode('', array_slice($tokens, $i, $len))));
+                if (isset($codeByCompact[$compact])) {
+                    $ipCode = $codeByCompact[$compact];
+                    $consumed = $len;
+                    break;
+                }
+            }
+            // 단일 토큰 안에 별칭이 섞인 표기("블아굿즈" 등)도 기존처럼 인식
+            $ipCode ??= $this->normalizer->extractIpCode($tokens[$i]);
+
+            $rawLike = '%'.addcslashes(implode(' ', array_slice($tokens, $i, $consumed)), '%_\\').'%';
+
+            if ($ipCode !== null) {
                 $ipIdByCode ??= OtakuIp::pluck('ok_ip_id', 'ok_ip_code')->all();
-                $aliases ??= (array) config('otaku-crawler.product_match.ip_aliases', []);
                 $ipId = $ipIdByCode[$ipCode] ?? null;
                 $variants = array_merge([$ipCode], (array) ($aliases[$ipCode] ?? []));
+                $query->where(function ($q) use ($rawLike, $ipId, $variants) {
+                    $q->where('ok_product_title', 'like', $rawLike)
+                        ->orWhere('ok_product_subtitle', 'like', $rawLike)
+                        ->orWhere('ok_product_brand_label', 'like', $rawLike);
+                    if ($ipId !== null) {
+                        $q->orWhere('ok_product_ip_id', $ipId);
+                    }
+                    foreach ($variants as $variant) {
+                        $q->orWhere('ok_product_title', 'like', '%'.addcslashes($variant, '%_\\').'%');
+                    }
+                });
+            } else {
+                $query->where(function ($q) use ($rawLike) {
+                    $q->where('ok_product_title', 'like', $rawLike)
+                        ->orWhere('ok_product_subtitle', 'like', $rawLike)
+                        ->orWhere('ok_product_brand_label', 'like', $rawLike);
+                });
             }
-
-            $query->where(function ($q) use ($like, $ipId, $variants) {
-                $q->where('ok_product_title', 'like', $like)
-                    ->orWhere('ok_product_subtitle', 'like', $like)
-                    ->orWhere('ok_product_brand_label', 'like', $like);
-                if ($ipId !== null) {
-                    $q->orWhere('ok_product_ip_id', $ipId);
-                }
-                foreach ($variants as $variant) {
-                    $q->orWhere('ok_product_title', 'like', '%'.addcslashes($variant, '%_\\').'%');
-                }
-            });
         }
     }
 

@@ -353,4 +353,28 @@ class ProductApiTest extends TestCase
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.ok_product_code', 'pr_yuzu');
     }
+
+    public function test_spaced_and_compact_ip_search_return_same_results(): void
+    {
+        $data = $this->seedCatalog();
+        $this->seedSearchTargets($data);
+        // 제목엔 줄임말(블아)뿐이고 IP 분류만 된 상품 — 띄어쓴 "블루 아카이브" 검색에서도
+        // 연속 토큰 IP 인식으로 잡혀야 붙여쓴 검색과 결과가 같아진다.
+        $ip = \App\Models\OtakuShop\OtakuIp::where('ok_ip_code', '블루아카이브')->first();
+        OtakuProduct::create([
+            'ok_product_code' => 'pr_shiroko',
+            'ok_product_title' => '블아 굿즈 시로코 아크릴 스탠드',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+            'ok_product_ip_id' => $ip->ok_ip_id,
+        ]);
+
+        $compact = $this->getJson('/api/otaku-shop/products?keyword='.urlencode('블루아카이브'))
+            ->assertOk()->json('meta.total');
+        $spaced = $this->getJson('/api/otaku-shop/products?keyword='.urlencode('블루 아카이브'))
+            ->assertOk()->json('meta.total');
+
+        $this->assertSame(3, $compact, '붙여쓴 IP 검색은 IP 상품 3개 전부');
+        $this->assertSame($compact, $spaced, '띄어쓴 IP 검색과 붙여쓴 IP 검색 결과가 같아야 함');
+    }
 }
