@@ -58,6 +58,9 @@ class CrawlSyncService
                 [
                     'ok_shop_name' => $row['ok_shop_name'],
                     'ok_shop_url' => $row['ok_shop_url'] ?? null,
+                    // 해외관: 지역(kr/global)·통화(KRW/JPY/USD)는 config 샵 정의가 단일 출처.
+                    'ok_shop_region' => $row['ok_shop_region'] ?? 'kr',
+                    'ok_shop_currency' => $row['ok_shop_currency'] ?? 'KRW',
                     'ok_shop_active_flg' => true,
                 ]
             );

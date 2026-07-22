@@ -19,6 +19,8 @@ class OtakuShop extends Model
         'ok_shop_code',
         'ok_shop_name',
         'ok_shop_url',
+        'ok_shop_region',
+        'ok_shop_currency',
         'ok_shop_active_flg',
     ];
 

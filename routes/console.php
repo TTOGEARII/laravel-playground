@@ -45,6 +45,13 @@ Schedule::command('otaku-shop:crawl-full --yes')
     ->withoutOverlapping(360)
     ->runInBackground();
 
+// 매일 02:40 환율 수집(해외관 ¥→₩ 환산용) — 크롤 시작(03:00) 전에 최신 환율 확보.
+// 수집 실패해도 기존 저장 환율로 동작하므로 사이트에 영향 없음.
+Schedule::command('otaku-shop:fetch-rates')
+    ->dailyAt('02:40')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->runInBackground();
+
 /*
 |--------------------------------------------------------------------------
 | 서브컬쳐 게임 리딤코드 수집 (subculture:collect)
