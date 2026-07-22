@@ -857,6 +857,23 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(1, OtakuProduct::count(), '메모리/메모리얼 음차·필러 차이는 병합돼야 함');
     }
 
+    public function test_official_goods_label_parenthetical_is_stripped_for_merge(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 한 쇼핑몰이 제목 끝에 "(귀칼 애니 공식 굿즈)" 라벨 괄호를 붙여 '애니' 토큰 때문에 안 묶이던 사례.
+        // 라벨 괄호는 쇼핑몰 부연이라 제거 → 같은 상품이 병합돼야 한다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '귀멸의 칼날 귀칼 굿즈 애니플렉스 한정 아크릴 스탠드 - 우즈이 텐겐', 15000, categoryCode: 'accesory'),
+            $this->dto('animate', 'B1', '[입고 완료] 귀멸의 칼날 애니플렉스 아크릴 스탠드 - 우즈이 텐겐 (귀칼 애니 공식 굿즈)', 16000, categoryCode: 'accesory'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '"(…공식 굿즈)" 라벨 괄호 차이는 병합돼야 함');
+        $this->assertSame(2, OtakuOffer::count());
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();
