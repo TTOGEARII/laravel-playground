@@ -822,6 +822,41 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(2, OtakuOffer::count());
     }
 
+    public function test_china_goods_series_variants_merge_but_installments_stay_separate(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        OtakuShop::create(['ok_shop_code' => 'comicsart', 'ok_shop_name' => '코믹스아트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 중국/공식 라벨·시리즈명 음차(둘만의/단둘만의/선생님과의)·필러(캐릭터/컬렉션/제) 차이만 나는 같은
+        // 회차 상품은 병합. 단 회차(2탄 vs 3탄)가 다르면 분리 유지(과병합 방지).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 블아 중국 굿즈 선생님과 둘만의 시간 시리즈 아크릴 블럭 2탄 - 리오', 20000, categoryCode: 'goods'),
+            $this->dto('animate', 'B1', '[예약]블루 아카이브 공식 굿즈 선생님과의 시간 시리즈 아크릴 블럭 2탄 리오', 21000, categoryCode: 'goods'),
+            $this->dto('comicsart', 'C1', '(26년 4분기 발매) 블루 아카이브 선생님과 단둘만의 시간 시리즈 아크릴 블럭 제 3탄 리오 중국', 21000, categoryCode: 'goods'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '2탄 2건은 병합, 3탄은 분리 — 총 2상품');
+        $two = OtakuProduct::where('ok_product_title', 'like', '%2탄%')->first();
+        $this->assertSame(2, OtakuOffer::where('ok_offer_product_id', $two->ok_product_id)->count(), '2탄 상품에 오퍼 2개(병합)');
+    }
+
+    public function test_memorial_lenticular_transliteration_variants_merge(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 메모리/메모리얼 음차 + 캐릭터/컬렉션 필러 차이 → 병합.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 블아 중국 굿즈 캐릭터 메모리얼 시리즈 PET 컬렉션 색지 - 리오', 8000, categoryCode: 'goods'),
+            $this->dto('animate', 'B1', '(26년 4분기 발매) 블루 아카이브 메모리 시리즈 PET 색지 리오 공식 굿즈', 8500, categoryCode: 'goods'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '메모리/메모리얼 음차·필러 차이는 병합돼야 함');
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();
