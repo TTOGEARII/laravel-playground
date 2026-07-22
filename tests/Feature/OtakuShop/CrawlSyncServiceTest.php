@@ -768,6 +768,22 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(2, OtakuProduct::count(), '1글자 이름 린/렌 봉제인형은 분리 유지돼야 함');
     }
 
+    public function test_figure_and_plush_of_same_character_stay_separate(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 실측 과병합 사례: 인형류를 불용어로 지우면 1/7 피규어와 봉제인형의 시그니처가 같아져 오병합됐다.
+        // 인형류는 '봉제인형' 표준 토큰으로 남겨 폼팩터(피규어 vs 인형)가 시그니처에서 구분돼야 한다.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 시로코 테러 1/7 스케일 피규어', 250000, categoryCode: 'figure'),
+            $this->dto('animate', 'B1', '블루 아카이브 블아 굿즈 봉제인형 / 누이 - 시로코 테러', 35000, categoryCode: 'plush'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '같은 캐릭터라도 피규어와 봉제인형은 분리돼야 함');
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();
