@@ -7,11 +7,15 @@ use App\Models\OtakuShop\OtakuIp;
 use App\Models\OtakuShop\OtakuOffer;
 use App\Models\OtakuShop\OtakuProduct;
 use App\Models\OtakuShop\OtakuShop;
+use App\Services\OtakuShop\Crawler\ProductNormalizer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class ProductService
 {
+    public function __construct(private ProductNormalizer $normalizer) {}
+
     /**
      * 필터용 카테고리 목록 (정렬 순).
      */
@@ -58,12 +62,7 @@ class ProductService
         ]);
 
         if (! empty($filters['keyword'])) {
-            $keyword = $filters['keyword'];
-            $query->where(function ($q) use ($keyword) {
-                $q->where('ok_product_title', 'like', "%{$keyword}%")
-                    ->orWhere('ok_product_subtitle', 'like', "%{$keyword}%")
-                    ->orWhere('ok_product_brand_label', 'like', "%{$keyword}%");
-            });
+            $this->applyKeyword($query, (string) $filters['keyword']);
         }
 
         if (! empty($filters['brand'])) {
@@ -149,6 +148,47 @@ class ProductService
         }
 
         return $query->paginate($perPage);
+    }
+
+    /**
+     * 키워드 검색: 공백으로 나눈 토큰별 AND — 각 토큰이 제목/부제/브랜드 어딘가에 있으면 매칭되므로
+     * 어순·붙여쓰기가 달라도 찾아진다("블루 아카이브 프라나" ↔ "블루아카이브 ... 프라나").
+     * 토큰이 IP(작품) 줄임말/별칭(블아·프세카 등)이면 크롤 매칭과 같은 ip_aliases 사전으로 확장해
+     * 해당 IP로 분류된 상품(ok_product_ip_id)과 별칭 표기 제목도 함께 매칭한다.
+     */
+    private function applyKeyword(Builder $query, string $keyword): void
+    {
+        $tokens = preg_split('/\s+/u', trim($keyword)) ?: [];
+        $tokens = array_slice(array_values(array_filter($tokens, fn ($t) => $t !== '')), 0, 8); // 토큰 폭주 방어
+
+        $ipIdByCode = null;   // 필요할 때 1회만 로드
+        $aliases = null;
+
+        foreach ($tokens as $token) {
+            $like = '%'.addcslashes($token, '%_\\').'%'; // LIKE 와일드카드 이스케이프
+
+            // 토큰이 IP 별칭/줄임말이면 표준 IP와 그 표기 변형들로 확장
+            $ipId = null;
+            $variants = [];
+            if (($ipCode = $this->normalizer->extractIpCode($token)) !== null) {
+                $ipIdByCode ??= OtakuIp::pluck('ok_ip_id', 'ok_ip_code')->all();
+                $aliases ??= (array) config('otaku-crawler.product_match.ip_aliases', []);
+                $ipId = $ipIdByCode[$ipCode] ?? null;
+                $variants = array_merge([$ipCode], (array) ($aliases[$ipCode] ?? []));
+            }
+
+            $query->where(function ($q) use ($like, $ipId, $variants) {
+                $q->where('ok_product_title', 'like', $like)
+                    ->orWhere('ok_product_subtitle', 'like', $like)
+                    ->orWhere('ok_product_brand_label', 'like', $like);
+                if ($ipId !== null) {
+                    $q->orWhere('ok_product_ip_id', $ipId);
+                }
+                foreach ($variants as $variant) {
+                    $q->orWhere('ok_product_title', 'like', '%'.addcslashes($variant, '%_\\').'%');
+                }
+            });
+        }
     }
 
     /**

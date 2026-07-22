@@ -305,4 +305,52 @@ class ProductApiTest extends TestCase
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
     }
+
+    /** 검색 개선 검증용: 블루아카이브 IP + 상품 2개(붙여쓴 제목/띄어쓴 제목) 시딩. */
+    private function seedSearchTargets(array $data): void
+    {
+        $ip = \App\Models\OtakuShop\OtakuIp::create([
+            'ok_ip_code' => '블루아카이브', 'ok_ip_label' => '블루아카이브', 'ok_ip_sort' => 1,
+        ]);
+        OtakuProduct::create([
+            'ok_product_code' => 'pr_prana',
+            'ok_product_title' => '블루아카이브 초코푸니 프라나 인형',   // 붙여쓴 IP 표기
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+            'ok_product_ip_id' => $ip->ok_ip_id,
+        ]);
+        OtakuProduct::create([
+            'ok_product_code' => 'pr_yuzu',
+            'ok_product_title' => '블루 아카이브 팝업 퍼레이드 유즈',    // 띄어쓴 IP 표기, IP 미분류
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => $data['category']->ok_category_id,
+        ]);
+    }
+
+    public function test_keyword_tokens_match_regardless_of_order_and_spacing(): void
+    {
+        $this->seedSearchTargets($this->seedCatalog());
+
+        // 어순 뒤집기 + 띄어쓰기 다른 IP 표기("블루 아카이브" ↔ 제목은 "블루아카이브")도 찾아야 한다.
+        $this->getJson('/api/otaku-shop/products?keyword='.urlencode('프라나 블루 아카이브'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_prana');
+    }
+
+    public function test_keyword_ip_abbreviation_expands_via_aliases(): void
+    {
+        $this->seedSearchTargets($this->seedCatalog());
+
+        // 줄임말 "블아" → ip_aliases 로 확장: IP 분류된 상품 + 별칭 표기 제목(미분류) 모두 매칭.
+        $this->getJson('/api/otaku-shop/products?keyword='.urlencode('블아'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2);
+
+        // 줄임말 + 캐릭터 조합("블아 유즈")도 동작해야 한다.
+        $this->getJson('/api/otaku-shop/products?keyword='.urlencode('블아 유즈'))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_yuzu');
+    }
 }
