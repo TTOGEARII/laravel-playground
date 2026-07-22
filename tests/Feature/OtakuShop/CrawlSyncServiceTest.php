@@ -735,21 +735,37 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertFalse(CrawlSyncService::isFigureScale('프라나 1/7 스케일 LED 디스플레이 케이스'), '부속품');
     }
 
-    public function test_chocopuni_spelling_variants_merge(): void
+    public function test_chocopuni_plush_variants_merge(): void
     {
         OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
         $service = $this->app->make(CrawlSyncService::class);
         $this->seedRefs($service);
 
-        // 초/쵸 철자만 다르고 나머지 표기가 같은 초코푸니는 병합(라인명 철자 별칭). 인형류(누이/누이구루미)
-        // 표기가 다르면 여전히 분리 — 1글자 캐릭터명 충돌(린/렌)을 피하려 인형류는 정규화하지 않기 때문.
+        // 초/쵸 철자 + 인형/누이/누이구루미 표기만 다른 같은 40cm 초코푸니 프라나 → 한 상품(인형류 정규화).
         $service->syncProductsAndOffers([
-            $this->dto('dokidokigoods', 'A1', '블루 아카이브 쵸코푸니 40cm 인형 프라나', 80000, categoryCode: 'plush'),
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 쵸코푸니 40cm 누이구루미 프라나', 80000, categoryCode: 'plush'),
             $this->dto('animate', 'B1', '블루 아카이브 초코푸니 40cm 인형 프라나', 78000, categoryCode: 'plush'),
+            $this->dto('ttabbaemall', 'C1', '쵸코푸니 40cm 누이 프라나 / 블루 아카이브', 79000, categoryCode: 'plush'),
         ], incremental: false);
 
-        $this->assertSame(1, OtakuProduct::count(), '초/쵸 철자만 다른 같은 표기 초코푸니는 병합돼야 함');
-        $this->assertSame(2, OtakuOffer::count());
+        $this->assertSame(1, OtakuProduct::count(), '철자·인형류 표기만 다른 같은 40cm 초코푸니는 병합돼야 함');
+        $this->assertSame(3, OtakuOffer::count());
+    }
+
+    public function test_single_char_name_characters_stay_separate_after_doll_normalization(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 1글자 캐릭터명(린 vs 렌)은 인형류 정규화 후 남는 유일한 구분 신호이므로, 살려두어 서로 다른
+        // 캐릭터 봉제인형이 뭉치지 않게 한다(과병합 방지의 핵심).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 무빅 눈사람 누이 봉제인형 린', 40000, categoryCode: 'plush'),
+            $this->dto('animate', 'B1', '블루 아카이브 무빅 눈사람 누이구루미 봉제인형 렌', 40000, categoryCode: 'plush'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '1글자 이름 린/렌 봉제인형은 분리 유지돼야 함');
     }
 
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
