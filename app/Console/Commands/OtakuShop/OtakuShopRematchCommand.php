@@ -411,10 +411,12 @@ class OtakuShopRematchCommand extends Command
         OtakuProduct::query()
             ->whereNotNull('ok_product_match_sig')
             ->where('ok_product_match_sig', '!=', '')
-            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_match_sig', 'ok_product_title'])
+            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_maker_code', 'ok_product_match_sig', 'ok_product_title'])
             // 세트 식별자("세트 D" / "세트 2.0 & 2.1")·변별 번호(아크릴스탠드 "03"/"04", "5탄" 등)는
             // 시그니처에서 탈락(1글자·단독 숫자)한다 — 다르면 다른 구성/회차이므로 그룹 키에 포함해 분리한다.
-            ->groupBy(fn (OtakuProduct $p) => ($p->ok_product_ip_id ?? 'x').'|'.$p->ok_product_match_sig
+            // 품번(JAN 등)이 있으면 그것도 키에 포함한다 — 서로 다른 품번은 확정적으로 다른 상품이므로,
+            // 영문 제목(아미아미 등)이 토큰 빈약으로 같은 시그니처가 돼도(Deluxe/Regular·스케일 차이) 안 묶인다.
+            ->groupBy(fn (OtakuProduct $p) => ($p->ok_product_ip_id ?? 'x').'|'.($p->ok_product_maker_code ?? '').'|'.$p->ok_product_match_sig
                 .'|'.self::setVariantOf((string) $p->ok_product_title)
                 .'|'.self::numberVariantOf((string) $p->ok_product_title))
             ->each(function ($products) use (&$groups) {

@@ -73,6 +73,19 @@ class OtakuShopRematchTest extends TestCase
         $this->assertSame('nendo_2611', OtakuProduct::first()->ok_product_maker_code);
     }
 
+    public function test_rematch_does_not_merge_different_maker_codes_even_with_same_signature(): void
+    {
+        // 아미아미 영문 제목 회귀: 크레딧 strip 후 토큰이 빈약해 시그니처가 같아져도, 품번(JAN)이
+        // 다르면 확정적으로 다른 상품(Deluxe/Regular·스케일 차이)이므로 재매칭이 병합하면 안 된다.
+        // 제목을 동일하게 둬 시그니처를 같게 만들고, JAN 만 다르게 해 가드를 검증한다.
+        $this->product('jan_a', 'St Louis Race Queen Complete Figure', 'jan_4570001000001', $this->shopA, 'A1', 300000);
+        $this->product('jan_b', 'St Louis Race Queen Complete Figure', 'jan_4570001000002', $this->shopB, 'B1', 200000);
+
+        $this->artisan('otaku-shop:rematch')->assertSuccessful();
+
+        $this->assertSame(2, OtakuProduct::count(), '품번(JAN)이 다르면 시그니처가 같아도 분리 유지');
+    }
+
     public function test_rematch_merges_by_name_containment(): void
     {
         // maker code 없고 토큰 1개 차이지만 같은 ip+카테고리(피규어) + 스케일 + 포함관계.
