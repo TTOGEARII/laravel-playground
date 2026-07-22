@@ -477,4 +477,49 @@ class ProductApiTest extends TestCase
         $this->get('/otaku-shop/global')->assertOk()->assertSee('해외관');
         $this->get('/otaku-shop')->assertOk()->assertSee('otaku-shop-app', false);
     }
+
+    public function test_price_range_filters_by_krw(): void
+    {
+        // pr_aaa: 국내 오퍼 ₩13,000·₩15,000
+        $this->seedCatalog();
+        // 비싼 상품 추가(₩50,000)
+        $expensive = OtakuProduct::create([
+            'ok_product_code' => 'pr_exp',
+            'ok_product_title' => '고가 피규어',
+            'ok_product_active_flg' => true,
+            'ok_product_cate_id' => OtakuCategory::first()->ok_category_id,
+        ]);
+        OtakuOffer::create([
+            'ok_offer_product_id' => $expensive->ok_product_id,
+            'ok_offer_shop_id' => OtakuShop::where('ok_shop_code', 'dokidokigoods')->value('ok_shop_id'),
+            'ok_offer_external_id' => 'exp-1', 'ok_offer_currency' => 'KRW',
+            'ok_offer_price' => 50000, 'ok_offer_available_flg' => true,
+        ]);
+
+        // 최소 20,000원 → 고가 상품만.
+        $this->getJson('/api/otaku-shop/products?price_min=20000')
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_exp');
+
+        // 최대 20,000원 → 저가 상품(pr_aaa)만.
+        $this->getJson('/api/otaku-shop/products?price_max=20000')
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
+    }
+
+    public function test_price_range_converts_global_offer_to_krw(): void
+    {
+        $data = $this->seedCatalog();
+        $this->seedGlobalShop($data); // pr_jp_only: ¥13,980 × ₩9.0 = ₩125,820
+
+        // 최소 100,000원 → 환산 ₩125,820 인 해외 상품이 걸리고, 국내 저가 상품(₩13,000)은 빠짐.
+        $this->getJson('/api/otaku-shop/products?price_min=100000')
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_jp_only');
+
+        // 최대 100,000원 → 환산가 초과인 해외 상품은 빠지고 국내 저가만.
+        $this->getJson('/api/otaku-shop/products?price_max=100000')
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.ok_product_code', 'pr_aaa');
+    }
 }

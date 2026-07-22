@@ -1297,3 +1297,15 @@
     background: var(--ds-primary);
     color: var(--ds-on-accent);
 }
+
+/* 가격 범위 단위 배지(₩ 원) */
+.filter-unit {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ds-text-accent);
+    background: rgba(243, 114, 127, 0.14);
+    border-radius: var(--ds-round-pill);
+    padding: 1px 8px;
+    margin-left: 4px;
+    vertical-align: middle;
+}

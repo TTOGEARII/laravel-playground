@@ -108,6 +108,25 @@ class ProductService
             });
         }
 
+        // 가격 범위(원화 기준). 해외 오퍼(JPY 등)는 환율로 원화 환산해 비교하므로 국내·해외관 모두
+        // 항상 원(₩) 기준으로 일관되게 걸린다. 판매중 오퍼 중 범위에 드는 게 하나라도 있으면 매칭.
+        // ※ 경계값은 반드시 int 로 바인딩한다 — float 은 PDO(PARAM_STR)로 텍스트 바인딩돼 SQLite 에서
+        //   "숫자 < 텍스트" 규칙 때문에 비교가 항상 거짓이 된다(원화 금액은 정수라 int 로 충분).
+        $priceMin = isset($filters['price_min']) ? (int) $filters['price_min'] : 0;
+        $priceMax = isset($filters['price_max']) ? (int) $filters['price_max'] : 0;
+        if ($priceMin > 0 || $priceMax > 0) {
+            $krw = 'ok_offer_price * '.$this->currencyToKrwCaseSql();
+            $query->whereHas('offers', function ($q) use ($priceMin, $priceMax, $krw) {
+                $q->where('ok_offer_available_flg', true);
+                if ($priceMin > 0) {
+                    $q->whereRaw("{$krw} >= ?", [$priceMin]);
+                }
+                if ($priceMax > 0) {
+                    $q->whereRaw("{$krw} <= ?", [$priceMax]);
+                }
+            });
+        }
+
         if (isset($filters['category_id']) && $filters['category_id'] !== '' && $filters['category_id'] !== null) {
             $categoryId = (int) $filters['category_id'];
             if ($categoryId > 0) {

@@ -122,20 +122,22 @@
       </div>
 
       <div class="filter-section">
-        <h2 class="filter-title">가격 범위</h2>
+        <h2 class="filter-title">가격 범위 <span class="filter-unit">₩ 원</span></h2>
         <div class="price-range">
           <div class="price-inputs">
             <div class="price-input">
               <span>최소</span>
-              <input type="number" v-model.number="priceMin" min="0" />
+              <input type="number" v-model.number="priceMin" min="0" step="1000" placeholder="0"
+                @change="fetchProducts(1)" @keyup.enter="fetchProducts(1)" />
             </div>
             <span class="price-separator">~</span>
             <div class="price-input">
               <span>최대</span>
-              <input type="number" v-model.number="priceMax" min="0" />
+              <input type="number" v-model.number="priceMax" min="0" step="1000" placeholder="제한 없음"
+                @change="fetchProducts(1)" @keyup.enter="fetchProducts(1)" />
             </div>
           </div>
-          <div class="price-hint">엔(¥) 기준 예시 값입니다.</div>
+          <div class="price-hint">{{ priceHint }}</div>
         </div>
       </div>
 
@@ -392,8 +394,12 @@ const selectedCategoryId = ref(null);
 const selectedIpId = ref(null);
 const selectedShopIds = ref([]);
 const sortBy = ref('created_desc');
-const priceMin = ref(0);
-const priceMax = ref(200000);
+// 가격 범위는 원(₩) 기준. 해외관 오퍼(JPY)도 서버가 원화 환산해 비교한다. 빈 값(null)이면 미적용.
+const priceMin = ref(null);
+const priceMax = ref(null);
+const priceHint = computed(() =>
+  props.region === 'global' ? '원(₩) 환산 기준으로 검색합니다.' : '원(₩) 기준으로 검색합니다.',
+);
 const comparedOnly = ref(false);
 const upcomingOnly = ref(false);
 const inStockOnly = ref(false);
@@ -635,6 +641,8 @@ async function fetchProducts(page = 1) {
       upcoming: upcomingOnly.value,
       in_stock_only: inStockOnly.value,
       region: props.region,
+      price_min: priceMin.value || undefined,
+      price_max: priceMax.value || undefined,
     });
     products.value = res.data || [];
     meta.value = res.meta || meta.value;
@@ -667,8 +675,8 @@ function resetFilters() {
   selectedCategoryId.value = null;
   selectedIpId.value = null;
   selectedShopIds.value = shops.value.length ? shops.value.map((s) => s.ok_shop_id) : [];
-  priceMin.value = 0;
-  priceMax.value = 200000;
+  priceMin.value = null;
+  priceMax.value = null;
   comparedOnly.value = false;
   upcomingOnly.value = false;
   inStockOnly.value = false;

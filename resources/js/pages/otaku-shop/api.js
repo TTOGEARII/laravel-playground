@@ -28,6 +28,8 @@ export const otakuShopApi = {
     if (params.compared_only) q.set('compared_only', '1');
     if (params.in_stock_only) q.set('in_stock_only', '1');
     if (params.region) q.set('region', params.region); // kr=국내관, global=해외관
+    if (params.price_min) q.set('price_min', params.price_min); // 원(₩) 기준
+    if (params.price_max) q.set('price_max', params.price_max);
     (params.shop_id || []).forEach((id) => q.append('shop_id[]', id));
     const { data } = await axios.get(`${BASE}/products?${q}`);
     return data;

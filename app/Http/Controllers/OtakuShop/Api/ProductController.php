@@ -34,6 +34,9 @@ class ProductController extends Controller
             'in_stock_only' => $request->boolean('in_stock_only'),
             // 지역(kr=국내관, global=해외관). 허용값 외에는 무시.
             'region' => in_array($request->input('region'), ['kr', 'global'], true) ? $request->input('region') : null,
+            // 가격 범위(원화 기준, 해외 오퍼는 환산 비교). 0/미입력은 미적용.
+            'price_min' => max(0, (int) $request->input('price_min', 0)),
+            'price_max' => max(0, (int) $request->input('price_max', 0)),
         ];
         $shopIds = $request->input('shop_id', []);
         if (is_array($shopIds) && $shopIds !== []) {
