@@ -735,6 +735,38 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertFalse(CrawlSyncService::isFigureScale('프라나 1/7 스케일 LED 디스플레이 케이스'), '부속품');
     }
 
+    public function test_chocopuni_plush_spelling_and_doll_type_variants_merge(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 같은 초코푸니 BIG 40cm 프라나 인형인데 철자(초/쵸)·인형류(인형/누이/누이구루미) 표기만 다르다 → 한 상품.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 쵸코푸니 빅 40cm 누이구루미 프라나', 80000, categoryCode: 'plush'),
+            $this->dto('animate', 'B1', '블루 아카이브 초코푸니 40cm 인형 프라나', 78000, categoryCode: 'plush'),
+            $this->dto('ttabbaemall', 'C1', '쵸코푸니 40cm 누이 프라나 / 블루 아카이브', 79000, categoryCode: 'plush'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '철자·인형류만 다른 같은 40cm 초코푸니는 병합돼야 함');
+        $this->assertSame(3, OtakuOffer::count());
+    }
+
+    public function test_chocopuni_big_and_regular_size_stay_separate(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // BIG(40cm)과 일반 사이즈는 다른 상품 — 크기 표기(40cm)가 이를 구분해 병합되면 안 된다(과병합 방지).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '블루 아카이브 초코푸니 40cm 누이 프라나', 80000, categoryCode: 'plush'),
+            $this->dto('animate', 'B1', '블루 아카이브 쵸코푸니 누이구루미 프라나', 30000, categoryCode: 'plush'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), 'BIG(40cm)과 일반 사이즈는 분리 유지돼야 함');
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();
