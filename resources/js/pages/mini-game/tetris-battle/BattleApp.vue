@@ -176,6 +176,16 @@ let gatherTimer = null;
 let gatherTick = null;
 let playStart = 0; // 이번 판 시작 시각(ms) — 시간 가속 계산용
 
+// 부드러운 좌우/소프트 입력(DAS/ARR) — 게임 루프에서 프레임 단위 처리(테트리오/뿌요테트리스 감).
+const DAS = 130;
+const ARR = 28;
+const SOFT_ARR = 22;
+const held = { left: false, right: false, down: false };
+let dasDir = 0;
+let dasTimer = 0;
+let dasCharged = false;
+let softTimer = 0;
+
 // ── 멤버/역할 ──
 const sortedMembers = computed(() => [...members.value].sort((a, b) => a.id - b.id));
 const sortedIds = computed(() => sortedMembers.value.map((m) => m.id));
@@ -309,7 +319,10 @@ function beginGame() {
   myLines.value = 0; garbageIn.value = 0;
   gamePhase.value = 'playing';
   lastTs = 0; dropAcc = 0; playStart = Date.now();
-  window.addEventListener('keydown', handleKey);
+  held.left = held.right = held.down = false;
+  dasDir = 0; dasTimer = 0; dasCharged = false; softTimer = 0;
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
   snapTimer = setInterval(sendSnapshot, 150);
   rafId = requestAnimationFrame(loop);
   nextTick(() => { renderMine(); renderAllOpp(); });
@@ -358,34 +371,65 @@ function endGame() {
 }
 
 // ── 루프/입력 ──
-// 낙하 간격: 지운 줄 + 시간 경과(배틀은 더 공격적) 둘 다로 가속 → 후반엔 매우 빨라져 자연스럽게 결착.
+// 낙하 간격: 지운 줄 + 시간 경과로 가속하되 완만하게(배틀은 판을 끝내려 살짝 더 빠르지만 초반이 버겁지 않게).
 function dropInterval() {
   const elapsed = playStart ? Date.now() - playStart : 0;
-  const timeSpeedup = Math.min(Math.floor(elapsed / 6000) * 50, 720); // 6초마다 -50ms(최대 -720)
-  return Math.max(80, 800 - myLines.value * 18 - timeSpeedup);
+  const timeSpeedup = Math.min(Math.floor(elapsed / 10000) * 30, 450); // 10초마다 -30ms(최대 -450)
+  return Math.max(130, 800 - myLines.value * 16 - timeSpeedup);
 }
 function loop(ts) {
   if (gamePhase.value !== 'playing' || !engine) return;
   if (!lastTs) lastTs = ts;
-  dropAcc += ts - lastTs; lastTs = ts;
-  while (dropAcc >= dropInterval()) { dropAcc -= dropInterval(); engine.softDrop(); if (engine.gameOver) break; }
+  const dt = ts - lastTs; lastTs = ts;
+  processInput(dt);
+  const gi = dropInterval();
+  dropAcc += dt;
+  while (dropAcc >= gi) { dropAcc -= gi; engine.softDrop(); if (engine.gameOver) break; }
   renderMine();
   rafId = requestAnimationFrame(loop);
 }
-function handleKey(e) {
+// 좌우 DAS/ARR + 소프트드롭 자동반복(프레임 단위). 방향 전환 시 즉시 1칸 → DAS 지연 → ARR 간격.
+function processInput(dt) {
+  const dir = held.left && !held.right ? -1 : held.right && !held.left ? 1 : 0;
+  if (dir !== dasDir) {
+    dasDir = dir; dasTimer = 0; dasCharged = false;
+    if (dir !== 0) engine.move(dir, 0);
+  } else if (dir !== 0) {
+    dasTimer += dt;
+    if (!dasCharged) {
+      if (dasTimer >= DAS) { dasCharged = true; dasTimer -= DAS; engine.move(dir, 0); }
+    } else {
+      while (dasTimer >= ARR) { dasTimer -= ARR; engine.move(dir, 0); }
+    }
+  }
+  if (held.down) {
+    softTimer += dt;
+    while (softTimer >= SOFT_ARR) { softTimer -= SOFT_ARR; engine.softDrop(); dropAcc = 0; }
+  } else {
+    softTimer = 0;
+  }
+}
+const HANDLED_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X', 'Shift', 'c', 'C'];
+// 좌우/소프트는 눌림 상태만 기록(이동은 루프 DAS/ARR 담당). 회전/하드/홀드는 눌린 순간 1회.
+function handleKeyDown(e) {
   if (gamePhase.value !== 'playing' || !engine) return;
   const k = e.key;
-  const handled = ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X', 'Shift', 'c', 'C'];
-  if (!handled.includes(k)) return;
+  if (!HANDLED_KEYS.includes(k)) return;
   e.preventDefault();
-  if (k === 'ArrowLeft') engine.move(-1, 0);
-  else if (k === 'ArrowRight') engine.move(1, 0);
-  else if (k === 'ArrowDown') { engine.softDrop(); dropAcc = 0; }
-  else if (k === 'ArrowUp' || k === 'x' || k === 'X') engine.rotate(1);
-  else if (k === 'z' || k === 'Z') engine.rotate(-1);
-  else if (k === ' ') { engine.hardDrop(); dropAcc = 0; }
-  else if (k === 'Shift' || k === 'c' || k === 'C') engine.holdPiece();
-  renderMine();
+  if (e.repeat) return;
+  if (k === 'ArrowLeft') held.left = true;
+  else if (k === 'ArrowRight') held.right = true;
+  else if (k === 'ArrowDown') held.down = true;
+  else if (k === 'ArrowUp' || k === 'x' || k === 'X') { engine.rotate(1); renderMine(); }
+  else if (k === 'z' || k === 'Z') { engine.rotate(-1); renderMine(); }
+  else if (k === ' ') { engine.hardDrop(); dropAcc = 0; renderMine(); }
+  else if (k === 'Shift' || k === 'c' || k === 'C') { engine.holdPiece(); renderMine(); }
+}
+function handleKeyUp(e) {
+  const k = e.key;
+  if (k === 'ArrowLeft') held.left = false;
+  else if (k === 'ArrowRight') held.right = false;
+  else if (k === 'ArrowDown') held.down = false;
 }
 function doAction(act) {
   if (gamePhase.value !== 'playing' || !engine) return;
@@ -427,7 +471,9 @@ function stopMyLoop() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   if (snapTimer) { clearInterval(snapTimer); snapTimer = null; }
   pressEnd();
-  window.removeEventListener('keydown', handleKey);
+  held.left = held.right = held.down = false;
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
 }
 function backToWaiting() {
   stopMyLoop();

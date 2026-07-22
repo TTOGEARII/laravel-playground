@@ -195,6 +195,17 @@ let snapTimer = null;
 let repeatTimer = null; // 가상 키패드 좌우/소프트 반복 입력
 let playStart = 0;      // 이번 판 시작 시각(ms) — 시간 가속 계산용
 
+// 부드러운 좌우/소프트 입력(DAS/ARR) — 브라우저 키반복에 의존하지 않고 게임 루프에서 프레임 단위로
+// 처리해 테트리오/뿌요테트리스 같은 감을 낸다. 누른 순간 1칸 → DAS 지연 → ARR 간격 자동반복.
+const DAS = 130;      // 자동반복 시작 지연(ms)
+const ARR = 28;       // 자동반복 간격(ms)
+const SOFT_ARR = 22;  // 소프트드롭(↓ 유지) 반복 간격(ms)
+const held = { left: false, right: false, down: false };
+let dasDir = 0;
+let dasTimer = 0;
+let dasCharged = false;
+let softTimer = 0;
+
 // 참가자 = 입장순(id) 앞 2명
 const sortedIds = computed(() => members.value.map((m) => m.id).sort((a, b) => a - b));
 const playerIds = computed(() => sortedIds.value.slice(0, 2));
@@ -338,7 +349,10 @@ function beginGame() {
   oppReady.value = false;
   gamePhase.value = 'playing';
   lastTs = 0; dropAcc = 0; playStart = Date.now();
-  window.addEventListener('keydown', handleKey);
+  held.left = held.right = held.down = false;
+  dasDir = 0; dasTimer = 0; dasCharged = false; softTimer = 0;
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
   snapTimer = setInterval(sendSnapshot, 150);
   rafId = requestAnimationFrame(loop);
   nextTick(renderAll);
@@ -355,7 +369,9 @@ function stopGameLoop() {
   if (rafId) cancelAnimationFrame(rafId), (rafId = null);
   if (snapTimer) clearInterval(snapTimer), (snapTimer = null);
   pressEnd();
-  window.removeEventListener('keydown', handleKey);
+  held.left = held.right = held.down = false;
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
 }
 
 function resetForRematch() {
@@ -365,20 +381,23 @@ function resetForRematch() {
 }
 
 // ── 게임 루프 · 입력 ────────────────────────────────
-// 낙하 간격: 지운 줄 + 시간 경과(공격적) 둘 다로 가속. 시간만 흘러도 후반엔 매우 빨라져 판이 결착된다.
+// 낙하 간격: 지운 줄 + 시간 경과로 가속하되 완만하게(초반이 버겁지 않게). 하한도 넉넉히 둔다.
 function dropInterval() {
   const elapsed = playStart ? Date.now() - playStart : 0;
-  const timeSpeedup = Math.min(Math.floor(elapsed / 8000) * 45, 680); // 8초마다 -45ms(최대 -680)
-  return Math.max(90, 800 - myLines.value * 18 - timeSpeedup);
+  const timeSpeedup = Math.min(Math.floor(elapsed / 12000) * 25, 375); // 12초마다 -25ms(최대 -375)
+  return Math.max(150, 800 - myLines.value * 16 - timeSpeedup);
 }
 
 function loop(ts) {
   if (gamePhase.value !== 'playing' || !engine) return;
   if (!lastTs) lastTs = ts;
-  dropAcc += ts - lastTs;
+  const dt = ts - lastTs;
   lastTs = ts;
-  while (dropAcc >= dropInterval()) {
-    dropAcc -= dropInterval();
+  processInput(dt);            // 좌우 DAS/ARR + 소프트드롭(프레임 단위, 부드럽게)
+  const gi = dropInterval();
+  dropAcc += dt;
+  while (dropAcc >= gi) {
+    dropAcc -= gi;
     engine.softDrop();
     if (engine.gameOver) break;
   }
@@ -386,20 +405,52 @@ function loop(ts) {
   rafId = requestAnimationFrame(loop);
 }
 
-function handleKey(e) {
+// 좌우 이동 DAS/ARR + 소프트드롭 자동반복. 방향 전환 시 즉시 1칸, 이후 DAS 지연 → ARR 간격.
+function processInput(dt) {
+  const dir = held.left && !held.right ? -1 : held.right && !held.left ? 1 : 0;
+  if (dir !== dasDir) {
+    dasDir = dir; dasTimer = 0; dasCharged = false;
+    if (dir !== 0) engine.move(dir, 0);
+  } else if (dir !== 0) {
+    dasTimer += dt;
+    if (!dasCharged) {
+      if (dasTimer >= DAS) { dasCharged = true; dasTimer -= DAS; engine.move(dir, 0); }
+    } else {
+      while (dasTimer >= ARR) { dasTimer -= ARR; engine.move(dir, 0); }
+    }
+  }
+  if (held.down) {
+    softTimer += dt;
+    while (softTimer >= SOFT_ARR) { softTimer -= SOFT_ARR; engine.softDrop(); dropAcc = 0; }
+  } else {
+    softTimer = 0;
+  }
+}
+
+const HANDLED_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X', 'Shift', 'c', 'C'];
+
+// 좌우/소프트는 눌림 상태만 기록(이동은 루프의 DAS/ARR 이 담당) → 브라우저 키반복에 안 끌린다.
+// 회전/하드/홀드는 눌린 순간 1회 실행.
+function handleKeyDown(e) {
   if (gamePhase.value !== 'playing' || !engine) return;
   const k = e.key;
-  const handled = ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'z', 'Z', 'x', 'X', 'Shift', 'c', 'C'];
-  if (!handled.includes(k)) return;
+  if (!HANDLED_KEYS.includes(k)) return;
   e.preventDefault();
-  if (k === 'ArrowLeft') engine.move(-1, 0);
-  else if (k === 'ArrowRight') engine.move(1, 0);
-  else if (k === 'ArrowDown') { engine.softDrop(); dropAcc = 0; }
-  else if (k === 'ArrowUp' || k === 'x' || k === 'X') engine.rotate(1);
-  else if (k === 'z' || k === 'Z') engine.rotate(-1);
-  else if (k === ' ') { engine.hardDrop(); dropAcc = 0; }
-  else if (k === 'Shift' || k === 'c' || k === 'C') engine.holdPiece();
-  renderMine();
+  if (e.repeat) return; // 브라우저 자동반복 무시(DAS/ARR 로 처리)
+  if (k === 'ArrowLeft') held.left = true;
+  else if (k === 'ArrowRight') held.right = true;
+  else if (k === 'ArrowDown') held.down = true;
+  else if (k === 'ArrowUp' || k === 'x' || k === 'X') { engine.rotate(1); renderMine(); }
+  else if (k === 'z' || k === 'Z') { engine.rotate(-1); renderMine(); }
+  else if (k === ' ') { engine.hardDrop(); dropAcc = 0; renderMine(); }
+  else if (k === 'Shift' || k === 'c' || k === 'C') { engine.holdPiece(); renderMine(); }
+}
+
+function handleKeyUp(e) {
+  const k = e.key;
+  if (k === 'ArrowLeft') held.left = false;
+  else if (k === 'ArrowRight') held.right = false;
+  else if (k === 'ArrowDown') held.down = false;
 }
 
 // ── 모바일 가상 키패드 ──────────────────────────────
