@@ -52,6 +52,16 @@ Schedule::command('otaku-shop:fetch-rates')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->runInBackground();
 
+// 매일 03:30 해외관 크롤(아미아미 예약상품) — 국내 크롤과 달리 Playwright 사이드카라
+// Selenium 세션과 충돌하지 않는다(다른 브라우저 스택). 환율 수집(02:40) 뒤라 최저가 환산 정확,
+// SGI Playwright 크롤(05:00+) 전이라 chromium 메모리 피크가 겹치지 않는다.
+// 수집 0건이면 커맨드가 품절 처리 없이 종료하므로(전 오퍼 오품절 방지) 실패에 안전.
+Schedule::command('otaku-shop:crawl-global')
+    ->dailyAt('03:30')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(60)
+    ->runInBackground();
+
 /*
 |--------------------------------------------------------------------------
 | 서브컬쳐 게임 리딤코드 수집 (subculture:collect)
