@@ -170,9 +170,18 @@ class CrawlSyncService
                 $dto->title,
             );
             $ipCode = $this->normalizer->extractIpCode($dto->title);
+            // 제네릭 피규어 오병합 가드: 품번 없이 시그니처가 캐릭터명 수준(2토큰 이하)인 피규어는 제조사·라인명이
+            // 불용어로 빠져 서로 다른 피규어(굿스마일 스케일 vs 반프레스토 프라이즈)가 같은 키로 뭉친다.
+            // 이런 '변별 부족' 피규어는 listing(샵+외부ID) 단위 고유 키로 둬 시그니처 병합을 막는다 — 같은 상품은
+            // 기존 오퍼(findOrCreateProduct)·JAN·이미지(dHash) 경로로 여전히 병합되므로 같은 사진끼리만 묶인다.
+            $bareFigure = $makerCode === null
+                && ($dto->categoryCode === self::FUZZY_CATEGORY || self::isFigureScale($dto->title))
+                && count($this->normalizer->signatureTokens($dto->title)) < 3;
             $base = $makerCode !== null
                 ? 'mkr_'.md5($makerCode)
-                : $this->normalizer->normalizeKey($dto->title, $dto->brandLabel);
+                : ($bareFigure
+                    ? 'barefig_'.md5($dto->shopCode.'|'.(string) $dto->externalId)
+                    : $this->normalizer->normalizeKey($dto->title, $dto->brandLabel));
             $key = $ipCode !== null ? $base.'-'.substr(md5($ipCode), 0, 8) : $base;
 
             $bundles[$key] ??= ['key' => $key, 'base' => $base, 'makerCode' => $makerCode, 'ipCode' => $ipCode, 'dto' => $dto, 'offers' => []];

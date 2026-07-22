@@ -874,6 +874,37 @@ class CrawlSyncServiceTest extends TestCase
         $this->assertSame(2, OtakuOffer::count());
     }
 
+    public function test_generic_bare_figure_does_not_merge_across_makers(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 라인명 없이 캐릭터명만 남는 피규어(굿스마일 1/4 스케일 vs 반프레스토 프라이즈)는 서로 다른 상품 —
+        // 제조사가 불용어로 빠져 시그니처가 같아져도 병합되면 안 된다(제네릭 피규어 가드).
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '나의 히어로 아카데미아 굿스마일 컴퍼니 1/4 스케일 피규어 - 토가 히미코', 250000, categoryCode: 'figure'),
+            $this->dto('animate', 'B1', '나의 히어로 아카데미아 반프레스토 피규어 - 토가 히미코', 30000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(2, OtakuProduct::count(), '라인명 없는 제네릭 피규어는 제조사가 달라도 시그니처로 병합되면 안 됨');
+    }
+
+    public function test_figure_with_line_name_still_merges(): void
+    {
+        OtakuShop::create(['ok_shop_code' => 'animate', 'ok_shop_name' => '애니메이트', 'ok_shop_active_flg' => true]);
+        $service = $this->app->make(CrawlSyncService::class);
+        $this->seedRefs($service);
+
+        // 라인명(룩업)이 있으면 시그니처가 충분히 변별적(3토큰↑) → 재판·라벨 차이는 정상 병합.
+        $service->syncProductsAndOffers([
+            $this->dto('dokidokigoods', 'A1', '나의 히어로 아카데미아 메가하우스 룩업 피규어 - 바쿠고 카츠키', 40000, categoryCode: 'figure'),
+            $this->dto('animate', 'B1', '[재판] 나의 히어로 아카데미아 메가하우스 룩업 피규어 - 바쿠고 카츠키', 41000, categoryCode: 'figure'),
+        ], incremental: false);
+
+        $this->assertSame(1, OtakuProduct::count(), '라인명 있는 피규어는 재판/라벨 차이로 병합돼야 함');
+    }
+
     public function test_unique_constraint_prevents_duplicate_offer_per_shop(): void
     {
         $this->seedShops();

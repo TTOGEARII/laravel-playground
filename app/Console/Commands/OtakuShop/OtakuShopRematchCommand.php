@@ -407,11 +407,17 @@ class OtakuShopRematchCommand extends Command
     private function sigEqualityGroups(): array
     {
         $groups = [];
+        $figureCateId = OtakuCategory::where('ok_category_code', 'figure')->value('ok_category_id');
 
         OtakuProduct::query()
             ->whereNotNull('ok_product_match_sig')
             ->where('ok_product_match_sig', '!=', '')
-            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_maker_code', 'ok_product_match_sig', 'ok_product_title'])
+            ->get(['ok_product_id', 'ok_product_ip_id', 'ok_product_cate_id', 'ok_product_maker_code', 'ok_product_match_sig', 'ok_product_title'])
+            // 제네릭 피규어 오병합 가드: 피규어인데 시그니처가 캐릭터명 수준(2토큰 이하)이면 제조사·라인명이
+            // 빠져 서로 다른 피규어가 같은 키로 뭉치므로, 시그니처 병합에서 제외한다(같은 상품은 이미지/JAN 로 병합).
+            ->reject(fn (OtakuProduct $p) => $figureCateId !== null
+                && (int) $p->ok_product_cate_id === (int) $figureCateId
+                && substr_count(trim((string) $p->ok_product_match_sig), ' ') < 2)
             // 세트 식별자("세트 D" / "세트 2.0 & 2.1")·변별 번호(아크릴스탠드 "03"/"04", "5탄" 등)는
             // 시그니처에서 탈락(1글자·단독 숫자)한다 — 다르면 다른 구성/회차이므로 그룹 키에 포함해 분리한다.
             // 품번(JAN 등)이 있으면 그것도 키에 포함한다 — 서로 다른 품번은 확정적으로 다른 상품이므로,
