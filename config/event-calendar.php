@@ -18,7 +18,7 @@ return [
             'enabled' => true,
             'base_url' => 'https://festivallife.kr',
             'board' => 'concert_k',
-            'pages' => 8,          // 12건/페이지 — 티스토리 발견분과의 매칭(상세 승격)을 위해 넓게. 기존 글은 상세 재방문 생략이라 부담 낮음
+            'pages' => 8,          // 12건/페이지 — 달력의 단일 공연 소스라 넓게 수집. 기존 글은 상세 재방문 생략이라 부담 낮음
             'delay_ms' => 1200,    // 상세 페이지 요청 간 딜레이(정중한 크롤)
         ],
         'comicworld' => [
@@ -29,10 +29,6 @@ return [
         'illustar' => [
             'enabled' => true, // Playwright 사이드카(event-illustar.mjs) — 배너 텍스트 구조 기반
         ],
-        // J-pop 내한 캘린더(j-pop-playlist.tistory.com/1109) — 큐레이션 J-pop 전용(장르 확정 수집).
-        // 위젯 pill 의 data 속성(date/title/location/link)을 사이드카로 추출. festivallife 와
-        // 겹치는 공연은 sync 의 교차 소스 중복 방지가 거른다(먼저 온 쪽 유지).
-        'jpoptistory' => ['enabled' => true],
         // 전시장 캘린더(킨텍스·SETEC·코엑스) — 게임사 오프라인 행사(블아 페스티벌 등)·동인 행사가 잡힌다.
         // 산업 전시가 대부분이라 아래 venues.keywords/hosts 포지티브 필터로 서브컬쳐만 수집.
         'kintex' => ['enabled' => true, 'base' => 'https://www.kintex.com'],
@@ -54,6 +50,16 @@ return [
             'exclude_keywords' => ['온라인', '스트리밍', 'vod'],
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | J-pop 판별 레퍼런스(블로그 캘린더 — 달력 표기 아님)
+    |--------------------------------------------------------------------------
+    | J-pop 내한 캘린더(j-pop-playlist.tistory.com/1109)는 이벤트 소스가 아니라
+    | "장르 판별 대조용"으로만 쓴다 — festivallife 공연이 블로그에 같은 날·같은
+    | 아티스트로 있으면 genre=jpop 확정(JpopReferenceService). 나머지는 Gemini 폴백.
+    */
+    'jpop_reference' => ['enabled' => true],
 
     /*
     |--------------------------------------------------------------------------

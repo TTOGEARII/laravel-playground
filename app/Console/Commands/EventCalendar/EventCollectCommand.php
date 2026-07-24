@@ -4,12 +4,12 @@ namespace App\Console\Commands\EventCalendar;
 
 use App\Services\EventCalendar\EventSyncService;
 use App\Services\EventCalendar\GenreTagService;
+use App\Services\EventCalendar\JpopReferenceService;
+use App\Services\EventCalendar\Sources\CoexDriver;
 use App\Services\EventCalendar\Sources\ComicWorldDriver;
 use App\Services\EventCalendar\Sources\Contracts\EventSource;
 use App\Services\EventCalendar\Sources\FestivalLifeDriver;
-use App\Services\EventCalendar\Sources\CoexDriver;
 use App\Services\EventCalendar\Sources\IllustarDriver;
-use App\Services\EventCalendar\Sources\JpopTistoryDriver;
 use App\Services\EventCalendar\Sources\KintexDriver;
 use App\Services\EventCalendar\Sources\LoungeEventDriver;
 use App\Services\EventCalendar\Sources\SetecDriver;
@@ -31,14 +31,13 @@ class EventCollectCommand extends Command
         'festivallife' => FestivalLifeDriver::class,
         'comicworld' => ComicWorldDriver::class,
         'illustar' => IllustarDriver::class,
-        'jpoptistory' => JpopTistoryDriver::class,
         'kintex' => KintexDriver::class,
         'setec' => SetecDriver::class,
         'coex' => CoexDriver::class,
         'lounge' => LoungeEventDriver::class,
     ];
 
-    public function handle(EventSyncService $sync, GenreTagService $tagger): int
+    public function handle(EventSyncService $sync, GenreTagService $tagger, JpopReferenceService $jpopRef): int
     {
         $only = $this->option('source');
         $failures = 0;
@@ -63,6 +62,17 @@ class EventCollectCommand extends Command
                 $failures++;
                 $this->warn("  ↳ 실패: {$e->getMessage()}");
                 Log::error('행사 수집 실패', ['source' => $code, 'error' => $e->getMessage()]);
+            }
+        }
+
+        // J-pop 레퍼런스 대조(블로그 캘린더) — 달력 표기는 안 하고 장르 판별만. Gemini 태깅보다 먼저
+        // 돌아 확정분을 제외시키고, Gemini 가 'other' 로 오분류한 공연도 바로잡는다.
+        if ($only === null && config('event-calendar.jpop_reference.enabled', false)) {
+            try {
+                $ref = $jpopRef->tagFromReference();
+                $this->line($ref['skipped'] ? 'J-pop 레퍼런스: 사이드카 실패 — 스킵' : "J-pop 레퍼런스: {$ref['refs']}항목 대조 · {$ref['matched']}건 jpop 확정");
+            } catch (\Throwable $e) {
+                Log::warning('J-pop 레퍼런스 태깅 오류', ['error' => $e->getMessage()]);
             }
         }
 

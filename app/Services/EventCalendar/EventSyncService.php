@@ -27,11 +27,11 @@ class EventSyncService
                 continue;
             }
 
-            // 교차 소스 공연 병합: 같은 공연이 festivallife(상세 전문)와 큐레이션 캘린더(jpoptistory,
-            // 발견 인덱스) 양쪽에 올라온다. 신규 생성 시 같은 시작일·다른 소스 공연과 아티스트 토큰이 겹치면
-            // ① festivallife 가 나중에 오면 기존 행을 festivallife 상세로 '승격'(행 유지 — 딥링크·jpop 장르
-            //    보존, 티스토리 예매 링크는 상세에 없으면 이어받음)
-            // ② 그 외(티스토리가 나중)는 기존 유지 + 빈 예매 링크만 보강 후 스킵.
+            // 교차 소스 공연 병합: 같은 공연이 여러 소스(festivallife·라운지·수동 등)에 올라올 수 있다.
+            // 신규 생성 시 같은 시작일·다른 소스 공연과 아티스트 토큰이 겹치면
+            // ① festivallife(상세 전문)가 나중에 오면 기존 행을 festivallife 상세로 '승격'(행 유지 —
+            //    딥링크·jpop 장르 보존, 기존 예매 링크는 상세에 없으면 이어받음)
+            // ② 그 외 소스가 나중이면 기존 유지 + 빈 예매 링크만 보강 후 스킵.
             if ($dto->kind === \App\Enums\EventCalendar\EventKind::Concert
                 && ! Event::where('source', $dto->source)->where('external_key', $dto->externalKey)->exists()
                 && ($dup = $this->findDuplicateConcert($dto)) !== null) {
@@ -112,8 +112,8 @@ class EventSyncService
         return null;
     }
 
-    /** 제목에서 아티스트 식별 토큰만 추출(공연 상용어 제거, 소문자, 2자+). */
-    private static function artistTokens(string $title): array
+    /** 제목에서 아티스트 식별 토큰만 추출(공연 상용어 제거, 소문자, 2자+). J-pop 레퍼런스 대조에도 사용. */
+    public static function artistTokens(string $title): array
     {
         static $stop = ['내한공연', '내한', '공연', '콘서트', '단독', '라이브', 'live', 'in', 'seoul', 'korea', 'tour', 'asia', 'world', 'the', 'concert', '단독공연', '정보'];
         $normalized = mb_strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $title));

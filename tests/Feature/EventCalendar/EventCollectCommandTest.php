@@ -24,7 +24,8 @@ class EventCollectCommandTest extends TestCase
             'event-calendar.sources.setec.enabled' => false,
             'event-calendar.sources.coex.enabled' => false,
             'event-calendar.sources.lounge.enabled' => false,
-            'event-calendar.sources.jpoptistory.enabled' => false,
+            // J-pop 레퍼런스도 실 사이드카(Playwright) 실행이라 비활성 — JpopReferenceServiceTest 가 Process::fake 로 검증
+            'event-calendar.jpop_reference.enabled' => false,
         ]);
     }
 

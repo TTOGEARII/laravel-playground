@@ -50,7 +50,7 @@
             각 정보의 저작권은 주최사 및 원 사이트에 있습니다. 정확한 일정·가격은 각 공식 페이지 기준입니다.
         </p>
         <ul>
-            <li><strong>내한공연</strong>: 페스티벌라이프(festivallife.kr), 짱짱이의 짱짱한 일상 — 일본 가수 내한 공연 캘린더(j-pop-playlist.tistory.com, CC BY-NC-ND)</li>
+            <li><strong>내한공연</strong>: 페스티벌라이프(festivallife.kr) · J-pop 분류 판별 참고: 짱짱이의 짱짱한 일상 — 일본 가수 내한 공연 캘린더(j-pop-playlist.tistory.com, CC BY-NC-ND, 일정 게재 아님)</li>
             <li><strong>서브컬쳐 행사</strong>: 코믹월드(comicw.net), 일러스타페스(illustar.net), AGF(agfkorea.com), 킨텍스·SETEC·코엑스 행사 캘린더, 네이버 게임 라운지 공지</li>
         </ul>
 
