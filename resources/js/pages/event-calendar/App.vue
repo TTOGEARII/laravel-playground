@@ -22,18 +22,44 @@
         'is-other': !cell.inMonth,
         'is-today': cell.isToday,
         'is-expanded': expandedDay === cell.dateStr,
-      }">
+        'is-selected': selectedDay === cell.dateStr,
+        'has-events': cell.events.length > 0,
+      }" @click="selectDay(cell)">
         <span class="ec-day-num" :class="{ 'is-sun': cell.dow === 0, 'is-sat': cell.dow === 6 }">{{ cell.day }}</span>
+        <!-- 데스크톱: 텍스트 pill / 모바일: CSS 로 숨기고 아래 dots 표시 -->
         <div class="ec-day-events" v-if="cell.events.length">
           <button v-for="ev in visibleEvents(cell)" :key="ev.id" class="ec-pill" :class="`ec-pill--${ev.kind}`"
-            :title="ev.title" @click="openDetail(ev.id)">
+            :title="ev.title" @click.stop="openDetail(ev.id)">
             <span class="ec-pill-text">{{ ev.title }}</span>
           </button>
           <button v-if="cell.events.length > MAX_PILLS && expandedDay !== cell.dateStr" class="ec-more"
-            @click="expandedDay = cell.dateStr">+{{ cell.events.length - MAX_PILLS }}개 더</button>
+            @click.stop="expandedDay = cell.dateStr">+{{ cell.events.length - MAX_PILLS }}개 더</button>
+        </div>
+        <div class="ec-day-dots" v-if="cell.events.length">
+          <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + ev.id" class="ec-dot" :class="`ec-dot--${ev.kind}`" />
         </div>
       </div>
     </div>
+
+    <!-- 선택한 날짜의 행사(모바일 주 동선 — 날짜 탭 → 리스트) -->
+    <section v-if="selectedDayEvents.length" class="ec-day-panel">
+      <h2 class="ec-section-title">{{ selectedDayLabel }}</h2>
+      <ul class="ec-upcoming-list">
+        <li v-for="ev in selectedDayEvents" :key="'s' + ev.id">
+          <button class="ec-upcoming-item" @click="openDetail(ev.id)">
+            <span class="ec-up-body">
+              <span class="ec-up-title">{{ ev.title }}</span>
+              <span class="ec-up-meta">
+                <span class="ec-badge" :class="`ec-badge--${ev.kind}`">{{ ev.kind_label }}</span>
+                <span v-if="ev.genre === 'jpop'" class="ec-badge ec-badge--jpop">J-POP</span>
+                <span v-if="ev.venue" class="ec-up-venue">{{ ev.venue }}</span>
+              </span>
+            </span>
+            <img v-if="ev.poster_url" class="ec-up-poster" :src="ev.poster_url" :alt="ev.title" loading="lazy" />
+          </button>
+        </li>
+      </ul>
+    </section>
 
     <!-- 다가오는 행사 -->
     <section class="ec-upcoming">
@@ -119,6 +145,7 @@ const upcoming = ref([]);
 const detail = ref(null);
 const loading = ref(false);
 const expandedDay = ref(null);
+const selectedDay = ref(null);
 const copied = ref(false);
 
 function filterParams() {
@@ -188,6 +215,20 @@ function visibleEvents(cell) {
   return expandedDay.value === cell.dateStr ? cell.events : cell.events.slice(0, MAX_PILLS);
 }
 
+// 날짜 탭(모바일 주 동선): 행사 있는 날을 선택하면 그리드 아래에 그날 행사 리스트 표시
+function selectDay(cell) {
+  selectedDay.value = cell.events.length && selectedDay.value !== cell.dateStr ? cell.dateStr : null;
+}
+const selectedDayEvents = computed(() => {
+  if (!selectedDay.value) return [];
+  return cells.value.find((c) => c.dateStr === selectedDay.value)?.events || [];
+});
+const selectedDayLabel = computed(() => {
+  if (!selectedDay.value) return '';
+  const [y, m, d] = selectedDay.value.split('-').map(Number);
+  return `${m}월 ${d}일 행사`;
+});
+
 function toDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -208,6 +249,7 @@ function moveMonth(delta) {
   year.value = d.getFullYear();
   month.value = d.getMonth() + 1;
   expandedDay.value = null;
+  selectedDay.value = null;
 }
 function goToday() {
   year.value = now.getFullYear();

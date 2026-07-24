@@ -161,6 +161,28 @@
     cursor: pointer;
 }
 
+/* 모바일용 행사 점 표시(데스크톱에서는 숨김 — pill 이 담당) */
+.ec-day-dots {
+    display: none;
+    gap: 3px;
+    flex-wrap: wrap;
+    padding: 2px 4px;
+}
+.ec-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--ds-round-circle);
+    background: var(--ds-ink-soft);
+}
+.ec-dot--concert { background: var(--ds-primary); }
+.ec-dot--doujin { background: color-mix(in srgb, var(--ds-text-blue) 85%, white); }
+.ec-dot--expo { background: color-mix(in srgb, var(--ds-text-amber) 85%, white); }
+
+/* 선택한 날짜 행사 패널(모바일 주 동선 — 데스크톱에서도 동작) */
+.ec-day-panel { margin-top: var(--ds-space-lg); }
+.ec-day.is-selected { box-shadow: inset 0 0 0 2px var(--ds-ink-muted); }
+.ec-day.is-today.is-selected { box-shadow: inset 0 0 0 2px var(--ds-primary); }
+
 /* 다가오는 행사 */
 .ec-upcoming { margin-top: var(--ds-space-xxl); }
 .ec-section-title {
@@ -383,23 +405,53 @@
 }
 .ec-source-note a { color: var(--ds-ink-muted); }
 
-/* 모바일 */
+/* ─── 모바일: pill 대신 점(dot) + 날짜 탭 → 하단 리스트 패턴 ─── */
 @media (max-width: 640px) {
-    .ec-day { min-height: 72px; }
-    .ec-pill-text { font-size: 9px; }
-    .ec-month-label { min-width: 88px; font-size: var(--ds-fs-md); }
-    .ec-overlay { padding: var(--ds-space-sm); align-items: flex-end; }
+    .ec-app { padding: 0 var(--ds-space-xs) var(--ds-space-xxl); }
+
+    /* 툴바: 탭 가로 스크롤 한 줄 + 월 이동 한 줄 */
+    .ec-toolbar { flex-direction: column; align-items: stretch; gap: var(--ds-space-sm); }
+    .ec-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+    .ec-tabs::-webkit-scrollbar { display: none; }
+    .ec-tab { flex-shrink: 0; padding: 8px 14px; }
+    .ec-month-nav { justify-content: center; }
+    .ec-nav-btn { width: 38px; height: 38px; } /* 터치 타깃 확대 */
+
+    /* 그리드: 텍스트 pill 숨기고 점만 — 셀이 좁아도 안 깨진다 */
+    .ec-day { min-height: 54px; padding: 2px; cursor: pointer; }
+    .ec-day-events { display: none; }
+    .ec-day-dots { display: flex; }
+    .ec-day-num { font-size: var(--ds-fs-micro); padding: 2px 3px; }
+    .ec-day.has-events .ec-day-num { color: var(--ds-ink-bright); }
+
+    /* 다가오는 행사 카드 컴팩트 */
+    .ec-upcoming { margin-top: var(--ds-space-xl); }
+    .ec-upcoming-item { gap: var(--ds-space-sm); padding: var(--ds-space-sm); }
+    .ec-up-date { min-width: 46px; font-size: var(--ds-fs-sm); }
+    .ec-up-title { font-size: var(--ds-fs-sm); white-space: normal; }
+    .ec-up-poster { width: 40px; height: 52px; }
+
+    /* 상세: 바텀시트 */
+    .ec-overlay { padding: 0; align-items: flex-end; }
     .ec-detail {
-        padding: var(--ds-space-xl);
-        max-height: 92vh;
+        width: 100%;
+        padding: var(--ds-space-xl) var(--ds-space-lg) var(--ds-space-lg);
+        max-height: 90vh;
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
     }
     .ec-detail-grid { flex-direction: column; gap: var(--ds-space-lg); }
-    .ec-detail-poster { flex: none; max-width: 210px; margin: 0 auto; }
-    .ec-detail-title { font-size: var(--ds-fs-2xl); margin-bottom: var(--ds-space-md); }
-    .ec-detail-info { gap: var(--ds-space-sm); margin-bottom: var(--ds-space-xl); }
-    .ec-detail-actions { padding-top: var(--ds-space-lg); }
-    .ec-btn { flex: 1; text-align: center; }
-    .ec-up-poster { display: none; }
+    .ec-detail-poster { flex: none; max-width: 190px; margin: 0 auto; }
+    .ec-detail-title { font-size: var(--ds-fs-xl); margin-bottom: var(--ds-space-md); }
+    .ec-detail-info { gap: var(--ds-space-sm); margin-bottom: var(--ds-space-lg); }
+    .ec-detail-info dt { flex-basis: 64px; }
+    .ec-detail-info dd { font-size: var(--ds-fs-sm); }
+    .ec-detail-actions { padding-top: var(--ds-space-md); }
+    .ec-btn { flex: 1; text-align: center; padding: 12px 14px; }
 }

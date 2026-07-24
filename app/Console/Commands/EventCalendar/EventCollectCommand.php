@@ -10,6 +10,7 @@ use App\Services\EventCalendar\Sources\FestivalLifeDriver;
 use App\Services\EventCalendar\Sources\CoexDriver;
 use App\Services\EventCalendar\Sources\IllustarDriver;
 use App\Services\EventCalendar\Sources\KintexDriver;
+use App\Services\EventCalendar\Sources\LoungeEventDriver;
 use App\Services\EventCalendar\Sources\SetecDriver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +33,7 @@ class EventCollectCommand extends Command
         'kintex' => KintexDriver::class,
         'setec' => SetecDriver::class,
         'coex' => CoexDriver::class,
+        'lounge' => LoungeEventDriver::class,
     ];
 
     public function handle(EventSyncService $sync, GenreTagService $tagger): int

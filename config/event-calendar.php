@@ -34,6 +34,21 @@ return [
         'kintex' => ['enabled' => true, 'base' => 'https://www.kintex.com'],
         'setec' => ['enabled' => true, 'base' => 'https://www.setec.or.kr'],
         'coex' => ['enabled' => true, 'base' => 'https://www.coex.co.kr'],
+        // 네이버 게임 라운지 공지 — 전시장에 안 잡히는 팝업스토어·콜라보 카페·오케스트라(정찰 실증:
+        // 니케 여름 팝업스토어 공지). 제목 키워드 + 본문 기간 파싱, 같은 행사의 연속 공지(사전/현장 안내)는
+        // 기간 키로 중복 제거. board 는 각 라운지의 공지/뉴스 게시판 ID(정찰 실측).
+        'lounge' => [
+            'enabled' => true,
+            'base' => 'https://comm-api.game.naver.com/nng_main/v1',
+            'lounges' => [
+                ['lounge' => 'nikke', 'board' => 11, 'label' => '니케'],
+                ['lounge' => 'Blue_Archive', 'board' => 6, 'label' => '블루 아카이브'],
+            ],
+            // 오프라인 행사 신호 키워드(제목) — 게임 내 이벤트 공지와 구분되는 것만
+            'keywords' => ['팝업', '카페', '오프라인', '오케스트라', '콘서트', '전시회', '페스티벌', '현장'],
+            // 제외 키워드 — 온라인 상영/스트리밍 공지는 오프라인 행사가 아님
+            'exclude_keywords' => ['온라인', '스트리밍', 'vod'],
+        ],
     ],
 
     /*
