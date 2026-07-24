@@ -24,6 +24,7 @@ class EventCollectCommandTest extends TestCase
             'event-calendar.sources.setec.enabled' => false,
             'event-calendar.sources.coex.enabled' => false,
             'event-calendar.sources.lounge.enabled' => false,
+            'event-calendar.sources.jpoptistory.enabled' => false,
         ]);
     }
 

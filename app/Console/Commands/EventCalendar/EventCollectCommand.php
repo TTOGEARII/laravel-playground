@@ -9,6 +9,7 @@ use App\Services\EventCalendar\Sources\Contracts\EventSource;
 use App\Services\EventCalendar\Sources\FestivalLifeDriver;
 use App\Services\EventCalendar\Sources\CoexDriver;
 use App\Services\EventCalendar\Sources\IllustarDriver;
+use App\Services\EventCalendar\Sources\JpopTistoryDriver;
 use App\Services\EventCalendar\Sources\KintexDriver;
 use App\Services\EventCalendar\Sources\LoungeEventDriver;
 use App\Services\EventCalendar\Sources\SetecDriver;
@@ -30,6 +31,7 @@ class EventCollectCommand extends Command
         'festivallife' => FestivalLifeDriver::class,
         'comicworld' => ComicWorldDriver::class,
         'illustar' => IllustarDriver::class,
+        'jpoptistory' => JpopTistoryDriver::class,
         'kintex' => KintexDriver::class,
         'setec' => SetecDriver::class,
         'coex' => CoexDriver::class,

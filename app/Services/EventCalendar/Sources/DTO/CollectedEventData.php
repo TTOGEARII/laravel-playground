@@ -28,5 +28,6 @@ readonly class CollectedEventData
         public array $extra = [],
         public ?string $posterUrl = null,
         public ?string $detailUrl = null,
+        public ?string $genre = null,   // 큐레이션 소스가 장르를 확정할 때(jpop 등 — null 이면 Gemini 태깅 대상)
     ) {}
 }

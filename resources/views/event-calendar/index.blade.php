@@ -28,7 +28,8 @@
         일정 출처: <a href="https://festivallife.kr" target="_blank" rel="noopener">페스티벌라이프</a> ·
         <a href="https://comicw.net" target="_blank" rel="noopener">코믹월드</a> ·
         <a href="https://illustar.net" target="_blank" rel="noopener">일러스타페스</a> ·
-        <a href="https://www.agfkorea.com" target="_blank" rel="noopener">AGF</a>
+        <a href="https://www.agfkorea.com" target="_blank" rel="noopener">AGF</a> ·
+        <a href="https://j-pop-playlist.tistory.com/1109" target="_blank" rel="noopener">짱짱이의 내한 캘린더</a>
         — 정확한 정보는 각 공식 페이지를 확인해 주세요.
     </p>
 @endsection

@@ -29,6 +29,10 @@ return [
         'illustar' => [
             'enabled' => true, // Playwright 사이드카(event-illustar.mjs) — 배너 텍스트 구조 기반
         ],
+        // J-pop 내한 캘린더(j-pop-playlist.tistory.com/1109) — 큐레이션 J-pop 전용(장르 확정 수집).
+        // 위젯 pill 의 data 속성(date/title/location/link)을 사이드카로 추출. festivallife 와
+        // 겹치는 공연은 sync 의 교차 소스 중복 방지가 거른다(먼저 온 쪽 유지).
+        'jpoptistory' => ['enabled' => true],
         // 전시장 캘린더(킨텍스·SETEC·코엑스) — 게임사 오프라인 행사(블아 페스티벌 등)·동인 행사가 잡힌다.
         // 산업 전시가 대부분이라 아래 venues.keywords/hosts 포지티브 필터로 서브컬쳐만 수집.
         'kintex' => ['enabled' => true, 'base' => 'https://www.kintex.com'],
