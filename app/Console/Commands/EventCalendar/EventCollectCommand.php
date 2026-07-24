@@ -7,6 +7,7 @@ use App\Services\EventCalendar\GenreTagService;
 use App\Services\EventCalendar\Sources\ComicWorldDriver;
 use App\Services\EventCalendar\Sources\Contracts\EventSource;
 use App\Services\EventCalendar\Sources\FestivalLifeDriver;
+use App\Services\EventCalendar\Sources\IllustarDriver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  */
 class EventCollectCommand extends Command
 {
-    protected $signature = 'event-calendar:collect {--source= : 특정 소스만(festivallife/comicworld)} {--full : 기존 저장분도 상세 재수집}';
+    protected $signature = 'event-calendar:collect {--source= : 특정 소스만(festivallife/comicworld/illustar)} {--full : 기존 저장분도 상세 재수집}';
 
     protected $description = '행사 캘린더 수집(내한공연·코믹월드 등)';
 
@@ -24,6 +25,7 @@ class EventCollectCommand extends Command
     private const DRIVERS = [
         'festivallife' => FestivalLifeDriver::class,
         'comicworld' => ComicWorldDriver::class,
+        'illustar' => IllustarDriver::class,
     ];
 
     public function handle(EventSyncService $sync, GenreTagService $tagger): int

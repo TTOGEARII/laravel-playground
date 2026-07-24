@@ -26,6 +26,9 @@ return [
             'endpoint' => 'https://comicw.net/d/ajax.main.php',
             'types' => ['comic', 'mongu'], // 코믹월드 / 문구전
         ],
+        'illustar' => [
+            'enabled' => true, // Playwright 사이드카(event-illustar.mjs) — 배너 텍스트 구조 기반
+        ],
     ],
 
     // 수집 HTTP 요청 공통 User-Agent(실브라우저 — 아임웹 UA 필터 통과용)

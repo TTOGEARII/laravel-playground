@@ -190,3 +190,17 @@ Schedule::call(fn () => \Illuminate\Support\Facades\DB::table('cache')
     ->dailyAt('04:40')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->when(fn () => config('cache.default') === 'database');
+
+/*
+|--------------------------------------------------------------------------
+| 행사 캘린더 수집 (event-calendar:collect)
+|--------------------------------------------------------------------------
+| 내한공연(festivallife)·코믹월드(JSON API)·일러스타(Playwright 사이드카) 일일 수집
+| + Gemini 장르 태깅. 소스 실패는 격리되고 신규만 상세 방문이라 부하가 낮다.
+| SGI Playwright 크롤들(05:00~07:30)과 겹치지 않게 08:40 에 배치.
+*/
+Schedule::command('event-calendar:collect')
+    ->dailyAt('08:40')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(60)
+    ->runInBackground();

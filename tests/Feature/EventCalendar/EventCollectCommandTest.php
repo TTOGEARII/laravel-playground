@@ -14,7 +14,12 @@ class EventCollectCommandTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['event-calendar.sources.festivallife.pages' => 1, 'event-calendar.sources.festivallife.delay_ms' => 0]);
+        config([
+            'event-calendar.sources.festivallife.pages' => 1,
+            'event-calendar.sources.festivallife.delay_ms' => 0,
+            // 일러스타는 Playwright 사이드카(실 프로세스)라 커맨드 테스트에서는 비활성 — 드라이버 자체는 IllustarDriverTest 가 Process::fake 로 검증
+            'event-calendar.sources.illustar.enabled' => false,
+        ]);
     }
 
     private function fakeAll(): void
