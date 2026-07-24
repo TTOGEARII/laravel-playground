@@ -38,6 +38,7 @@ class EventSyncService
                     'venue' => $dto->venue,
                     'price_text' => $dto->priceText,
                     'ticket_open_text' => $dto->ticketOpenText,
+                    'ticket_opens_on' => self::parseTicketOpensOn($dto->ticketOpenText, $dto->startsOn),
                     'ticket_links' => $dto->ticketLinks ?: null,
                     'extra' => $dto->extra ?: null,
                     'poster_url' => $dto->posterUrl,
@@ -59,5 +60,25 @@ class EventSyncService
     public function knownKeys(string $source): array
     {
         return Event::where('source', $source)->pluck('external_key')->all();
+    }
+
+    /**
+     * 티켓오픈 원문("7월 7일 (화) 오후 4시" — 연도 없음)에서 오픈일을 파싱한다.
+     * 연도 보간: 공연일 연도로 두되, 그 날짜가 공연일보다 뒤면(연말 오픈→연초 공연) 전년으로 본다.
+     */
+    public static function parseTicketOpensOn(?string $ticketOpenText, ?string $startsOn): ?string
+    {
+        if ($ticketOpenText === null || $startsOn === null
+            || ! preg_match('/(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/u', $ticketOpenText, $m)) {
+            return null;
+        }
+        $startYear = (int) substr($startsOn, 0, 4);
+        $year = $m[1] !== '' ? (int) $m[1] : $startYear;
+        $date = sprintf('%04d-%02d-%02d', $year, $m[2], $m[3]);
+        if ($m[1] === '' && $date > $startsOn) {
+            $date = sprintf('%04d-%02d-%02d', $year - 1, $m[2], $m[3]);
+        }
+
+        return $date;
     }
 }

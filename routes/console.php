@@ -204,3 +204,9 @@ Schedule::command('event-calendar:collect')
     ->timezone(config('app.timezone', 'Asia/Seoul'))
     ->withoutOverlapping(60)
     ->runInBackground();
+
+// 행사 알림 푸시 — 수집 직후 오늘 티켓오픈·신규 행사 다이제스트(대상 없으면 무발송, 스팸 없음).
+Schedule::command('event-calendar:notify')
+    ->dailyAt('09:00')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->runInBackground();
