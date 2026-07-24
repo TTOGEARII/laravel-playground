@@ -7,7 +7,10 @@ use App\Services\EventCalendar\GenreTagService;
 use App\Services\EventCalendar\Sources\ComicWorldDriver;
 use App\Services\EventCalendar\Sources\Contracts\EventSource;
 use App\Services\EventCalendar\Sources\FestivalLifeDriver;
+use App\Services\EventCalendar\Sources\CoexDriver;
 use App\Services\EventCalendar\Sources\IllustarDriver;
+use App\Services\EventCalendar\Sources\KintexDriver;
+use App\Services\EventCalendar\Sources\SetecDriver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -26,6 +29,9 @@ class EventCollectCommand extends Command
         'festivallife' => FestivalLifeDriver::class,
         'comicworld' => ComicWorldDriver::class,
         'illustar' => IllustarDriver::class,
+        'kintex' => KintexDriver::class,
+        'setec' => SetecDriver::class,
+        'coex' => CoexDriver::class,
     ];
 
     public function handle(EventSyncService $sync, GenreTagService $tagger): int
