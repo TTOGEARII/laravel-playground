@@ -14,32 +14,36 @@
       </div>
     </div>
 
-    <!-- 월 캘린더 그리드 -->
+    <!-- 월 캘린더 — 주 단위 레인에 연속 띠(밴드)로 렌더(구글 캘린더식). 모바일은 점(dot) 유지 -->
     <div class="ec-calendar" :class="{ 'is-loading': loading }">
-      <div class="ec-dow" v-for="(d, i) in ['일', '월', '화', '수', '목', '금', '토']" :key="d"
-        :class="{ 'is-sun': i === 0, 'is-sat': i === 6 }">{{ d }}</div>
-      <div v-for="(cell, ci) in cells" :key="ci" class="ec-day" :class="{
-        'is-other': !cell.inMonth,
-        'is-today': cell.isToday,
-        'is-expanded': expandedDay === cell.dateStr,
-        'is-selected': selectedDay === cell.dateStr,
-        'has-events': cell.events.length > 0,
-      }" @click="selectDay(cell)">
-        <span class="ec-day-num" :class="{ 'is-sun': cell.dow === 0, 'is-sat': cell.dow === 6 }">{{ cell.day }}</span>
-        <!-- 데스크톱: 텍스트 pill / 모바일: CSS 로 숨기고 아래 dots 표시 -->
-        <div class="ec-day-events" v-if="cell.events.length">
-          <button v-for="ev in visibleEvents(cell)" :key="(ev.__ticket ? 't' : '') + ev.id" class="ec-pill"
-            :class="ev.__ticket ? 'ec-pill--ticket' : `ec-pill--${ev.kind}`"
-            :title="ev.__ticket ? `티켓 오픈: ${ev.title}` : ev.__long ? `${ev.title} (~${formatMd(ev.ends_on)})` : ev.title"
-            @click.stop="openDetail(ev.id)">
-            <span class="ec-pill-text">{{ ev.__ticket ? '🎫 ' + ev.title : ev.__long ? `${ev.title} ~${formatMd(ev.ends_on)}` : ev.title }}</span>
-          </button>
-          <button v-if="cell.events.length > MAX_PILLS && expandedDay !== cell.dateStr" class="ec-more"
-            @click.stop="expandedDay = cell.dateStr">+{{ cell.events.length - MAX_PILLS }}개 더</button>
+      <div class="ec-dow-row">
+        <div class="ec-dow" v-for="(d, i) in ['일', '월', '화', '수', '목', '금', '토']" :key="d"
+          :class="{ 'is-sun': i === 0, 'is-sat': i === 6 }">{{ d }}</div>
+      </div>
+      <div v-for="(week, wi) in weeks" :key="wi" class="ec-week" :style="{ '--lanes': week.laneCount }">
+        <div v-for="cell in week.cells" :key="cell.dateStr" class="ec-day" :class="{
+          'is-other': !cell.inMonth,
+          'is-today': cell.isToday,
+          'is-selected': selectedDay === cell.dateStr,
+          'has-events': cell.events.length > 0,
+        }" @click="selectDay(cell)">
+          <span class="ec-day-num" :class="{ 'is-sun': cell.dow === 0, 'is-sat': cell.dow === 6 }">{{ cell.day }}</span>
+          <div class="ec-day-dots" v-if="cell.events.length">
+            <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + (ev.__ticket ? 't' : '') + ev.id" class="ec-dot"
+              :class="ev.__ticket ? 'ec-dot--ticket' : `ec-dot--${ev.kind}`" />
+          </div>
         </div>
-        <div class="ec-day-dots" v-if="cell.events.length">
-          <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + (ev.__ticket ? 't' : '') + ev.id" class="ec-dot"
-            :class="ev.__ticket ? 'ec-dot--ticket' : `ec-dot--${ev.kind}`" />
+        <!-- 띠 오버레이: 행사 기간이 이어지면 셀 경계를 넘어 하나의 띠로 -->
+        <div class="ec-bands">
+          <button v-for="seg in week.segments" :key="seg.key" class="ec-band"
+            :class="[seg.ev.__ticket ? 'ec-band--ticket' : `ec-band--${seg.ev.kind}`, {
+              'is-cut-left': seg.cutLeft, 'is-cut-right': seg.cutRight,
+            }]"
+            :style="{ left: `calc(${(seg.startCol / 7) * 100}% + 2px)`, width: `calc(${(seg.span / 7) * 100}% - 4px)`, top: `calc(26px + ${seg.lane} * var(--ec-lane-h))` }"
+            :title="seg.ev.__ticket ? `티켓 오픈: ${seg.ev.title}` : seg.ev.title"
+            @click.stop="openDetail(seg.ev.id)">
+            <span class="ec-band-text">{{ seg.ev.__ticket ? '🎫 오픈 ' + seg.ev.title : seg.ev.title }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -159,7 +163,6 @@ const TABS = [
   { key: 'concert', label: '공연 전체' },
   { key: 'events', label: '동인·행사' },
 ];
-const MAX_PILLS = 3;
 
 const now = new Date();
 const year = ref(now.getFullYear());
@@ -171,7 +174,6 @@ const upcoming = ref([]);
 const ticketOpens = ref([]);
 const detail = ref(null);
 const loading = ref(false);
-const expandedDay = ref(null);
 const selectedDay = ref(null);
 const copied = ref(false);
 
@@ -225,15 +227,9 @@ const cells = computed(() => {
   const todayStr = toDateStr(new Date());
 
   const byDay = {};
-  const SPAN_PILL_MAX = 5; // 이보다 긴 행사(팝업스토어 등)는 매일 도배하지 않고 시작일에만 표시
   for (const ev of events.value) {
     const s = ev.starts_on;
     const e = ev.ends_on || ev.starts_on;
-    const spanDays = Math.round((new Date(e + 'T00:00:00') - new Date(s + 'T00:00:00')) / 86400000) + 1;
-    if (spanDays > SPAN_PILL_MAX) {
-      (byDay[s] ??= []).push({ ...ev, __long: true });
-      continue;
-    }
     for (let d = new Date(s + 'T00:00:00'); toDateStr(d) <= e; d.setDate(d.getDate() + 1)) {
       (byDay[toDateStr(d)] ??= []).push(ev);
     }
@@ -263,9 +259,50 @@ const cells = computed(() => {
   return out;
 });
 
-function visibleEvents(cell) {
-  return expandedDay.value === cell.dateStr ? cell.events : cell.events.slice(0, MAX_PILLS);
-}
+// 주 단위 밴드 배치: 행사 기간을 주별 구간으로 자르고, 겹치지 않는 레인에 그리디 배치.
+// 주를 넘는 행사는 cutLeft/cutRight 로 모서리를 이어 붙여(라운딩 제거) 띠가 이어져 보이게 한다.
+const weeks = computed(() => {
+  const flat = cells.value;
+  const out = [];
+  for (let i = 0; i < flat.length; i += 7) {
+    const wcells = flat.slice(i, i + 7);
+    const weekStart = wcells[0].dateStr;
+    const weekEnd = wcells[6].dateStr;
+
+    const segs = [];
+    for (const ev of events.value) {
+      const s = ev.starts_on;
+      const e = ev.ends_on || ev.starts_on;
+      if (e < weekStart || s > weekEnd) continue;
+      const startCol = wcells.findIndex((c) => c.dateStr === (s < weekStart ? weekStart : s));
+      const endCol = wcells.findIndex((c) => c.dateStr === (e > weekEnd ? weekEnd : e));
+      segs.push({
+        ev, startCol, span: endCol - startCol + 1,
+        cutLeft: s < weekStart, cutRight: e > weekEnd,
+        key: ev.id + '-' + weekStart,
+      });
+    }
+    for (const ev of monthTicketOpens.value) {
+      const d = ev.ticket_opens_on;
+      if (!d || d < weekStart || d > weekEnd) continue;
+      const col = wcells.findIndex((c) => c.dateStr === d);
+      segs.push({ ev: { ...ev, __ticket: true }, startCol: col, span: 1, cutLeft: false, cutRight: false, key: 't' + ev.id + '-' + weekStart });
+    }
+
+    // 레인 배치(시작 열 → 긴 것 우선) — 같은 레인에서 구간이 겹치면 다음 레인으로
+    segs.sort((a, b) => a.startCol - b.startCol || b.span - a.span);
+    const lanes = [];
+    for (const seg of segs) {
+      let lane = 0;
+      const overlaps = (o) => !(seg.startCol + seg.span - 1 < o.startCol || seg.startCol > o.startCol + o.span - 1);
+      while ((lanes[lane] || []).some(overlaps)) lane++;
+      (lanes[lane] ??= []).push(seg);
+      seg.lane = lane;
+    }
+    out.push({ cells: wcells, segments: segs, laneCount: Math.max(lanes.length, 1) });
+  }
+  return out;
+});
 
 // 날짜 탭(모바일 주 동선): 행사 있는 날을 선택하면 그리드 아래에 그날 행사 리스트 표시
 function selectDay(cell) {
@@ -300,7 +337,6 @@ function moveMonth(delta) {
   const d = new Date(year.value, month.value - 1 + delta, 1);
   year.value = d.getFullYear();
   month.value = d.getMonth() + 1;
-  expandedDay.value = null;
   selectedDay.value = null;
 }
 function goToday() {

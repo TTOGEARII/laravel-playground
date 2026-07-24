@@ -77,18 +77,24 @@
 }
 .ec-today-btn:hover { color: var(--ds-text-accent); border-color: var(--ds-primary); }
 
-/* 월 그리드 */
+/* 월 그리드 — 주 단위 레인 밴드(연속 띠) 시스템 */
 .ec-calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    background: var(--ds-separator);
     border: 1px solid var(--ds-separator);
     border-radius: var(--ds-round-lg);
+    background: var(--ds-separator);
     overflow: hidden;
     transition: opacity 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
 }
 .ec-calendar.is-loading { opacity: 0.55; }
+.ec-dow-row,
+.ec-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr)); /* minmax(0,·): 콘텐츠가 길어도 칼럼 불가침 — 그리드 깨짐 방지 */
+    gap: 1px;
+}
 .ec-dow {
     background: var(--ds-surface-2);
     padding: var(--ds-space-xs) 0;
@@ -99,9 +105,14 @@
 }
 .ec-dow.is-sun { color: var(--ds-negative); }
 .ec-dow.is-sat { color: var(--ds-text-blue); }
+.ec-week {
+    position: relative;
+    --ec-lane-h: 24px; /* 밴드 한 줄 높이 */
+}
 .ec-day {
     background: var(--ds-surface);
-    min-height: 96px;
+    min-width: 0;
+    min-height: calc(32px + var(--lanes, 1) * var(--ec-lane-h));
     padding: var(--ds-space-xxs);
     display: flex;
     flex-direction: column;
@@ -117,56 +128,49 @@
 }
 .ec-day-num.is-sun { color: var(--ds-negative); }
 .ec-day-num.is-sat { color: var(--ds-text-blue); }
-.ec-day-events {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden;
-}
-.ec-day.is-expanded .ec-day-events { overflow: visible; }
 
-/* 행사 pill — 종류별 시맨틱 색(코랄=공연 활성 액센트, 블루=동인, 앰버=기업) */
-.ec-pill {
-    display: block;
-    width: 100%;
-    text-align: left;
+/* 밴드 오버레이 — 셀 경계(gap)를 가로질러 이어지는 띠 */
+.ec-bands {
+    position: absolute;
+    inset: 0;
+    pointer-events: none; /* 셀 클릭(날짜 선택)은 통과, 밴드만 자체 클릭 */
+}
+.ec-band {
+    position: absolute;
+    height: calc(var(--ec-lane-h) - 4px);
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
     border: none;
     border-radius: var(--ds-round-badge);
-    padding: 2px 6px;
+    padding: 0 7px;
     font-size: var(--ds-fs-micro);
     font-weight: var(--ds-fw-bold);
-    cursor: pointer;
     color: var(--ds-on-accent);
     background: var(--ds-ink-soft);
+    cursor: pointer;
     overflow: hidden;
+    box-shadow: var(--ds-shadow-medium);
+    transition: filter 0.12s ease;
 }
-.ec-pill-text {
-    display: block;
+.ec-band:hover { filter: brightness(1.15); }
+.ec-band-text {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.ec-pill--concert { background: var(--ds-primary); }
-.ec-pill--concert:hover { background: var(--ds-primary-press); }
-.ec-pill--doujin { background: color-mix(in srgb, var(--ds-text-blue) 78%, black); }
-.ec-pill--expo { background: color-mix(in srgb, var(--ds-text-amber) 70%, black); }
-/* 티켓 오픈 마커 — 성공 시맨틱 그린 계열(공연일 pill 과 확실히 구분) */
-.ec-pill--ticket {
-    background: transparent;
+.ec-band--concert { background: var(--ds-primary); }
+.ec-band--doujin { background: color-mix(in srgb, var(--ds-text-blue) 78%, black); }
+.ec-band--expo { background: color-mix(in srgb, var(--ds-text-amber) 70%, black); }
+/* 티켓 오픈 마커 — 성공 시맨틱 그린(공연일 밴드와 확실히 구분) */
+.ec-band--ticket {
+    background: var(--ds-surface);
     border: 1px solid var(--ds-text-green);
     color: var(--ds-text-green);
 }
-.ec-pill--ticket:hover { background: color-mix(in srgb, var(--ds-text-green) 18%, transparent); }
-.ec-more {
-    border: none;
-    background: none;
-    color: var(--ds-text-accent);
-    font-size: var(--ds-fs-micro);
-    font-weight: var(--ds-fw-bold);
-    text-align: left;
-    padding: 0 4px;
-    cursor: pointer;
-}
+/* 주 경계를 넘는 띠: 잘린 쪽 라운딩 제거로 다음 주와 이어져 보이게 */
+.ec-band.is-cut-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.ec-band.is-cut-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
 /* 모바일용 행사 점 표시(데스크톱에서는 숨김 — pill 이 담당) */
 .ec-day-dots {
@@ -454,9 +458,9 @@
     .ec-month-nav { justify-content: center; }
     .ec-nav-btn { width: 38px; height: 38px; } /* 터치 타깃 확대 */
 
-    /* 그리드: 텍스트 pill 숨기고 점만 — 셀이 좁아도 안 깨진다 */
+    /* 그리드: 밴드 숨기고 점만 — 셀이 좁아도 안 깨진다(날짜 탭 → 하단 리스트) */
     .ec-day { min-height: 54px; padding: 2px; cursor: pointer; }
-    .ec-day-events { display: none; }
+    .ec-bands { display: none; }
     .ec-day-dots { display: flex; }
     .ec-day-num { font-size: var(--ds-fs-micro); padding: 2px 3px; }
     .ec-day.has-events .ec-day-num { color: var(--ds-ink-bright); }
