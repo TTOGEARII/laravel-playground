@@ -18,7 +18,7 @@ return [
             'enabled' => true,
             'base_url' => 'https://festivallife.kr',
             'board' => 'concert_k',
-            'pages' => 3,          // 증분 수집 페이지 수(12건/페이지, 신규 주 3~4건이라 충분)
+            'pages' => 8,          // 12건/페이지 — 티스토리 발견분과의 매칭(상세 승격)을 위해 넓게. 기존 글은 상세 재방문 생략이라 부담 낮음
             'delay_ms' => 1200,    // 상세 페이지 요청 간 딜레이(정중한 크롤)
         ],
         'comicworld' => [

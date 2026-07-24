@@ -49,6 +49,31 @@ class EventService
             ->get();
     }
 
+    /** 해당 월에 티켓이 오픈되는 공연들(캘린더 🎫 표시용). */
+    public function monthTicketOpens(int $year, int $month, ?string $kind = null, bool $jpopOnly = false): Collection
+    {
+        $start = Carbon::create($year, $month, 1);
+        $end = $start->copy()->endOfMonth();
+
+        return $this->filtered($kind, $jpopOnly)
+            ->whereNotNull('ticket_opens_on')
+            ->whereDate('ticket_opens_on', '>=', $start->toDateString())
+            ->whereDate('ticket_opens_on', '<=', $end->toDateString())
+            ->orderBy('ticket_opens_on')
+            ->get();
+    }
+
+    /** 다가오는 티켓 오픈(오픈일 임박순 — 예매가 공연일보다 중요하다는 UX 의 근거 데이터). */
+    public function upcomingTicketOpens(int $limit = 10, ?string $kind = null, bool $jpopOnly = false): Collection
+    {
+        return $this->filtered($kind, $jpopOnly)
+            ->whereNotNull('ticket_opens_on')
+            ->whereDate('ticket_opens_on', '>=', Carbon::today()->toDateString())
+            ->orderBy('ticket_opens_on')
+            ->limit($limit)
+            ->get();
+    }
+
     public function find(int $id): ?Event
     {
         return Event::where('active_flg', true)->find($id);

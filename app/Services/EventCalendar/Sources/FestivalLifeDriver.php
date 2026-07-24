@@ -96,11 +96,12 @@ class FestivalLifeDriver implements EventSource
 
         $text = html_entity_decode(strip_tags(preg_replace('/<(br|\/p|\/div)[^>]*>/iu', "\n", $html)), ENT_QUOTES | ENT_HTML5);
 
-        $schedule = $this->labelValue($text, ['일정', 'Dates?']);
-        $venue = $this->labelValue($text, ['장소', 'Venue']);
-        $price = $this->labelValue($text, ['가격', 'Price', 'Tickets?']);
-        $open = $this->labelValue($text, ['오픈', 'Open']);
-        $booking = $this->labelValue($text, ['예매', 'Booking']);
+        // 신형("일정:")·구형("공연 일정:"/"티켓 가격"+다음 줄 나열) 레이블 모두 지원
+        $schedule = $this->labelValue($text, ['(?:공연\s*)?일정', '(?:공연\s*)?일시', 'Dates?']);
+        $venue = $this->labelValue($text, ['(?:공연\s*)?장소', 'Venue']);
+        $price = $this->labelValue($text, ['(?:티켓\s*)?가격', 'Price', 'Tickets?']);
+        $open = $this->labelValue($text, ['(?:티켓\s*)?오픈', 'Open']);
+        $booking = $this->labelValue($text, ['(?:티켓\s*)?예매', 'Booking']);
 
         [$startsOn, $endsOn, $timeText] = $this->parseSchedule($schedule ?? '');
         if ($startsOn === null) {
@@ -134,10 +135,21 @@ class FestivalLifeDriver implements EventSource
      */
     private function parseSchedule(string $schedule): array
     {
-        if (! preg_match('/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/u', $schedule, $m, PREG_OFFSET_CAPTURE)) {
+        // 일 범위 표기("4월 19~20일")도 지원 — 4그룹이 있으면 같은 달 종료일
+        if (! preg_match('/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})(?:\s*[~〜]\s*(\d{1,2}))?\s*일/u', $schedule, $m, PREG_OFFSET_CAPTURE)) {
             return [null, null, null];
         }
         $startsOn = sprintf('%04d-%02d-%02d', $m[1][0], $m[2][0], $m[3][0]);
+        if (isset($m[4]) && $m[4][0] !== '') {
+            $inlineEnd = sprintf('%04d-%02d-%02d', $m[1][0], $m[2][0], $m[4][0]);
+            if ($inlineEnd > $startsOn) {
+                $timeText = preg_match('/(오전|오후|낮|저녁)\s*\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?/u', $schedule, $t)
+                    ? preg_replace('/\s+/u', ' ', trim($t[0]))
+                    : null;
+
+                return [$startsOn, $inlineEnd, $timeText];
+            }
+        }
         $rest = substr($schedule, $m[0][1] + strlen($m[0][0]));
 
         // 종료일: "~ 2026년 1월 18일" 또는 "~ 18일" / "~ 2월 1일" (연·월 생략 시 시작일 기준 보간)
@@ -160,15 +172,38 @@ class FestivalLifeDriver implements EventSource
         return [$startsOn, $endsOn, $timeText];
     }
 
-    /** "레이블: 값" 형식에서 값 한 줄을 뽑는다(한/영 레이블 지원). */
+    /**
+     * "레이블: 값" 형식에서 값을 뽑는다(한/영 레이블). 구형 포스트는 레이블 줄에 값이 없고
+     * 다음 줄들("- 스탠딩 …")에 나열되므로, 같은 줄이 비면 이어지는 나열 줄(최대 4줄)을 합친다.
+     */
     private function labelValue(string $text, array $labels): ?string
     {
         foreach ($labels as $label) {
-            if (preg_match('/^\s*(?:'.$label.')\s*[:：]\s*(.+?)\s*$/miu', $text, $m)) {
-                $value = trim(preg_replace('/\s+/u', ' ', $m[1]));
-                if ($value !== '') {
-                    return mb_substr($value, 0, 500);
+            if (! preg_match('/^\s*(?:'.$label.')\s*[:：]?\s*(.*)$/miu', $text, $m, PREG_OFFSET_CAPTURE)) {
+                continue;
+            }
+            $value = trim(preg_replace('/\s+/u', ' ', $m[1][0]));
+            if ($value === '') {
+                // 다음 줄들에서 "-"/"·" 나열 수집(구형 "티켓 가격" ↵ "- 스탠딩 …" 형식)
+                $rest = substr($text, $m[0][1] + strlen($m[0][0]));
+                $collected = [];
+                foreach (array_slice(preg_split('/\n/', $rest), 0, 6) as $line) {
+                    $line = trim($line);
+                    if ($line === '') {
+                        continue;
+                    }
+                    if (! preg_match('/^[-·•]/u', $line)) {
+                        break; // 나열이 끝나면 중단
+                    }
+                    $collected[] = trim(preg_replace('/\s+/u', ' ', ltrim($line, '-·• ')));
+                    if (count($collected) >= 4) {
+                        break;
+                    }
                 }
+                $value = implode(', ', $collected);
+            }
+            if ($value !== '') {
+                return mb_substr($value, 0, 500);
             }
         }
 

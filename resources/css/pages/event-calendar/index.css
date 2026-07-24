@@ -150,6 +150,13 @@
 .ec-pill--concert:hover { background: var(--ds-primary-press); }
 .ec-pill--doujin { background: color-mix(in srgb, var(--ds-text-blue) 78%, black); }
 .ec-pill--expo { background: color-mix(in srgb, var(--ds-text-amber) 70%, black); }
+/* 티켓 오픈 마커 — 성공 시맨틱 그린 계열(공연일 pill 과 확실히 구분) */
+.ec-pill--ticket {
+    background: transparent;
+    border: 1px solid var(--ds-text-green);
+    color: var(--ds-text-green);
+}
+.ec-pill--ticket:hover { background: color-mix(in srgb, var(--ds-text-green) 18%, transparent); }
 .ec-more {
     border: none;
     background: none;
@@ -177,6 +184,30 @@
 .ec-dot--concert { background: var(--ds-primary); }
 .ec-dot--doujin { background: color-mix(in srgb, var(--ds-text-blue) 85%, white); }
 .ec-dot--expo { background: color-mix(in srgb, var(--ds-text-amber) 85%, white); }
+.ec-dot--ticket { background: var(--ds-text-green); }
+
+/* 티켓 오픈 예정 리스트 */
+.ec-open-dday {
+    flex-shrink: 0;
+    min-width: 64px;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: var(--ds-round-pill);
+    border: 1px solid var(--ds-text-green);
+    color: var(--ds-text-green);
+    font-size: var(--ds-fs-xs);
+    font-weight: var(--ds-fw-bold);
+}
+.ec-open-dday.is-today {
+    background: var(--ds-text-green);
+    color: var(--ds-on-accent);
+}
+.ec-open-when { color: var(--ds-ink-muted); font-size: var(--ds-fs-xs); }
+.ec-open-perf {
+    flex-shrink: 0;
+    color: var(--ds-ink-soft);
+    font-size: var(--ds-fs-xs);
+}
 
 /* 선택한 날짜 행사 패널(모바일 주 동선 — 데스크톱에서도 동작) */
 .ec-day-panel { margin-top: var(--ds-space-lg); }

@@ -25,17 +25,32 @@ class EventController extends Controller
             : null;
         $jpopOnly = $request->boolean('jpop_only');
 
+        if ($request->boolean('ticket_opens')) {
+            // 다가오는 티켓 오픈(임박순) — 예매일 중심 리스트
+            $limit = min(max((int) $request->input('limit', 10), 1), 50);
+            $list = $this->events->upcomingTicketOpens($limit, $kind, $jpopOnly);
+
+            return response()->json(['data' => $list->map(fn (Event $e) => $this->present($e))->values()]);
+        }
+
         if ($request->boolean('upcoming')) {
             $limit = min(max((int) $request->input('limit', 10), 1), 50);
             $list = $this->events->upcoming($limit, $kind, $jpopOnly);
-        } else {
-            $year = (int) $request->input('year', now()->year);
-            $month = (int) $request->input('month', now()->month);
-            abort_if($year < 2000 || $year > 2100 || $month < 1 || $month > 12, 422);
-            $list = $this->events->monthEvents($year, $month, $kind, $jpopOnly);
+
+            return response()->json(['data' => $list->map(fn (Event $e) => $this->present($e))->values()]);
         }
 
-        return response()->json(['data' => $list->map(fn (Event $e) => $this->present($e))->values()]);
+        $year = (int) $request->input('year', now()->year);
+        $month = (int) $request->input('month', now()->month);
+        abort_if($year < 2000 || $year > 2100 || $month < 1 || $month > 12, 422);
+        $list = $this->events->monthEvents($year, $month, $kind, $jpopOnly);
+        $opens = $this->events->monthTicketOpens($year, $month, $kind, $jpopOnly);
+
+        return response()->json([
+            'data' => $list->map(fn (Event $e) => $this->present($e))->values(),
+            // 이 달에 티켓이 '오픈'되는 공연(공연일과 별개 — 캘린더 🎫 pill 용)
+            'ticket_opens' => $opens->map(fn (Event $e) => $this->present($e))->values(),
+        ]);
     }
 
     /** 행사 상세. */
@@ -62,11 +77,13 @@ class EventController extends Controller
             'time_text' => $e->time_text,
             'venue' => $e->venue,
             'poster_url' => $e->display_poster_url,
+            // 티켓 오픈 정보는 목록에서도 핵심(예매일 중심 UX) — 기본 포함
+            'ticket_opens_on' => $e->ticket_opens_on?->toDateString(),
+            'ticket_open_text' => $e->ticket_open_text,
         ];
         if ($detail) {
             $base += [
                 'price_text' => $e->price_text,
-                'ticket_open_text' => $e->ticket_open_text,
                 'ticket_links' => $e->ticket_links ?? [],
                 'booking_text' => $e->extra['booking_text'] ?? null,
                 'detail_url' => $e->detail_url,

@@ -28,15 +28,18 @@
         <span class="ec-day-num" :class="{ 'is-sun': cell.dow === 0, 'is-sat': cell.dow === 6 }">{{ cell.day }}</span>
         <!-- 데스크톱: 텍스트 pill / 모바일: CSS 로 숨기고 아래 dots 표시 -->
         <div class="ec-day-events" v-if="cell.events.length">
-          <button v-for="ev in visibleEvents(cell)" :key="ev.id" class="ec-pill" :class="`ec-pill--${ev.kind}`"
-            :title="ev.title" @click.stop="openDetail(ev.id)">
-            <span class="ec-pill-text">{{ ev.title }}</span>
+          <button v-for="ev in visibleEvents(cell)" :key="(ev.__ticket ? 't' : '') + ev.id" class="ec-pill"
+            :class="ev.__ticket ? 'ec-pill--ticket' : `ec-pill--${ev.kind}`"
+            :title="ev.__ticket ? `티켓 오픈: ${ev.title}` : ev.__long ? `${ev.title} (~${formatMd(ev.ends_on)})` : ev.title"
+            @click.stop="openDetail(ev.id)">
+            <span class="ec-pill-text">{{ ev.__ticket ? '🎫 ' + ev.title : ev.__long ? `${ev.title} ~${formatMd(ev.ends_on)}` : ev.title }}</span>
           </button>
           <button v-if="cell.events.length > MAX_PILLS && expandedDay !== cell.dateStr" class="ec-more"
             @click.stop="expandedDay = cell.dateStr">+{{ cell.events.length - MAX_PILLS }}개 더</button>
         </div>
         <div class="ec-day-dots" v-if="cell.events.length">
-          <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + ev.id" class="ec-dot" :class="`ec-dot--${ev.kind}`" />
+          <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + (ev.__ticket ? 't' : '') + ev.id" class="ec-dot"
+            :class="ev.__ticket ? 'ec-dot--ticket' : `ec-dot--${ev.kind}`" />
         </div>
       </div>
     </div>
@@ -56,6 +59,28 @@
               </span>
             </span>
             <img v-if="ev.poster_url" class="ec-up-poster" :src="ev.poster_url" :alt="ev.title" loading="lazy" />
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 티켓 오픈 예정 — 예매일이 공연일보다 중요(임박순 + D-day) -->
+    <section v-if="ticketOpens.length" class="ec-upcoming ec-ticket-opens">
+      <h2 class="ec-section-title">🎫 티켓 오픈 예정</h2>
+      <ul class="ec-upcoming-list">
+        <li v-for="ev in ticketOpens" :key="'to' + ev.id">
+          <button class="ec-upcoming-item" @click="openDetail(ev.id)">
+            <span class="ec-open-dday" :class="{ 'is-today': ddayLabel(ev.ticket_opens_on).includes('오늘') }">
+              {{ ddayLabel(ev.ticket_opens_on) }}
+            </span>
+            <span class="ec-up-body">
+              <span class="ec-up-title">{{ ev.title }}</span>
+              <span class="ec-up-meta">
+                <span class="ec-open-when">{{ ev.ticket_open_text || formatMd(ev.ticket_opens_on) + ' 오픈' }}</span>
+                <span v-if="ev.genre === 'jpop'" class="ec-badge ec-badge--jpop">J-POP</span>
+              </span>
+            </span>
+            <span class="ec-open-perf">공연 {{ formatMd(ev.starts_on) }}</span>
           </button>
         </li>
       </ul>
@@ -141,7 +166,9 @@ const year = ref(now.getFullYear());
 const month = ref(now.getMonth() + 1);
 const tab = ref('recommended');
 const events = ref([]);
+const monthTicketOpens = ref([]);
 const upcoming = ref([]);
+const ticketOpens = ref([]);
 const detail = ref(null);
 const loading = ref(false);
 const expandedDay = ref(null);
@@ -157,10 +184,13 @@ function filterParams() {
 async function loadMonth() {
   loading.value = true;
   try {
-    events.value = await eventCalendarApi.getMonth(year.value, month.value, filterParams());
+    const res = await eventCalendarApi.getMonth(year.value, month.value, filterParams());
+    events.value = res.events;
+    monthTicketOpens.value = res.ticketOpens;
   } catch (e) {
     console.error('month', e);
     events.value = [];
+    monthTicketOpens.value = [];
   } finally {
     loading.value = false;
   }
@@ -169,10 +199,20 @@ async function loadMonth() {
 async function loadUpcoming() {
   try {
     upcoming.value = await eventCalendarApi.getUpcoming(filterParams());
+    ticketOpens.value = await eventCalendarApi.getTicketOpens(filterParams());
   } catch (e) {
     console.error('upcoming', e);
     upcoming.value = [];
+    ticketOpens.value = [];
   }
+}
+
+/** 티켓 오픈 D-day 라벨(오늘/내일/D-n). */
+function ddayLabel(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
+  return diff <= 0 ? '오늘 오픈' : diff === 1 ? '내일 오픈' : `D-${diff}`;
 }
 
 // 월 그리드 셀(앞뒤 이웃달 포함 7×N)
@@ -185,11 +225,23 @@ const cells = computed(() => {
   const todayStr = toDateStr(new Date());
 
   const byDay = {};
+  const SPAN_PILL_MAX = 5; // 이보다 긴 행사(팝업스토어 등)는 매일 도배하지 않고 시작일에만 표시
   for (const ev of events.value) {
     const s = ev.starts_on;
     const e = ev.ends_on || ev.starts_on;
+    const spanDays = Math.round((new Date(e + 'T00:00:00') - new Date(s + 'T00:00:00')) / 86400000) + 1;
+    if (spanDays > SPAN_PILL_MAX) {
+      (byDay[s] ??= []).push({ ...ev, __long: true });
+      continue;
+    }
     for (let d = new Date(s + 'T00:00:00'); toDateStr(d) <= e; d.setDate(d.getDate() + 1)) {
       (byDay[toDateStr(d)] ??= []).push(ev);
+    }
+  }
+  // 티켓 오픈일 마커(🎫) — 공연일과 별개로 '오픈되는 날'에 표시(예매일 중심 UX)
+  for (const ev of monthTicketOpens.value) {
+    if (ev.ticket_opens_on) {
+      (byDay[ev.ticket_opens_on] ??= []).push({ ...ev, __ticket: true });
     }
   }
 

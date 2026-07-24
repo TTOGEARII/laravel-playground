@@ -58,4 +58,39 @@ class JpopTistoryDriverTest extends TestCase
         $stats2 = app(EventSyncService::class)->sync(app(JpopTistoryDriver::class)->collect());
         $this->assertSame(1, $stats2['updated']);
     }
+
+    public function test_festivallife_detail_takes_over_tistory_discovery_row(): void
+    {
+        // 티스토리(발견)가 먼저 들어온 공연 — festivallife 상세가 오면 같은 행을 승격한다
+        $discovered = Event::create([
+            'source' => 'jpoptistory', 'external_key' => 'jpt-abc', 'kind' => 'concert', 'genre' => 'jpop',
+            'title' => 'Reol Oneman Live 2026 in SEOUL', 'starts_on' => '2026-07-18',
+            'ticket_links' => [['label' => '예매하기', 'url' => 'https://t.example/reol']],
+        ]);
+
+        $stats = app(EventSyncService::class)->sync([new \App\Services\EventCalendar\Sources\DTO\CollectedEventData(
+            source: 'festivallife',
+            externalKey: '172999',
+            kind: \App\Enums\EventCalendar\EventKind::Concert,
+            title: 'Reol 내한공연',
+            startsOn: '2026-07-18',
+            timeText: '오후 6시',
+            venue: '예스24 원더로크홀',
+            priceText: '스탠딩 110,000원',
+            ticketOpenText: '6월 1일 (월) 오후 8시',
+            posterUrl: 'https://cdn.imweb.me/reol.jpg',
+            detailUrl: 'https://festivallife.kr/concert_k/?idx=172999',
+        )]);
+
+        $this->assertSame(1, $stats['updated'], '신규 생성이 아니라 기존 행 승격');
+        $this->assertSame(1, Event::count(), '중복 행 없음');
+        $event = $discovered->fresh();
+        $this->assertSame('festivallife', $event->source, '소스 승격');
+        $this->assertSame('172999', $event->external_key);
+        $this->assertSame('Reol 내한공연', $event->title);
+        $this->assertSame('스탠딩 110,000원', $event->price_text, 'festivallife 상세 반영');
+        $this->assertSame('2026-06-01', $event->ticket_opens_on->toDateString(), '티켓오픈일 파싱');
+        $this->assertSame('jpop', $event->genre, '큐레이션 장르 유지');
+        $this->assertSame('https://t.example/reol', $event->ticket_links[0]['url'], '티스토리 예매 링크 보존');
+    }
 }

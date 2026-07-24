@@ -71,6 +71,25 @@ class EventApiTest extends TestCase
         $this->getJson('/api/event-calendar/events/999999')->assertNotFound();
     }
 
+    public function test_month_response_includes_ticket_opens_and_upcoming_opens_list(): void
+    {
+        $this->seedEvents();
+        // 8월에 티켓이 오픈되는 9월 공연(공연일은 다음 달 — 오픈일 기준으로 8월 캘린더에 떠야 함)
+        Event::create(['source' => 'festivallife', 'external_key' => '9', 'kind' => 'concert', 'genre' => 'jpop', 'title' => 'Fujii Kaze 내한공연', 'starts_on' => '2026-09-20', 'ticket_opens_on' => '2026-08-05', 'ticket_open_text' => '8월 5일 (수) 오후 8시']);
+
+        $res = $this->getJson('/api/event-calendar/events?year=2026&month=8')->assertOk();
+        $opens = collect($res->json('ticket_opens'));
+        $this->assertCount(1, $opens);
+        $this->assertSame('Fujii Kaze 내한공연', $opens[0]['title']);
+        $this->assertSame('2026-08-05', $opens[0]['ticket_opens_on']);
+        $this->assertFalse(collect($res->json('data'))->pluck('title')->contains('Fujii Kaze 내한공연'), '공연일(9월)은 8월 행사 목록에 없음');
+
+        // 다가오는 티켓 오픈(임박순)
+        $this->travelTo('2026-08-01');
+        $list = $this->getJson('/api/event-calendar/events?ticket_opens=1')->assertOk()->json('data');
+        $this->assertSame('Fujii Kaze 내한공연', $list[0]['title']);
+    }
+
     public function test_pages_render(): void
     {
         $this->seedEvents();

@@ -27,13 +27,38 @@ class EventSyncService
                 continue;
             }
 
-            // 교차 소스 공연 중복 방지: 같은 공연이 festivallife 와 큐레이션 캘린더(jpoptistory) 양쪽에
-            // 올라온다 — 신규 생성 시에만, 같은 시작일의 다른 소스 공연과 아티스트 토큰이 겹치면 스킵.
-            // (기존 행 갱신은 (source, external_key) 경로라 영향 없음)
+            // 교차 소스 공연 병합: 같은 공연이 festivallife(상세 전문)와 큐레이션 캘린더(jpoptistory,
+            // 발견 인덱스) 양쪽에 올라온다. 신규 생성 시 같은 시작일·다른 소스 공연과 아티스트 토큰이 겹치면
+            // ① festivallife 가 나중에 오면 기존 행을 festivallife 상세로 '승격'(행 유지 — 딥링크·jpop 장르
+            //    보존, 티스토리 예매 링크는 상세에 없으면 이어받음)
+            // ② 그 외(티스토리가 나중)는 기존 유지 + 빈 예매 링크만 보강 후 스킵.
             if ($dto->kind === \App\Enums\EventCalendar\EventKind::Concert
                 && ! Event::where('source', $dto->source)->where('external_key', $dto->externalKey)->exists()
-                && $this->duplicateConcertExists($dto)) {
-                $stats['skipped']++;
+                && ($dup = $this->findDuplicateConcert($dto)) !== null) {
+                if ($dto->source === 'festivallife') {
+                    $dup->update([
+                        'source' => $dto->source,
+                        'external_key' => $dto->externalKey,
+                        'title' => $dto->title,
+                        'starts_on' => $dto->startsOn,
+                        'ends_on' => $dto->endsOn,
+                        'time_text' => $dto->timeText,
+                        'venue' => $dto->venue ?: $dup->venue,
+                        'price_text' => $dto->priceText,
+                        'ticket_open_text' => $dto->ticketOpenText,
+                        'ticket_opens_on' => self::parseTicketOpensOn($dto->ticketOpenText, $dto->startsOn),
+                        'ticket_links' => $dto->ticketLinks ?: $dup->ticket_links,
+                        'extra' => ($dto->extra ?: []) + (array) $dup->extra,
+                        'poster_url' => $dto->posterUrl ?: $dup->poster_url,
+                        'detail_url' => $dto->detailUrl,
+                    ]);
+                    $stats['updated']++;
+                } else {
+                    if (empty($dup->ticket_links) && $dto->ticketLinks !== []) {
+                        $dup->update(['ticket_links' => $dto->ticketLinks]);
+                    }
+                    $stats['skipped']++;
+                }
 
                 continue;
             }
@@ -67,24 +92,24 @@ class EventSyncService
         return $stats;
     }
 
-    /** 같은 시작일의 다른 소스 공연과 아티스트 토큰(한/영 2자+)이 겹치는가. */
-    private function duplicateConcertExists(CollectedEventData $dto): bool
+    /** 같은 시작일의 다른 소스 공연 중 아티스트 토큰(한/영 2자+)이 겹치는 행을 찾는다(병합 대상). */
+    private function findDuplicateConcert(CollectedEventData $dto): ?Event
     {
         $tokens = self::artistTokens($dto->title);
         if ($tokens === []) {
-            return false;
+            return null;
         }
         $sameDay = Event::where('kind', 'concert')
             ->whereDate('starts_on', $dto->startsOn) // date 캐스트가 00:00:00 을 붙여 등호 비교는 실패(SQLite)
             ->where('source', '!=', $dto->source)
-            ->pluck('title');
-        foreach ($sameDay as $title) {
-            if (array_intersect($tokens, self::artistTokens($title)) !== []) {
-                return true;
+            ->get();
+        foreach ($sameDay as $event) {
+            if (array_intersect($tokens, self::artistTokens($event->title)) !== []) {
+                return $event;
             }
         }
 
-        return false;
+        return null;
     }
 
     /** 제목에서 아티스트 식별 토큰만 추출(공연 상용어 제거, 소문자, 2자+). */
@@ -118,8 +143,17 @@ class EventSyncService
      */
     public static function parseTicketOpensOn(?string $ticketOpenText, ?string $startsOn): ?string
     {
-        if ($ticketOpenText === null || $startsOn === null
-            || ! preg_match('/(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/u', $ticketOpenText, $m)) {
+        if ($ticketOpenText === null || $startsOn === null) {
+            return null;
+        }
+        // 팬클럽 선예매·일반예매가 함께 적힌 경우 '일반예매' 날짜 기준(모두가 예매 가능한 시점)
+        if (($pos = mb_strrpos($ticketOpenText, '일반')) !== false) {
+            $general = mb_substr($ticketOpenText, $pos);
+            if (preg_match('/\d{1,2}\s*월\s*\d{1,2}\s*일/u', $general)) {
+                $ticketOpenText = $general;
+            }
+        }
+        if (! preg_match('/(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/u', $ticketOpenText, $m)) {
             return null;
         }
         $startYear = (int) substr($startsOn, 0, 4);
