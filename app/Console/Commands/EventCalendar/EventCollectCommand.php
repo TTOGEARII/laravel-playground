@@ -3,6 +3,7 @@
 namespace App\Console\Commands\EventCalendar;
 
 use App\Services\EventCalendar\EventSyncService;
+use App\Services\EventCalendar\GenreTagService;
 use App\Services\EventCalendar\Sources\ComicWorldDriver;
 use App\Services\EventCalendar\Sources\Contracts\EventSource;
 use App\Services\EventCalendar\Sources\FestivalLifeDriver;
@@ -25,7 +26,7 @@ class EventCollectCommand extends Command
         'comicworld' => ComicWorldDriver::class,
     ];
 
-    public function handle(EventSyncService $sync): int
+    public function handle(EventSyncService $sync, GenreTagService $tagger): int
     {
         $only = $this->option('source');
         $failures = 0;
@@ -51,6 +52,14 @@ class EventCollectCommand extends Command
                 $this->warn("  ↳ 실패: {$e->getMessage()}");
                 Log::error('행사 수집 실패', ['source' => $code, 'error' => $e->getMessage()]);
             }
+        }
+
+        // 공연 장르 태깅(jpop/other) — 키 없거나 실패해도 수집 결과에는 영향 없음
+        try {
+            $tag = $tagger->tagUntagged();
+            $this->line($tag['skipped'] ? '장르 태깅: GEMINI_API_KEY 없음 — 스킵' : "장르 태깅: {$tag['tagged']}건");
+        } catch (\Throwable $e) {
+            Log::warning('행사 장르 태깅 오류', ['error' => $e->getMessage()]);
         }
 
         return $failures > 0 ? self::FAILURE : self::SUCCESS;
