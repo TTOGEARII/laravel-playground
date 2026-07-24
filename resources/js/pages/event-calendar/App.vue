@@ -15,12 +15,13 @@
     </div>
 
     <!-- 월 캘린더 — 주 단위 레인에 연속 띠(밴드)로 렌더(구글 캘린더식). 모바일은 점(dot) 유지 -->
-    <div class="ec-calendar" :class="{ 'is-loading': loading }">
+    <!-- --lanes 는 월 전체 최대 레인 수(캘린더 스코프) — 주마다 높이가 달라 들쭉날쭉해지지 않게 통일 -->
+    <div class="ec-calendar" :class="{ 'is-loading': loading }" :style="{ '--lanes': maxLanes }">
       <div class="ec-dow-row">
         <div class="ec-dow" v-for="(d, i) in ['일', '월', '화', '수', '목', '금', '토']" :key="d"
           :class="{ 'is-sun': i === 0, 'is-sat': i === 6 }">{{ d }}</div>
       </div>
-      <div v-for="(week, wi) in weeks" :key="wi" class="ec-week" :style="{ '--lanes': week.laneCount }">
+      <div v-for="(week, wi) in weeks" :key="wi" class="ec-week">
         <div v-for="cell in week.cells" :key="cell.dateStr" class="ec-day" :class="{
           'is-other': !cell.inMonth,
           'is-today': cell.isToday,
@@ -303,6 +304,9 @@ const weeks = computed(() => {
   }
   return out;
 });
+
+// 모든 주에 공통 적용할 레인 수(월 최대, 최소 2) — 행 높이가 균일한 반듯한 그리드 유지
+const maxLanes = computed(() => Math.max(2, ...weeks.value.map((w) => w.laneCount)));
 
 // 날짜 탭(모바일 주 동선): 행사 있는 날을 선택하면 그리드 아래에 그날 행사 리스트 표시
 function selectDay(cell) {

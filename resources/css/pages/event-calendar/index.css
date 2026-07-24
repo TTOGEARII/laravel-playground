@@ -112,7 +112,8 @@
 .ec-day {
     background: var(--ds-surface);
     min-width: 0;
-    min-height: calc(32px + var(--lanes, 1) * var(--ec-lane-h));
+    /* 높이 = 날짜 영역 + 월 공통 레인 수(--lanes, 캘린더 스코프·최소 2) — 모든 주가 같은 높이의 반듯한 그리드 */
+    min-height: calc(48px + var(--lanes, 2) * var(--ec-lane-h));
     padding: var(--ds-space-xxs);
     display: flex;
     flex-direction: column;
