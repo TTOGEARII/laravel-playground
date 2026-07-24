@@ -66,6 +66,9 @@ Route::prefix('subculture-game-info')->group(base_path('routes/subculture-game-i
 // SubcultureAgent (서브컬쳐 게임 AI 에이전트) — 세션 인증(대화 저장) 필요라 web 그룹
 Route::prefix('subculture-agent')->group(base_path('routes/subculture-agent.php'));
 
+// EventCalendar (행사 캘린더 — J-pop 내한공연 + 서브컬쳐 행사)
+Route::prefix('event-calendar')->group(base_path('routes/event-calendar.php'));
+
 // MyWifeBot 채팅 API — 세션 인증이 필요(로그인 사용자 대화 저장/이어가기)하므로 web 그룹에 둔다.
 // 매 호출이 Gemini API 과금으로 이어지므로 남용 방지 쓰로틀을 건다(다른 POST 라우트와 동일 정책).
 Route::prefix('api/my-wife-bot')->middleware('throttle:30,1')->controller(MyWifeBotChatController::class)->group(function () {

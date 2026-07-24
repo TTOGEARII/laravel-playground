@@ -28,7 +28,8 @@
             데이터는 정보 제공 목적의 자동 수집물이며, 영리적으로 이용하지 않습니다.
         </p>
         <ul>
-            <li>수집 출처: 도키도키굿즈, 애니메이트코리아, 따빼몰, 굿스마일코리아, 코믹스아트, 피규어프레소</li>
+            <li>수집 출처(국내): 도키도키굿즈, 애니메이트코리아, 따빼몰, 굿스마일코리아, 코믹스아트, 피규어프레소</li>
+            <li>수집 출처(해외관): 아미아미(AmiAmi) — 가격은 엔화 원가이며 원화 환산은 참고용</li>
         </ul>
 
         <h2>서브컬쳐 게임 정보 출처 (SubcultureGameInfo)</h2>
@@ -41,6 +42,16 @@
             <li><strong>캐릭터·도감·일정</strong>: SchaleDB, 몰루로그(mollulog.net), Project Yatta, Enka.Network, HoYoLAB 위키(호요랩 공식 위키)</li>
             <li><strong>캐릭터 빌드(티어·무기·세트·재료)</strong>: wuthering.gg(명조), genshin-builds.com·zzz.gg(호요버스)</li>
             <li><strong>레이드 편성·공략·조합</strong>: 몰루로그·레츠도로·baql.net(랭킹), 트릭컬 레코드/팀 매니저, 디씨·아카 공략글, YouTube 검색(조합 영상)</li>
+        </ul>
+
+        <h2>행사 캘린더 출처 (EventCalendar)</h2>
+        <p>
+            행사 캘린더에 표시되는 공연·행사 일정은 아래 공개 출처에서 정보 제공 목적으로 자동 수집·인용하며,
+            각 정보의 저작권은 주최사 및 원 사이트에 있습니다. 정확한 일정·가격은 각 공식 페이지 기준입니다.
+        </p>
+        <ul>
+            <li><strong>내한공연</strong>: 페스티벌라이프(festivallife.kr)</li>
+            <li><strong>서브컬쳐 행사</strong>: 코믹월드(comicw.net), 일러스타페스(illustar.net), AGF(agfkorea.com)</li>
         </ul>
 
         <h2>오픈소스 라이브러리 (Open Source)</h2>

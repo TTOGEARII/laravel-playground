@@ -36,6 +36,14 @@ Route::prefix('otaku-shop')->controller(OtakuShopProductController::class)->grou
     Route::get('shops', 'shops');
 });
 
+// EventCalendar (BASE = /api/event-calendar)
+//   GET /api/event-calendar/events       ?year&month | ?upcoming=1&limit — 공통 필터 kind/jpop_only
+//   GET /api/event-calendar/events/{id}  상세(가격·티켓오픈·예매처·원문 링크)
+Route::prefix('event-calendar')->controller(\App\Http\Controllers\EventCalendar\Api\EventController::class)->group(function () {
+    Route::get('events', 'index');
+    Route::get('events/{id}', 'show')->whereNumber('id');
+});
+
 // SubcultureGameInfo (BASE = /api/subculture-game-info)
 //   GET  /api/subculture-game-info/codes        ?game, community(0/1), expired(0/1)
 //   GET  /api/subculture-game-info/raids        ?game, status(active|upcoming|ended)

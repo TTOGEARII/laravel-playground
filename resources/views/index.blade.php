@@ -80,6 +80,21 @@
                 </svg>
             </a>
         </article>
+
+        <!-- 프로젝트 5 · 행사 캘린더 (J-pop 내한공연 + 서브컬쳐 오프라인 행사) -->
+        <article class="project-card accent-pink">
+            <div class="card-icon">🗓️</div>
+            <h2 class="card-title">행사 캘린더</h2>
+            <p class="card-description">
+                J-pop 내한공연 · 코믹월드 · 일러스타페스 · AGF 일정을 한눈에
+            </p>
+            <a href="{{ route('event-calendar.index') }}" class="card-button">
+                프로젝트 보기
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+            </a>
+        </article>
     </section>
 
     <section class="projects-grid" style="margin-top: 40px;">
