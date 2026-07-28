@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\EventCalendar;
 
+use App\Services\EventCalendar\ConcertCrossCheckService;
 use App\Services\EventCalendar\EventSyncService;
 use App\Services\EventCalendar\GenreTagService;
 use App\Services\EventCalendar\MyconEnrichmentService;
@@ -13,7 +14,6 @@ use App\Services\EventCalendar\Sources\JpopTistoryDriver;
 use App\Services\EventCalendar\Sources\KintexDriver;
 use App\Services\EventCalendar\Sources\LoungeEventDriver;
 use App\Services\EventCalendar\Sources\SetecDriver;
-use App\Services\EventCalendar\XCrossCheckService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -38,7 +38,7 @@ class EventCollectCommand extends Command
         'lounge' => LoungeEventDriver::class,
     ];
 
-    public function handle(EventSyncService $sync, GenreTagService $tagger, MyconEnrichmentService $mycon, XCrossCheckService $xcheck): int
+    public function handle(EventSyncService $sync, GenreTagService $tagger, MyconEnrichmentService $mycon, ConcertCrossCheckService $xcheck): int
     {
         $only = $this->option('source');
         $failures = 0;
@@ -76,14 +76,14 @@ class EventCollectCommand extends Command
             }
         }
 
-        // X 크로스체크(내한공연 공지 계정) — 티켓오픈·내한 일정 교차 확인(불일치는 기록만)
-        if ($only === null && config('event-calendar.x_crosscheck.enabled', false)) {
+        // 크로스체크(가수 X 타임라인 + 구글 뉴스 검색) — 내한 일정·티켓오픈 교차 확인(불일치는 기록만)
+        if ($only === null && config('event-calendar.crosscheck.enabled', false)) {
             try {
                 $xc = $xcheck->run();
-                $this->line($xc['skipped'] ? 'X 크로스체크: RSS 실패 — 스킵'
-                    : "X 크로스체크: 트윗 {$xc['tweets']} · 오픈일 보강 {$xc['filled']} · 확인 {$xc['confirmed']} · 불일치 {$xc['mismatched']}");
+                $this->line("크로스체크: 공연 {$xc['concerts']} · X핸들 {$xc['handles']} · 트윗 {$xc['tweets']} · 기사 {$xc['articles']}"
+                    ." → 오픈일 보강 {$xc['filled']} · 오픈 확인 {$xc['confirmed']} · 일정 확인 {$xc['schedule_ok']} · 불일치 {$xc['mismatched']}");
             } catch (\Throwable $e) {
-                Log::warning('X 크로스체크 오류', ['error' => $e->getMessage()]);
+                Log::warning('크로스체크 오류', ['error' => $e->getMessage()]);
             }
         }
 

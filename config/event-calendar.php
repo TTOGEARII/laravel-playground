@@ -50,19 +50,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | 예매일 보강(mycon.me) + X 크로스체크
+    | 예매일 보강(mycon.me) + 크로스체크(가수 X·구글 뉴스)
     |--------------------------------------------------------------------------
     | mycon: 블로그 pill 이 링크하는 공연 상세(Next.js SSR). JSON-LD(schema.org Event)의
     | offers.validFrom(UTC→KST)이 티켓오픈 일시 — 최저가·예매처 딥링크·포스터도 함께 보강.
     | 대상은 미래 공연 중 오픈 미확정/오픈 전 행만 재방문(정중한 크롤, robots 의 /api/ 는 미사용).
-    | x_crosscheck: 내한공연 공지 계정(@FstvlLife) 트윗을 nitter RSS 로 받아 내한 일정·티켓오픈일
-    | 교차 확인 — 없는 오픈일은 채우고, mycon 과 다르면 덮지 않고 불일치 기록(로그·extra.xcheck).
+    | crosscheck: 블로그 가수명 → MusicBrainz 로 공식 X 핸들 확보 → 가수 타임라인(nitter RSS)의
+    | 내한/티켓 트윗과 대조, 신호 없으면 구글 뉴스 RSS("{가수} 내한") 폴백 — 내한 일정·티켓오픈
+    | 교차 확인. 없는 오픈일은 채우고, mycon 확보값과 다르면 덮지 않고 불일치 기록(로그·extra.xcheck).
+    | (X 본검색·일반 검색엔진은 봇 차단이라 MusicBrainz·nitter·뉴스 RSS 가 열린 창구 — 2026-07 실측.)
     */
     'mycon' => ['enabled' => true, 'delay_ms' => 1500],
-    'x_crosscheck' => [
+    'crosscheck' => [
         'enabled' => true,
         'nitter_base' => env('EC_NITTER_BASE', 'https://nitter.net'),
-        'accounts' => ['FstvlLife'], // 페스티벌라이프 X — 티켓오픈·내한 공지 전문(사이트 대신 공지 계정만 참고)
+        'musicbrainz' => true, // 가수명 → 공식 X 핸들(공개 API, 1req/s·30일 캐시)
+        'news' => true,        // 구글 뉴스 RSS 폴백
     ],
 
     /*

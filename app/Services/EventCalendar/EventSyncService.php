@@ -90,7 +90,7 @@ class EventSyncService
         return null;
     }
 
-    /** 제목에서 아티스트 식별 토큰만 추출(공연 상용어 제거, 소문자, 2자+). X 크로스체크 대조에도 사용. */
+    /** 제목에서 아티스트 식별 토큰만 추출(공연 상용어 제거, 소문자, 2자+) — 교차 소스 중복 판정용. */
     public static function artistTokens(string $title): array
     {
         static $stop = ['내한공연', '내한', '공연', '콘서트', '단독', '라이브', 'live', 'in', 'seoul', 'korea', 'tour', 'asia', 'world', 'the', 'concert', '단독공연', '정보'];

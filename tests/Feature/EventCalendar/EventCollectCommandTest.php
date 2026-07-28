@@ -24,7 +24,7 @@ class EventCollectCommandTest extends TestCase
             'event-calendar.sources.coex.enabled' => false,
             'event-calendar.sources.lounge.enabled' => false,
             'event-calendar.mycon.enabled' => false,
-            'event-calendar.x_crosscheck.enabled' => false,
+            'event-calendar.crosscheck.enabled' => false,
         ]);
     }
 
