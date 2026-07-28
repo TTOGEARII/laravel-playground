@@ -20,16 +20,19 @@ class WebPushService
     }
 
     /**
-     * 모든 구독자에게 알림을 보낸다.
+     * 구독자에게 알림을 보낸다. $topic 지정 시 해당 주제를 수신하는 구독에만(null 토픽 구독 포함).
      *
      * @param  string  $url  클릭 시 열 경로(예: /subculture-game-info)
      * @return array{sent: int, pruned: int, failed: int}
      */
-    public function broadcast(string $title, string $body, string $url): array
+    public function broadcast(string $title, string $body, string $url, ?string $topic = null): array
     {
-        $stats = $this->sendToSubscriptions(PushSubscription::all(), $title, $body, $url);
+        $subscriptions = $topic === null
+            ? PushSubscription::all()
+            : PushSubscription::forTopic($topic)->get();
+        $stats = $this->sendToSubscriptions($subscriptions, $title, $body, $url);
 
-        Log::info('[PUSH] 발송 완료', $stats + ['title' => $title]);
+        Log::info('[PUSH] 발송 완료', $stats + ['title' => $title, 'topic' => $topic]);
 
         return $stats;
     }

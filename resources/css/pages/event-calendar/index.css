@@ -77,6 +77,49 @@
 }
 .ec-today-btn:hover { color: var(--ds-text-accent); border-color: var(--ds-primary); }
 
+/* 알림 설정(웹푸시 주제 토글) — 종 버튼 + 팝오버 */
+.ec-alarm { position: relative; }
+.ec-alarm-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--ds-round-circle);
+    border: 1px solid var(--ds-border);
+    background: var(--ds-surface);
+    font-size: var(--ds-fs-md);
+    line-height: 1;
+    cursor: pointer;
+}
+.ec-alarm-btn:hover { background: var(--ds-surface-2); }
+.ec-alarm-btn.is-on { border-color: var(--ds-primary); box-shadow: inset 0 0 0 1px var(--ds-primary); }
+.ec-alarm-pop {
+    position: absolute;
+    top: calc(100% + var(--ds-space-xs));
+    right: 0;
+    z-index: 30;
+    width: 280px;
+    padding: var(--ds-space-md);
+    border-radius: var(--ds-round-lg);
+    background: var(--ds-surface-2);
+    box-shadow: var(--ds-shadow-heavy);
+}
+.ec-alarm-title {
+    margin: 0 0 var(--ds-space-sm);
+    font-size: var(--ds-fs-sm);
+    font-weight: var(--ds-fw-bold);
+    color: var(--ds-ink-bright);
+}
+.ec-alarm-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-xs) 0;
+}
+.ec-alarm-row + .ec-alarm-row { border-top: 1px solid var(--ds-hairline); }
+.ec-alarm-text { display: flex; flex-direction: column; gap: 2px; }
+.ec-alarm-name { font-size: var(--ds-fs-sm); font-weight: var(--ds-fw-bold); color: var(--ds-ink); }
+.ec-alarm-desc { font-size: var(--ds-fs-xs); color: var(--ds-ink-muted); }
+
 /* 월 그리드 — 주 단위 레인 밴드(연속 띠) 시스템 */
 .ec-calendar {
     border: 1px solid var(--ds-separator);

@@ -11,6 +11,32 @@
         <span class="ec-month-label">{{ year }}년 {{ month }}월</span>
         <button class="ec-nav-btn" aria-label="다음 달" @click="moveMonth(1)">›</button>
         <button class="ec-today-btn" @click="goToday">오늘</button>
+        <div v-if="pushAvailable" class="ec-alarm">
+          <button class="ec-alarm-btn" :class="{ 'is-on': concertAlarmOn || eventAlarmOn }"
+            aria-label="알림 설정" @click="alarmOpen = !alarmOpen">🔔</button>
+          <!-- 알림 설정 팝오버 — 주제별 토글(브라우저 구독 단위) -->
+          <div v-if="alarmOpen" class="ec-alarm-pop">
+            <p class="ec-alarm-title">알림 설정</p>
+            <div class="ec-alarm-row">
+              <div class="ec-alarm-text">
+                <span class="ec-alarm-name">내한공연 알림</span>
+                <span class="ec-alarm-desc">티켓 오픈 당일 · 새 공연 등록</span>
+              </div>
+              <button type="button" class="ds-switch" role="switch"
+                :aria-checked="concertAlarmOn ? 'true' : 'false'" aria-label="내한공연 알림"
+                :disabled="alarmBusy" @click="toggleAlarm('concert')"></button>
+            </div>
+            <div class="ec-alarm-row">
+              <div class="ec-alarm-text">
+                <span class="ec-alarm-name">행사 알림</span>
+                <span class="ec-alarm-desc">동인·전시 새 행사 등록</span>
+              </div>
+              <button type="button" class="ds-switch" role="switch"
+                :aria-checked="eventAlarmOn ? 'true' : 'false'" aria-label="행사 알림"
+                :disabled="alarmBusy" @click="toggleAlarm('event')"></button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -157,6 +183,7 @@ import { eventCalendarApi } from './api';
 
 const props = defineProps({
   initialEventId: { type: Number, default: null },
+  vapidKey: { type: String, default: '' },
 });
 
 const TABS = [
@@ -177,6 +204,79 @@ const detail = ref(null);
 const loading = ref(false);
 const selectedDay = ref(null);
 const copied = ref(false);
+
+// ── 알림 설정(웹푸시 주제별 토글: concert=내한공연, event=행사) ──
+const ALL_TOPICS = ['redeem', 'concert', 'event'];
+const pushAvailable =
+  'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !!props.vapidKey;
+const alarmOpen = ref(false);
+const alarmBusy = ref(false);
+const subscribedTopics = ref(undefined); // undefined=미구독, null=전체 수신, []=주제 배열
+const concertAlarmOn = computed(() => subscribedTopics.value === null || (subscribedTopics.value ?? []).includes('concert'));
+const eventAlarmOn = computed(() => subscribedTopics.value === null || (subscribedTopics.value ?? []).includes('event'));
+
+function vapidToKey() {
+  const b64 = props.vapidKey.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  return Uint8Array.from(atob(b64 + pad), (c) => c.charCodeAt(0));
+}
+
+async function loadAlarmState() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    const { data } = await eventCalendarApi.pushStatus(sub.endpoint);
+    if (data.subscribed) subscribedTopics.value = data.topics;
+  } catch {
+    /* 상태 조회 실패 — 버튼은 기본(꺼짐)으로 동작 */
+  }
+}
+
+async function toggleAlarm(topic) {
+  alarmBusy.value = true;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+
+    // 켜기(첫 구독): 권한 요청 → 브라우저 구독 → 해당 주제만으로 서버 등록
+    if (!sub) {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        alert('알림 권한이 차단돼 있어요. 브라우저 설정에서 이 사이트의 알림을 허용해 주세요.');
+        return;
+      }
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidToKey() });
+      const { keys } = sub.toJSON();
+      try {
+        const { data } = await eventCalendarApi.pushSubscribe(sub.endpoint, keys, [topic]);
+        subscribedTopics.value = data.topics;
+      } catch (e) {
+        await sub.unsubscribe(); // 서버 등록 실패 시 원복(유령 구독 방지)
+        throw e;
+      }
+      return;
+    }
+
+    // 브라우저 구독은 있는데 서버 미등록(만료 정리 등) — 해당 주제로 재등록
+    if (subscribedTopics.value === undefined) {
+      const { keys } = sub.toJSON();
+      const { data } = await eventCalendarApi.pushSubscribe(sub.endpoint, keys, [topic]);
+      subscribedTopics.value = data.topics;
+      return;
+    }
+
+    // 이미 구독된 브라우저: 주제만 토글(null=전체 수신은 전체 집합에서 빼는 걸로 해석)
+    const current = subscribedTopics.value === null ? [...ALL_TOPICS] : [...(subscribedTopics.value ?? [])];
+    const next = current.includes(topic) ? current.filter((t) => t !== topic) : [...current, topic];
+    const { data } = await eventCalendarApi.pushTopics(sub.endpoint, next);
+    subscribedTopics.value = data.topics;
+  } catch (e) {
+    console.error('알림 설정 실패', e);
+  } finally {
+    alarmBusy.value = false;
+  }
+}
 
 function filterParams() {
   if (tab.value === 'recommended') return { jpopOnly: true };
@@ -384,11 +484,21 @@ async function copyLink() {
 watch([year, month, tab], () => loadMonth());
 watch(tab, () => loadUpcoming());
 
+// 알림 팝오버 바깥 클릭 시 닫기
+function onDocClick(e) {
+  if (alarmOpen.value && !e.target.closest('.ec-alarm')) alarmOpen.value = false;
+}
+
 onMounted(() => {
   window.addEventListener('popstate', onPopState);
+  document.addEventListener('click', onDocClick);
   loadMonth();
   loadUpcoming();
   if (props.initialEventId) openDetail(props.initialEventId, false);
+  if (pushAvailable) loadAlarmState();
 });
-onBeforeUnmount(() => window.removeEventListener('popstate', onPopState));
+onBeforeUnmount(() => {
+  window.removeEventListener('popstate', onPopState);
+  document.removeEventListener('click', onDocClick);
+});
 </script>

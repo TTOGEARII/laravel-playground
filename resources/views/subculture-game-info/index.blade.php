@@ -270,24 +270,47 @@
                     });
                 }
 
+                // 이 토글은 'redeem' 주제만 담당 — 행사 캘린더 알림 등 다른 주제 구독은 건드리지 않는다
+                var currentTopics; // undefined=서버 미등록, null=전체 수신, 배열=선택 주제
+                function redeemOn() {
+                    return currentTopics === null || (Array.isArray(currentTopics) && currentTopics.indexOf('redeem') !== -1);
+                }
+
                 navigator.serviceWorker.ready.then(function (reg) {
                     return reg.pushManager.getSubscription();
                 }).then(function (sub) {
                     btn.hidden = false;
-                    setState(!!sub);
+                    if (!sub) { setState(false); return; }
+                    return api(@json(route('push.status')), { endpoint: sub.endpoint })
+                        .then(function (res) { return res.json(); })
+                        .then(function (json) {
+                            if (json.data && json.data.subscribed) currentTopics = json.data.topics;
+                            setState(redeemOn());
+                        });
                 }).catch(function () { /* SW 미등록 등 — 버튼 숨김 유지 */ });
 
                 btn.addEventListener('click', function () {
                     btn.disabled = true;
                     navigator.serviceWorker.ready.then(function (reg) {
                         return reg.pushManager.getSubscription().then(function (existing) {
-                            if (existing) {
-                                // 해지
-                                return api(@json(route('push.unsubscribe')), { endpoint: existing.endpoint })
-                                    .then(function () { return existing.unsubscribe(); })
-                                    .then(function () { setState(false); });
+                            if (existing && currentTopics !== undefined && redeemOn()) {
+                                // 끄기: redeem 주제만 제외(다른 주제 구독 유지)
+                                var next = (currentTopics === null ? ['concert', 'event'] : currentTopics.filter(function (t) { return t !== 'redeem'; }));
+                                return api(@json(route('push.topics')), { endpoint: existing.endpoint, topics: next })
+                                    .then(function (res) { return res.json(); })
+                                    .then(function (json) { currentTopics = json.data.topics; setState(false); });
                             }
-                            // 구독: 권한 → 브라우저 구독 → 서버 등록
+                            if (existing) {
+                                // 켜기(브라우저 구독은 이미 있음): redeem 주제 추가 등록(서버가 합집합 병합)
+                                var json = existing.toJSON();
+                                return api(@json(route('push.subscribe')), {
+                                    endpoint: existing.endpoint,
+                                    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+                                    topics: ['redeem'],
+                                }).then(function (res) { return res.json(); })
+                                    .then(function (json2) { currentTopics = json2.data.topics; setState(true); });
+                            }
+                            // 첫 구독: 권한 → 브라우저 구독 → redeem 주제로 서버 등록
                             return Notification.requestPermission().then(function (perm) {
                                 if (perm !== 'granted') throw new Error('denied');
                                 return reg.pushManager.subscribe({
@@ -299,10 +322,11 @@
                                 return api(@json(route('push.subscribe')), {
                                     endpoint: sub.endpoint,
                                     keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+                                    topics: ['redeem'],
                                 }).then(function (res) {
                                     if (!res.ok) { sub.unsubscribe(); throw new Error('server'); }
-                                    setState(true);
-                                });
+                                    return res.json();
+                                }).then(function (json2) { currentTopics = json2.data.topics; setState(true); });
                             });
                         });
                     }).catch(function (e) {

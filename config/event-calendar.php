@@ -6,21 +6,18 @@ return [
     | 행사 캘린더 수집 소스 설정 (단일 출처)
     |--------------------------------------------------------------------------
     | 정찰 실측(2026-07) 기반:
-    | - festivallife: 아임웹 SSR, 비브라우저 UA 403 → 브라우저 UA 필수. robots 허용.
-    |   /concert_k 는 장르 무관 전체 내한공연 → 전부 수집 후 Gemini 로 장르(jpop/other) 태깅.
+    | - jpoptistory: J-pop 내한 캘린더 블로그(짱짱이) — 달력의 내한공연 단일 소스.
+    |   (festivallife 는 정확도 문제로 2026-07 소스에서 제외 — 블로그가 더 정확하다는 운영자 판단.)
     | - comicworld: 그누보드, 홈 테이블을 채우는 숨은 JSON API(POST d/ajax.main.php).
     |   type=comic(코믹월드)·mongu(문구전). 날짜 ISO. robots 위반 아님(Disallow 2경로뿐).
-    | - illustar: React SPA → Playwright 사이드카(4단계에서 추가).
+    | - illustar: React SPA → Playwright 사이드카.
     | - AGF: 연 1회라 크롤러 없이 수동 임포트(event-calendar:import).
     */
     'sources' => [
-        'festivallife' => [
-            'enabled' => true,
-            'base_url' => 'https://festivallife.kr',
-            'board' => 'concert_k',
-            'pages' => 8,          // 12건/페이지 — 달력의 단일 공연 소스라 넓게 수집. 기존 글은 상세 재방문 생략이라 부담 낮음
-            'delay_ms' => 1200,    // 상세 페이지 요청 간 딜레이(정중한 크롤)
-        ],
+        // J-pop 내한 캘린더(j-pop-playlist.tistory.com/1109) — 큐레이션 J-pop 전용(장르 확정 수집).
+        // 위젯 pill 의 data 속성(date/title/location/link)을 사이드카로 추출, 링크는 대부분
+        // mycon.me 상세 → 예매일 등은 아래 mycon 보강이 채운다.
+        'jpoptistory' => ['enabled' => true],
         'comicworld' => [
             'enabled' => true,
             'endpoint' => 'https://comicw.net/d/ajax.main.php',
@@ -53,13 +50,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | J-pop 판별 레퍼런스(블로그 캘린더 — 달력 표기 아님)
+    | 예매일 보강(mycon.me) + X 크로스체크
     |--------------------------------------------------------------------------
-    | J-pop 내한 캘린더(j-pop-playlist.tistory.com/1109)는 이벤트 소스가 아니라
-    | "장르 판별 대조용"으로만 쓴다 — festivallife 공연이 블로그에 같은 날·같은
-    | 아티스트로 있으면 genre=jpop 확정(JpopReferenceService). 나머지는 Gemini 폴백.
+    | mycon: 블로그 pill 이 링크하는 공연 상세(Next.js SSR). JSON-LD(schema.org Event)의
+    | offers.validFrom(UTC→KST)이 티켓오픈 일시 — 최저가·예매처 딥링크·포스터도 함께 보강.
+    | 대상은 미래 공연 중 오픈 미확정/오픈 전 행만 재방문(정중한 크롤, robots 의 /api/ 는 미사용).
+    | x_crosscheck: 내한공연 공지 계정(@FstvlLife) 트윗을 nitter RSS 로 받아 내한 일정·티켓오픈일
+    | 교차 확인 — 없는 오픈일은 채우고, mycon 과 다르면 덮지 않고 불일치 기록(로그·extra.xcheck).
     */
-    'jpop_reference' => ['enabled' => true],
+    'mycon' => ['enabled' => true, 'delay_ms' => 1500],
+    'x_crosscheck' => [
+        'enabled' => true,
+        'nitter_base' => env('EC_NITTER_BASE', 'https://nitter.net'),
+        'accounts' => ['FstvlLife'], // 페스티벌라이프 X — 티켓오픈·내한 공지 전문(사이트 대신 공지 계정만 참고)
+    ],
 
     /*
     |--------------------------------------------------------------------------

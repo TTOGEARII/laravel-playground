@@ -16,11 +16,15 @@ Route::get('/', [MainController::class, 'index']);
 Route::get('/inquiry', [InquiryController::class, 'create'])->name('inquiry.create');
 Route::post('/inquiry', [InquiryController::class, 'store'])->middleware('throttle:5,1')->name('inquiry.store');
 
-// 웹푸시 구독(새 리딤코드 알림) — 브라우저 단위, 비로그인도 가능
+// 웹푸시 구독(리딤코드·행사 알림) — 브라우저 단위, 비로그인도 가능. topics 로 주제 선택
 Route::post('/push/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])
     ->middleware('throttle:10,1')->name('push.subscribe');
 Route::post('/push/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])
     ->middleware('throttle:10,1')->name('push.unsubscribe');
+Route::post('/push/status', [\App\Http\Controllers\PushSubscriptionController::class, 'status'])
+    ->middleware('throttle:30,1')->name('push.status');
+Route::post('/push/topics', [\App\Http\Controllers\PushSubscriptionController::class, 'updateTopics'])
+    ->middleware('throttle:15,1')->name('push.topics');
 Route::post('/push/test', [\App\Http\Controllers\PushSubscriptionController::class, 'test'])
     ->middleware('throttle:5,1')->name('push.test');
 

@@ -8,5 +8,6 @@ axios.defaults.headers.common['Accept'] = 'application/json';
 const el = document.getElementById('event-calendar-app');
 const app = createApp(App, {
     initialEventId: el?.dataset.eventId ? Number(el.dataset.eventId) : null,
+    vapidKey: el?.dataset.vapid || '',
 });
 app.mount('#event-calendar-app');

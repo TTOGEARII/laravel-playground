@@ -8,7 +8,8 @@ use App\Services\Gemini\GeminiService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * 공연 장르 태깅 — festivallife 는 장르 무관 전체 내한공연이라, 미태깅 공연을 Gemini 로
+ * 공연 장르 태깅 — 블로그(jpoptistory) 공연은 수집 시 jpop 확정이라 대상이 거의 없고,
+ * 라운지 등 다른 소스에서 온 미태깅 공연만 Gemini 로
  * jpop(일본 아티스트: J-pop/J-rock/애니송/성우 등) / other 로 배치 분류한다.
  * 캘린더 기본 필터가 J-pop 이므로 이 태그가 UI 필터의 근거.
  * 비용 가드: 텍스트 배치 소량(제목만·수집당 1콜) — 키 없거나 실패 시 null 유지(다음 실행에 재시도).

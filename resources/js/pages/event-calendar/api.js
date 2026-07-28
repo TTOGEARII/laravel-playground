@@ -40,4 +40,18 @@ export const eventCalendarApi = {
     const { data } = await axios.get(`${BASE}/events/${id}`);
     return data.data;
   },
+
+  // ── 웹푸시 알림 설정(web 라우트 — 브라우저 구독 단위 주제 토글) ──
+  async pushStatus(endpoint) {
+    const { data } = await axios.post('/push/status', { endpoint });
+    return data;
+  },
+  async pushSubscribe(endpoint, keys, topics) {
+    const { data } = await axios.post('/push/subscribe', { endpoint, keys, topics });
+    return data;
+  },
+  async pushTopics(endpoint, topics) {
+    const { data } = await axios.post('/push/topics', { endpoint, topics });
+    return data;
+  },
 };

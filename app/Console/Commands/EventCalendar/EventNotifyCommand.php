@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\EventCalendar;
 
+use App\Enums\EventCalendar\EventKind;
 use App\Services\EventCalendar\EventNotifyService;
 use App\Services\Push\WebPushService;
 use Illuminate\Console\Command;
@@ -24,24 +25,36 @@ class EventNotifyCommand extends Command
             return self::SUCCESS;
         }
 
-        // ① 오늘 티켓오픈(공연별 개별 푸시 — 상세로 링크)
+        // ① 오늘 티켓오픈(공연별 개별 푸시 — 상세로 링크, 내한공연 알림 구독자만)
         foreach ($notify->todayTicketOpens() as $event) {
             $body = trim(($event->ticket_open_text ?: '오늘').' · '.(string) $event->venue, ' ·');
-            $result = $push->broadcast("🎫 오늘 티켓 오픈: {$event->title}", $body, "/event-calendar/{$event->id}");
+            $result = $push->broadcast("🎫 오늘 티켓 오픈: {$event->title}", $body, "/event-calendar/{$event->id}", topic: 'concert');
             $this->info("티켓오픈 푸시: {$event->title} → 발송 {$result['sent']}");
         }
 
-        // ② 신규 행사 다이제스트(있을 때만 1건)
+        // ② 신규 다이제스트 — 내한공연(concert)과 그 외 행사(event)를 주제별로 분리 발송
         $new = $notify->unnotifiedNewEvents();
-        if ($new->isNotEmpty()) {
+        [$concerts, $others] = $new->partition(fn ($e) => $e->kind === EventKind::Concert);
+        if ($concerts->isNotEmpty()) {
             $result = $push->broadcast(
-                "🗓️ 새 행사 {$new->count()}건 등록",
-                $notify->digestBody($new),
+                "🎤 새 내한공연 {$concerts->count()}건",
+                $notify->digestBody($concerts),
                 '/event-calendar',
+                topic: 'concert',
             );
-            $notify->markNotified($new);
-            $this->info("다이제스트 푸시: {$new->count()}건 → 발송 {$result['sent']}");
-        } else {
+            $this->info("내한공연 다이제스트: {$concerts->count()}건 → 발송 {$result['sent']}");
+        }
+        if ($others->isNotEmpty()) {
+            $result = $push->broadcast(
+                "🗓️ 새 행사 {$others->count()}건 등록",
+                $notify->digestBody($others),
+                '/event-calendar',
+                topic: 'event',
+            );
+            $this->info("행사 다이제스트: {$others->count()}건 → 발송 {$result['sent']}");
+        }
+        $notify->markNotified($new);
+        if ($new->isEmpty()) {
             $this->line('신규 행사 없음 — 다이제스트 스킵');
         }
 

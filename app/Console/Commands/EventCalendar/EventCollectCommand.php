@@ -4,15 +4,16 @@ namespace App\Console\Commands\EventCalendar;
 
 use App\Services\EventCalendar\EventSyncService;
 use App\Services\EventCalendar\GenreTagService;
-use App\Services\EventCalendar\JpopReferenceService;
+use App\Services\EventCalendar\MyconEnrichmentService;
 use App\Services\EventCalendar\Sources\CoexDriver;
 use App\Services\EventCalendar\Sources\ComicWorldDriver;
 use App\Services\EventCalendar\Sources\Contracts\EventSource;
-use App\Services\EventCalendar\Sources\FestivalLifeDriver;
 use App\Services\EventCalendar\Sources\IllustarDriver;
+use App\Services\EventCalendar\Sources\JpopTistoryDriver;
 use App\Services\EventCalendar\Sources\KintexDriver;
 use App\Services\EventCalendar\Sources\LoungeEventDriver;
 use App\Services\EventCalendar\Sources\SetecDriver;
+use App\Services\EventCalendar\XCrossCheckService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -22,13 +23,13 @@ use Illuminate\Support\Facades\Log;
  */
 class EventCollectCommand extends Command
 {
-    protected $signature = 'event-calendar:collect {--source= : 특정 소스만(festivallife/comicworld/illustar)} {--full : 기존 저장분도 상세 재수집}';
+    protected $signature = 'event-calendar:collect {--source= : 특정 소스만(jpoptistory/comicworld/illustar)} {--full : 기존 저장분도 상세 재수집}';
 
     protected $description = '행사 캘린더 수집(내한공연·코믹월드 등)';
 
     /** 소스 코드 → 드라이버 클래스 레지스트리(새 소스 추가 시 여기 + config). */
     private const DRIVERS = [
-        'festivallife' => FestivalLifeDriver::class,
+        'jpoptistory' => JpopTistoryDriver::class,
         'comicworld' => ComicWorldDriver::class,
         'illustar' => IllustarDriver::class,
         'kintex' => KintexDriver::class,
@@ -37,7 +38,7 @@ class EventCollectCommand extends Command
         'lounge' => LoungeEventDriver::class,
     ];
 
-    public function handle(EventSyncService $sync, GenreTagService $tagger, JpopReferenceService $jpopRef): int
+    public function handle(EventSyncService $sync, GenreTagService $tagger, MyconEnrichmentService $mycon, XCrossCheckService $xcheck): int
     {
         $only = $this->option('source');
         $failures = 0;
@@ -65,14 +66,24 @@ class EventCollectCommand extends Command
             }
         }
 
-        // J-pop 레퍼런스 대조(블로그 캘린더) — 달력 표기는 안 하고 장르 판별만. Gemini 태깅보다 먼저
-        // 돌아 확정분을 제외시키고, Gemini 가 'other' 로 오분류한 공연도 바로잡는다.
-        if ($only === null && config('event-calendar.jpop_reference.enabled', false)) {
+        // 예매일 보강(mycon 상세 JSON-LD) — 블로그 공연의 티켓오픈·가격·예매처·포스터를 채운다
+        if ($only === null && config('event-calendar.mycon.enabled', false)) {
             try {
-                $ref = $jpopRef->tagFromReference();
-                $this->line($ref['skipped'] ? 'J-pop 레퍼런스: 사이드카 실패 — 스킵' : "J-pop 레퍼런스: {$ref['refs']}항목 대조 · {$ref['matched']}건 jpop 확정");
+                $en = $mycon->enrich();
+                $this->line("예매일 보강(mycon): 대상 {$en['checked']} · 갱신 {$en['enriched']} · 실패 {$en['failed']}");
             } catch (\Throwable $e) {
-                Log::warning('J-pop 레퍼런스 태깅 오류', ['error' => $e->getMessage()]);
+                Log::warning('mycon 예매일 보강 오류', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // X 크로스체크(내한공연 공지 계정) — 티켓오픈·내한 일정 교차 확인(불일치는 기록만)
+        if ($only === null && config('event-calendar.x_crosscheck.enabled', false)) {
+            try {
+                $xc = $xcheck->run();
+                $this->line($xc['skipped'] ? 'X 크로스체크: RSS 실패 — 스킵'
+                    : "X 크로스체크: 트윗 {$xc['tweets']} · 오픈일 보강 {$xc['filled']} · 확인 {$xc['confirmed']} · 불일치 {$xc['mismatched']}");
+            } catch (\Throwable $e) {
+                Log::warning('X 크로스체크 오류', ['error' => $e->getMessage()]);
             }
         }
 
