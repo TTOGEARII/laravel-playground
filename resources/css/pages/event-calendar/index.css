@@ -151,6 +151,7 @@
 .ec-week {
     position: relative;
     --ec-lane-h: 24px; /* 밴드 한 줄 높이 */
+    --ec-band-top: 26px; /* 날짜 숫자 아래 밴드 시작 위치 */
 }
 .ec-day {
     background: var(--ds-surface);
@@ -502,10 +503,27 @@
     .ec-month-nav { justify-content: center; }
     .ec-nav-btn { width: 38px; height: 38px; } /* 터치 타깃 확대 */
 
-    /* 그리드: 밴드 숨기고 점만 — 셀이 좁아도 안 깨진다(날짜 탭 → 하단 리스트) */
-    .ec-day { min-height: 54px; padding: 2px; cursor: pointer; }
-    .ec-bands { display: none; }
-    .ec-day-dots { display: flex; }
+    /* 그리드: 여러날 행사는 이어지는 띠(is-multi) 그대로, 하루짜리·티켓오픈은 점으로
+       (좁은 셀에서 하루 띠는 글자가 뭉개져 점+날짜 탭 리스트가 낫다) */
+    .ec-week { --ec-lane-h: 17px; --ec-band-top: 22px; }
+    .ec-day {
+        min-height: max(54px, calc(34px + var(--lanes-m, 0) * var(--ec-lane-h)));
+        padding: 2px;
+        cursor: pointer;
+    }
+    .ec-band { display: none; }
+    .ec-band.is-multi {
+        display: flex;
+        padding: 0 4px;
+        height: calc(var(--ec-lane-h) - 3px);
+        box-shadow: none;
+    }
+    .ec-day-dots {
+        display: flex;
+        /* 여러날 띠 레인 영역 아래로 점을 내려 겹침 방지 */
+        margin-top: calc(var(--lanes-m, 0) * var(--ec-lane-h));
+    }
+    .ec-dot--span { display: none; } /* 여러날 행사 점은 띠와 중복 — 숨김 */
     .ec-day-num { font-size: var(--ds-fs-micro); padding: 2px 3px; }
     .ec-day.has-events .ec-day-num { color: var(--ds-ink-bright); }
 

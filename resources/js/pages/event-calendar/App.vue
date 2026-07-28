@@ -42,7 +42,7 @@
 
     <!-- 월 캘린더 — 주 단위 레인에 연속 띠(밴드)로 렌더(구글 캘린더식). 모바일은 점(dot) 유지 -->
     <!-- --lanes 는 월 전체 최대 레인 수(캘린더 스코프) — 주마다 높이가 달라 들쭉날쭉해지지 않게 통일 -->
-    <div class="ec-calendar" :class="{ 'is-loading': loading }" :style="{ '--lanes': maxLanes }">
+    <div class="ec-calendar" :class="{ 'is-loading': loading }" :style="{ '--lanes': maxLanes, '--lanes-m': maxMultiLanes }">
       <div class="ec-dow-row">
         <div class="ec-dow" v-for="(d, i) in ['일', '월', '화', '수', '목', '금', '토']" :key="d"
           :class="{ 'is-sun': i === 0, 'is-sat': i === 6 }">{{ d }}</div>
@@ -56,17 +56,18 @@
         }" @click="selectDay(cell)">
           <span class="ec-day-num" :class="{ 'is-sun': cell.dow === 0, 'is-sat': cell.dow === 6 }">{{ cell.day }}</span>
           <div class="ec-day-dots" v-if="cell.events.length">
+            <!-- 여러날 행사는 모바일에서도 띠가 담당 — 점은 하루짜리만(ec-dot--span 은 모바일 숨김) -->
             <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + (ev.__ticket ? 't' : '') + ev.id" class="ec-dot"
-              :class="ev.__ticket ? 'ec-dot--ticket' : `ec-dot--${ev.kind}`" />
+              :class="[ev.__ticket ? 'ec-dot--ticket' : `ec-dot--${ev.kind}`, { 'ec-dot--span': !ev.__ticket && ev.ends_on && ev.ends_on !== ev.starts_on }]" />
           </div>
         </div>
         <!-- 띠 오버레이: 행사 기간이 이어지면 셀 경계를 넘어 하나의 띠로 -->
         <div class="ec-bands">
           <button v-for="seg in week.segments" :key="seg.key" class="ec-band"
             :class="[seg.ev.__ticket ? 'ec-band--ticket' : `ec-band--${seg.ev.kind}`, {
-              'is-cut-left': seg.cutLeft, 'is-cut-right': seg.cutRight,
+              'is-cut-left': seg.cutLeft, 'is-cut-right': seg.cutRight, 'is-multi': seg.multi,
             }]"
-            :style="{ left: `calc(${(seg.startCol / 7) * 100}% + 2px)`, width: `calc(${(seg.span / 7) * 100}% - 4px)`, top: `calc(26px + ${seg.lane} * var(--ec-lane-h))` }"
+            :style="{ left: `calc(${(seg.startCol / 7) * 100}% + 2px)`, width: `calc(${(seg.span / 7) * 100}% - 4px)`, top: `calc(var(--ec-band-top, 26px) + ${seg.lane} * var(--ec-lane-h))` }"
             :title="seg.ev.__ticket ? `티켓 오픈: ${seg.ev.title}` : seg.ev.title"
             @click.stop="openDetail(seg.ev.id)">
             <span class="ec-band-text">{{ seg.ev.__ticket ? '🎫 오픈 ' + seg.ev.title : seg.ev.title }}</span>
@@ -380,6 +381,7 @@ const weeks = computed(() => {
       segs.push({
         ev, startCol, span: endCol - startCol + 1,
         cutLeft: s < weekStart, cutRight: e > weekEnd,
+        multi: !!(ev.ends_on && ev.ends_on !== ev.starts_on), // 여러날 행사 — 모바일에서도 띠 유지
         key: ev.id + '-' + weekStart,
       });
     }
@@ -387,26 +389,31 @@ const weeks = computed(() => {
       const d = ev.ticket_opens_on;
       if (!d || d < weekStart || d > weekEnd) continue;
       const col = wcells.findIndex((c) => c.dateStr === d);
-      segs.push({ ev: { ...ev, __ticket: true }, startCol: col, span: 1, cutLeft: false, cutRight: false, key: 't' + ev.id + '-' + weekStart });
+      segs.push({ ev: { ...ev, __ticket: true }, startCol: col, span: 1, cutLeft: false, cutRight: false, multi: false, key: 't' + ev.id + '-' + weekStart });
     }
 
-    // 레인 배치(시작 열 → 긴 것 우선) — 같은 레인에서 구간이 겹치면 다음 레인으로
-    segs.sort((a, b) => a.startCol - b.startCol || b.span - a.span);
+    // 레인 배치 — 여러날 띠를 먼저(위 레인 고정: 모바일은 여러날 띠만 그리므로 위쪽이 연속 영역이어야 한다),
+    // 그다음 시작 열 → 긴 것 우선. 같은 레인에서 구간이 겹치면 다음 레인으로.
+    segs.sort((a, b) => (b.multi ? 1 : 0) - (a.multi ? 1 : 0) || a.startCol - b.startCol || b.span - a.span);
     const lanes = [];
+    let multiLanes = 0;
     for (const seg of segs) {
       let lane = 0;
       const overlaps = (o) => !(seg.startCol + seg.span - 1 < o.startCol || seg.startCol > o.startCol + o.span - 1);
       while ((lanes[lane] || []).some(overlaps)) lane++;
       (lanes[lane] ??= []).push(seg);
       seg.lane = lane;
+      if (seg.multi) multiLanes = Math.max(multiLanes, lane + 1);
     }
-    out.push({ cells: wcells, segments: segs, laneCount: Math.max(lanes.length, 1) });
+    out.push({ cells: wcells, segments: segs, laneCount: Math.max(lanes.length, 1), multiLanes });
   }
   return out;
 });
 
 // 모든 주에 공통 적용할 레인 수(월 최대, 최소 2) — 행 높이가 균일한 반듯한 그리드 유지
 const maxLanes = computed(() => Math.max(2, ...weeks.value.map((w) => w.laneCount)));
+// 모바일용: 여러날 띠가 차지하는 레인 수(월 최대 — 하루짜리는 모바일에서 점으로 대체)
+const maxMultiLanes = computed(() => Math.max(0, ...weeks.value.map((w) => w.multiLanes)));
 
 // 날짜 탭(모바일 주 동선): 행사 있는 날을 선택하면 그리드 아래에 그날 행사 리스트 표시
 function selectDay(cell) {
