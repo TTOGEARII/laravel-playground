@@ -12,8 +12,11 @@ class MyconEnrichmentServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** mycon 상세와 같은 형태의 JSON-LD(+og:image) HTML 픽스처. */
-    private function myconHtml(array $ldOverrides = []): string
+    /**
+     * mycon 상세와 같은 형태의 JSON-LD(+og:image) HTML 픽스처.
+     * $announce 로 RSC 의 created_at/tweeted_at(공지일)을 심는다(open_date 오염 판정용).
+     */
+    private function myconHtml(array $ldOverrides = [], array $announce = ['2026-04-01']): string
     {
         $ld = array_replace_recursive([
             '@context' => 'https://schema.org',
@@ -30,8 +33,14 @@ class MyconEnrichmentServiceTest extends TestCase
             ]],
         ], $ldOverrides);
 
+        // RSC(Next.js) 는 JS 문자열이라 따옴표가 \" 로 이스케이프됨 — 실제 마크업과 같게 재현
+        $rsc = collect($announce)
+            ->map(fn ($d) => 'self.__next_f.push([1,"{\"created_at\":\"'.$d.'T02:45:32+00:00\",\"tweeted_at\":\"'.$d.'T20:00:00+00:00\"}"])')
+            ->implode('');
+
         return '<html><head><meta property="og:image" content="https://mycon.me/img/posters/abc"/></head>'
-            .'<body><script type="application/ld+json">'.json_encode($ld, JSON_UNESCAPED_UNICODE).'</script></body></html>';
+            .'<body><script type="application/ld+json">'.json_encode($ld, JSON_UNESCAPED_UNICODE).'</script>'
+            .'<script>'.$rsc.'</script></body></html>';
     }
 
     private function makeConcert(array $attrs = []): Event
@@ -101,5 +110,62 @@ class MyconEnrichmentServiceTest extends TestCase
 
         $this->assertSame(['enriched' => 0, 'checked' => 1, 'failed' => 1], $stats);
         $this->assertNull($event->fresh()->ticket_opens_on);
+    }
+
+    public function test_rejects_open_date_that_equals_announcement_date(): void
+    {
+        // mycon 이 실제 예매일을 몰라 공지/등록한 날(5/20)을 open_date 로 찍은 오염 케이스
+        $this->travelTo('2026-05-01');
+        $event = $this->makeConcert();
+        Http::fake(['mycon.me/*' => Http::response($this->myconHtml(announce: ['2026-05-20']))]);
+
+        app(MyconEnrichmentService::class)->enrich();
+
+        $event->refresh();
+        $this->assertNull($event->ticket_opens_on, '공지일 == open_date → 예매일 거부');
+        $this->assertNull($event->ticket_open_text);
+        $this->assertSame('99,000원~', $event->price_text, '가격 등 다른 정보는 그대로 보강');
+    }
+
+    public function test_clears_previously_polluted_mycon_open_date(): void
+    {
+        // 이미 오염된 예매일(공지일)이 저장돼 있던 행 — 재보강 시 mycon 이 정정(제거)
+        $this->travelTo('2026-05-01');
+        $event = $this->makeConcert(['ticket_opens_on' => '2026-05-20', 'ticket_open_text' => '5월 20일']);
+        Http::fake(['mycon.me/*' => Http::response($this->myconHtml(announce: ['2026-05-20']))]);
+
+        app(MyconEnrichmentService::class)->enrich();
+
+        $event->refresh();
+        $this->assertNull($event->ticket_opens_on, '기존 mycon 오염값 제거');
+        $this->assertNull($event->ticket_open_text);
+    }
+
+    public function test_noon_placeholder_time_shows_date_only(): void
+    {
+        // mycon 시각 미상 기본값(UTC 03:00 = KST 정오)은 "오후 12시" 로 표기하지 않고 날짜만
+        $this->travelTo('2026-05-01');
+        $event = $this->makeConcert();
+        Http::fake(['mycon.me/*' => Http::response($this->myconHtml([
+            'offers' => [['validFrom' => '2026-05-20T03:00:00+00:00', 'url' => 'https://ticket.yes24.com/Perf/1', 'price' => 99000]],
+        ]))]);
+
+        app(MyconEnrichmentService::class)->enrich();
+
+        $event->refresh();
+        $this->assertSame('2026-05-20', $event->ticket_opens_on->toDateString(), '날짜는 신뢰');
+        $this->assertSame('5월 20일 (수)', $event->ticket_open_text, '정오 기본값은 시각 없이 날짜만');
+    }
+
+    public function test_does_not_touch_crosscheck_sourced_open_date(): void
+    {
+        // 크로스체크(x/news)가 채운 예매일은 mycon 이 거부 판정이어도 건드리지 않음
+        $this->travelTo('2026-05-01');
+        $event = $this->makeConcert(['ticket_opens_on' => '2026-05-20', 'extra' => ['mycon_url' => 'https://mycon.me/concert/1463', 'ticket_open_source' => 'news']]);
+        Http::fake(['mycon.me/*' => Http::response($this->myconHtml(announce: ['2026-05-20']))]);
+
+        app(MyconEnrichmentService::class)->enrich();
+
+        $this->assertSame('2026-05-20', $event->fresh()->ticket_opens_on->toDateString(), 'news 소유값은 보존');
     }
 }

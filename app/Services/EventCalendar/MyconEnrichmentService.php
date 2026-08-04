@@ -61,7 +61,7 @@ class MyconEnrichmentService
     /**
      * mycon 상세를 파싱해 정규화된 배열로 돌려준다(실패 시 null).
      *
-     * @return array{ticket_opens_at: ?Carbon, price_min: ?string, ticket_url: ?string, venue: ?string, poster: ?string}|null
+     * @return array{ticket_opens_at: ?Carbon, time_known: bool, price_min: ?string, ticket_url: ?string, venue: ?string, poster: ?string}|null
      */
     public function fetchDetail(string $url): ?array
     {
@@ -98,12 +98,24 @@ class MyconEnrichmentService
             }
         }
 
+        // 데이터 품질 보정 — mycon 은 실제 예매일시를 모르면 (a) 등록/공지한 날짜를 그대로 open_date 로
+        // 찍거나 (b) 시각을 정오(KST 12:00 = UTC 03:00)로 채운다. 두 경우를 걸러 잘못된 예매일 방지.
+        $timeKnown = true;
+        if ($opensAt !== null) {
+            if (in_array($opensAt->toDateString(), $this->announcementDates($html), true)) {
+                $opensAt = null; // 공지/등록일 == open_date → mycon 이 실제 예매일을 모른다 → 신뢰 불가
+            } elseif ($opensAt->format('H:i:s') === '12:00:00') {
+                $timeKnown = false; // 시각 미상 기본값(정오) — 날짜만 신뢰하고 시각은 표기하지 않음
+            }
+        }
+
         $price = is_array($offer) && is_numeric($offer['price'] ?? null)
             ? number_format((float) $offer['price']).'원~'
             : null;
 
         return [
             'ticket_opens_at' => $opensAt,
+            'time_known' => $timeKnown,
             'price_min' => $price,
             'ticket_url' => is_array($offer) ? ($offer['url'] ?? null) : null,
             'venue' => data_get($ld, 'location.name'),
@@ -111,21 +123,45 @@ class MyconEnrichmentService
         ];
     }
 
+    /**
+     * mycon 이 이 공연을 등록·트윗한 날짜(RSC created_at/tweeted_at) 집합. open_date 가 여기 들어가면
+     * "예매일을 몰라 공지일을 찍은 것"으로 본다. 마크업 변경으로 못 찾으면 빈 배열(거르지 않음).
+     *
+     * @return array<int, string> Y-m-d 목록
+     */
+    private function announcementDates(string $html): array
+    {
+        // RSC 는 JS 문자열이라 따옴표가 \" 로 이스케이프됨 — 키와 날짜 사이 구분자를 느슨하게 매칭
+        if (! preg_match_all('/(?:created_at|tweeted_at)[\\\\":\s]+(\d{4}-\d{2}-\d{2})/', $html, $m)) {
+            return [];
+        }
+
+        return array_values(array_unique($m[1]));
+    }
+
     /** 파싱 결과를 이벤트 갱신 배열로(빈 값으로 기존 값을 지우지 않는다). */
     private function buildUpdates(Event $event, array $parsed): array
     {
         $updates = [];
-        if ($parsed['ticket_opens_at'] !== null) {
+        $extra = (array) $event->extra;
+        // 예매일 소유권: 미표기/mycon 은 mycon 이 관리, x/news 는 크로스체크가 채운 값이라 건드리지 않음
+        $mysconOwns = in_array($extra['ticket_open_source'] ?? 'mycon', ['mycon'], true);
+
+        if ($parsed['ticket_opens_at'] !== null && $mysconOwns) {
             $opens = $parsed['ticket_opens_at'];
-            $newDate = $opens->toDateString();
-            if ($event->ticket_opens_on?->toDateString() !== $newDate) {
-                $updates['ticket_opens_on'] = $newDate;
-            }
-            $text = $this->formatOpenText($opens);
-            if ($event->ticket_open_text !== $text) {
-                $updates['ticket_open_text'] = $text;
-            }
+            $updates['ticket_opens_on'] = $opens->toDateString();
+            $updates['ticket_open_text'] = $this->formatOpenText($opens, $parsed['time_known']);
+            $extra['ticket_open_source'] = 'mycon';
+        } elseif ($parsed['ticket_opens_at'] === null && $mysconOwns && $event->ticket_opens_on !== null) {
+            // mycon 이 신뢰 불가로 판단(공지일=예매일 등) → 기존 mycon 값 제거(크로스체크가 채우도록)
+            $updates['ticket_opens_on'] = null;
+            $updates['ticket_open_text'] = null;
+            unset($extra['ticket_open_source']);
         }
+        if ($extra !== (array) $event->extra) {
+            $updates['extra'] = $extra;
+        }
+
         if ($parsed['price_min'] !== null && $event->price_text === null) {
             $updates['price_text'] = $parsed['price_min'];
         }
@@ -145,16 +181,20 @@ class MyconEnrichmentService
         return $updates;
     }
 
-    /** "8월 8일 (토) 오후 8시" — 기존 festivallife 원문 표기와 같은 톤의 KST 문구. */
-    private function formatOpenText(Carbon $opens): string
+    /** "8월 8일 (토) 오후 8시" — KST 문구. 시각 미상($timeKnown=false)이면 날짜만 표기. */
+    private function formatOpenText(Carbon $opens, bool $timeKnown = true): string
     {
         $dow = ['일', '월', '화', '수', '목', '금', '토'][$opens->dayOfWeek];
+        $date = "{$opens->month}월 {$opens->day}일 ({$dow})";
+        if (! $timeKnown) {
+            return $date;
+        }
         $hour = $opens->hour;
         $ampm = $hour < 12 ? '오전' : '오후';
         $h12 = $hour % 12 === 0 ? 12 : $hour % 12;
         $minute = $opens->minute > 0 ? " {$opens->minute}분" : '';
 
-        return "{$opens->month}월 {$opens->day}일 ({$dow}) {$ampm} {$h12}시{$minute}";
+        return "{$date} {$ampm} {$h12}시{$minute}";
     }
 
     private function platformLabel(string $url): string
