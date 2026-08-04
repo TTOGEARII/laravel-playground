@@ -7,6 +7,7 @@ use App\Services\SubcultureGameInfo\CodeSyncService;
 use App\Services\SubcultureGameInfo\Raids\CrawlerScriptRunner;
 use App\Services\SubcultureGameInfo\Raids\EliminationPartyService;
 use App\Services\SubcultureGameInfo\Raids\RaidSyncService;
+use App\Services\SubcultureGameInfo\Raids\TotalAssaultPartyService;
 use App\Services\SubcultureGameInfo\Raids\TrickcalLoungeRaidService;
 use Illuminate\Console\Command;
 
@@ -17,7 +18,7 @@ class CrawlRaidsCommand extends Command
 
     protected $description = '서드파티 사이트에서 게임별 레이드 일정·추천 편성을 Playwright 사이드카로 크롤·동기화';
 
-    public function handle(CodeSyncService $codeSync, CrawlerScriptRunner $runner, RaidSyncService $sync, EliminationPartyService $elimination, TrickcalLoungeRaidService $trickcalLounge): int
+    public function handle(CodeSyncService $codeSync, CrawlerScriptRunner $runner, RaidSyncService $sync, EliminationPartyService $elimination, TotalAssaultPartyService $totalAssault, TrickcalLoungeRaidService $trickcalLounge): int
     {
         $codeSync->ensureGames();
 
@@ -57,6 +58,12 @@ class CrawlRaidsCommand extends Command
                 $n = $elimination->sync($game);
                 if ($n > 0) {
                     $this->line("  ↳ 대결전 {$n}건 — 장갑 타입별 편성으로 보정");
+                }
+                // 총력전: 크롤러의 /raids 리다이렉트가 공백기·랭킹 지연에 취약해 회차를 놓치므로
+                // baql 랭킹으로 시즌 단위 직접 조회해 편성을 채운다(진행 중 갱신 + 최근 회차 백필)
+                $t = $totalAssault->sync($game);
+                if ($t > 0) {
+                    $this->line("  ↳ 총력전 {$t}건 — 랭킹 편성 보강");
                 }
             }
 
