@@ -181,6 +181,14 @@ Schedule::command('subculture:extract-substitutes')
     ->withoutOverlapping(30)
     ->runInBackground();
 
+// 랭킹 소스가 없는 레이드(블아 제약해제결전)의 추천 편성을 공략글에서 추출(Gemini, 하루 1회).
+// 랭킹 편성이 있는 총력전·대결전은 건너뛰므로 대상은 소수(제약해제결전 진행/최근 회차).
+Schedule::command('subculture:extract-parties')
+    ->dailyAt('09:45')
+    ->timezone(config('app.timezone', 'Asia/Seoul'))
+    ->withoutOverlapping(30)
+    ->runInBackground();
+
 // database 캐시 드라이버는 만료 행을 스스로 지우지 않는다 — 유저별 캐시 키(실전 편성 등)가
 // 쌓여 cache 테이블이 계속 부풀지 않도록 만료분을 매일 정리한다.
 Schedule::call(fn () => \Illuminate\Support\Facades\DB::table('cache')
