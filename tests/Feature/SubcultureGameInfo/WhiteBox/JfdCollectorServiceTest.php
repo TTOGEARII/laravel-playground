@@ -5,13 +5,16 @@ namespace Tests\Feature\SubcultureGameInfo\WhiteBox;
 use App\Models\SubcultureGameInfo\Character;
 use App\Models\SubcultureGameInfo\Game;
 use App\Models\SubcultureGameInfo\Raid;
+use App\Services\SubcultureGameInfo\Raids\CrawlerScriptRunner;
 use App\Services\SubcultureGameInfo\Raids\JfdCollectorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Mockery;
 use Tests\TestCase;
 
 /**
  * 화이트박스: 종합전술시험 수집 — 모음글 메타 파싱·파티 표 파싱·애칭 해석(Gemini 없음).
+ * 아카 봇차단 시 쓰는 브라우저 폴백(Playwright)은 Mockery 로 대체(실 프로세스 미기동).
  */
 class JfdCollectorServiceTest extends TestCase
 {
@@ -28,6 +31,10 @@ class JfdCollectorServiceTest extends TestCase
             'subculture-game-info.raids.jfd.top_entries' => 4,
             'subculture-game-info.raids.jfd.aliases' => ['수기사' => '키사키(수영복)'],
         ]);
+        // 브라우저 폴백은 평문 HTTP 성공 시 호출되지 않지만, 실패 케이스에서 실 프로세스가 뜨지 않게 null 반환 목킹
+        $browser = Mockery::mock(CrawlerScriptRunner::class);
+        $browser->shouldReceive('fetchHtml')->andReturn(null);
+        $this->app->instance(CrawlerScriptRunner::class, $browser);
         $this->game = Game::create(['slug' => 'bluearchive', 'name' => '블루 아카이브', 'icon' => '💙', 'sort' => 1, 'active_flg' => true]);
         foreach ([['Toki', '토키'], ['HinaD', '히나(드레스)'], ['KisakiS', '키사키(수영복)'], ['Kisaki', '키사키'], ['Aru', '아루'], ['Shun', '슌']] as [$key, $name]) {
             Character::create([

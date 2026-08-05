@@ -48,7 +48,19 @@ class JfdCollectorService
         '알' => '아르바이트',
     ];
 
-    public function __construct(private RaidSyncService $sync) {}
+    public function __construct(
+        private RaidSyncService $sync,
+        private CrawlerScriptRunner $browser,
+    ) {}
+
+    /**
+     * 아카 페이지 HTML — 평문 HTTP 를 먼저 쓰고, 실패(아카 봇차단 403)하면 Playwright 사이드카로
+     * 렌더해 재시도한다. 아카는 본문이 `.article-content` 에 있어 이를 대기 조건으로 준다.
+     */
+    private function fetchArcaHtml(string $url): ?string
+    {
+        return $this->getHtml($url) ?? $this->browser->fetchHtml($url, '.article-content');
+    }
 
     /**
      * @param  bool  $all  true 면 이미 저장된 차수도 다시 수집(백필/보정)
@@ -59,7 +71,7 @@ class JfdCollectorService
         $cfg = (array) config('subculture-game-info.raids.jfd', []);
         $stats = ['sessions' => 0, 'raids' => 0, 'parties' => 0, 'members' => 0, 'missing_members' => 0, 'unresolved' => []];
 
-        $archiveHtml = $this->getHtml($cfg['archive_url']);
+        $archiveHtml = $this->fetchArcaHtml($cfg['archive_url']);
         if ($archiveHtml === null) {
             Log::warning('[SGI-JFD] 모음글 요청 실패 — 기존 데이터 보존');
 
@@ -94,7 +106,7 @@ class JfdCollectorService
             $parties = [];
             if ($session['post_url'] !== null) {
                 usleep($delayMicros);
-                $postHtml = $this->getHtml($session['post_url']);
+                $postHtml = $this->fetchArcaHtml($session['post_url']);
                 if ($postHtml !== null) {
                     $parties = $this->parseParties($postHtml, $session['post_url'], $resolver, (int) ($cfg['top_entries'] ?? 6), $stats['unresolved']);
                 }
