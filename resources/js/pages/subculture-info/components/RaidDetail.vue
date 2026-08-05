@@ -138,8 +138,15 @@ const props = defineProps({
 
 defineEmits(['back', 'set-substitute', 'clear-substitute']);
 
-// 실전 편성(원본 랭킹 프록시)이 있는 게임 = 블아·니케
-const hasAltParties = computed(() => ['bluearchive', 'nikke'].includes(props.raid.game?.slug));
+// 미보유 제외 실전 편성 = 랭킹 소스가 있는 레이드만.
+// 블아는 총력전·대결전만 baql 랭킹이 있고(종합전술시험=아카 커뮤니티·제약해제결전=KR전용 랭킹부재),
+// 니케는 솔로 레이드가 letsdoro 랭킹을 쓴다. 랭킹이 없는 종류는 내 풀 조합이 항상 비어 무의미하므로 탭 자체를 숨긴다.
+const RANKED_BA_TYPES = ['총력전', '대결전'];
+const hasAltParties = computed(() => {
+  const slug = props.raid.game?.slug;
+  if (slug === 'bluearchive') return RANKED_BA_TYPES.includes(props.raid.raid_type);
+  return slug === 'nikke';
+});
 
 // 스칼라 태그만 pill 로(중첩 객체 tags.mollulog 는 제외 — JSON 노출 방지)
 const scalarTags = computed(() => {
