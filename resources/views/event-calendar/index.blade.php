@@ -21,6 +21,13 @@
 @endsection
 
 @section('content')
+    <section class="shell phero">
+        <a href="/" class="back">← 메인으로</a>
+        <span class="tag">🗓️ EVENT CALENDAR</span>
+        <h1>행사 캘린더</h1>
+        <p>J-pop 내한공연과 코믹월드·일러스타페스·AGF 일정을 한눈에 확인하세요.</p>
+    </section>
+
     {{-- data-event-id: 상세 딥링크(/event-calendar/{id}) 진입 시 해당 행사 상세를 바로 연다 --}}
     {{-- data-vapid: 웹푸시 공개키(미설정이면 알림 설정 버튼 숨김) --}}
     <div id="event-calendar-app" data-event-id="{{ $eventId ?? '' }}"

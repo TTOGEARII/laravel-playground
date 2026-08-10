@@ -123,7 +123,7 @@ const submit = async () => {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e5e7eb;
+  background: var(--line);
 }
 
 .auth-social {

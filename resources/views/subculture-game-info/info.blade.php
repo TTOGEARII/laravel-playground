@@ -21,6 +21,13 @@
 @endsection
 
 @section('content')
+    <section class="shell phero">
+        <a href="{{ route('subculture-game-info.index') }}" class="back">← 게임 허브로</a>
+        <span class="tag">🔎 서브컬쳐 게임</span>
+        <h1>정보검색</h1>
+        <p>블루아카·원신·스타레일·젠레스·니케·트릭컬·브더2 — 진행중 컨텐츠·레이드·미래시·캐릭터정보·공략을 게임별로.</p>
+    </section>
+
     <div id="subculture-info-app"
          data-games='@json($games)'
          data-logged-in="{{ Auth::check() ? 1 : 0 }}"></div>

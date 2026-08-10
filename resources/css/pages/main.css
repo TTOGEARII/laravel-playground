@@ -349,3 +349,42 @@
                 padding: 24px;
             }
         }
+/* ============================================================================
+ * 홈(랜딩) — KT 디자인. 히어로 + 프로젝트 카드 + 소개.
+ * ========================================================================== */
+.hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: var(--s6); align-items: center; }
+.hero h1 { font-family: var(--disp); font-size: clamp(46px, 6.6vw, 78px); line-height: 1.18; color: var(--hd); text-shadow: 0 10px 30px var(--glow-a); }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero p { font-size: 18px; color: var(--lead); max-width: 33ch; text-wrap: pretty; }
+.hero .tag { align-self: flex-start; }
+.stats { display: flex; gap: var(--s5); padding-top: var(--s3); border-top: 1px solid var(--line); }
+.stats b { font-family: var(--disp); font-size: 28px; font-weight: 400; display: block; line-height: 1.2; }
+.stats div:nth-child(1) b { color: var(--accent); }
+.stats div:nth-child(2) b { color: var(--accent2); }
+.stats div:nth-child(3) b { color: var(--hd); }
+.stats small { font-family: var(--label); font-weight: 600; font-size: 11px; letter-spacing: .14em; color: var(--tx3); }
+.pcard-wrap { position: relative; animation: float 8s ease-in-out infinite; }
+.pcard-wrap::before { content: ''; position: absolute; inset: -18px; border-radius: calc(var(--r-l) + 14px); background: linear-gradient(140deg, var(--accent), var(--accent3), var(--accent2)); opacity: .22; filter: blur(18px); }
+.pcard { position: relative; background: var(--ink2); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow-soft); padding: var(--pad-card); display: flex; flex-direction: column; gap: var(--s3); }
+.pcard-top { display: flex; align-items: center; justify-content: space-between; }
+.pcard-top span:first-child { font-family: var(--label); font-weight: 600; font-size: 11px; letter-spacing: .16em; color: var(--accent2); }
+.pcard-top span:last-child { font-size: 11px; color: var(--tx3); animation: breathe 3.6s ease-in-out infinite; }
+.pname { font-family: var(--disp); font-size: 27px; color: var(--hd); }
+.psub { font-size: 13px; color: var(--accent2); }
+.home-head h2 { font-size: clamp(30px, 4vw, 42px); }
+.hero + .section .card { min-height: 252px; }
+.card.wide { grid-column: span 2; min-height: 276px; }
+.about { background: var(--ink2); border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow-soft); padding: var(--s6); display: grid; grid-template-columns: 200px 1fr; gap: var(--s6); align-items: start; position: relative; overflow: hidden; }
+.about::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: linear-gradient(90deg, var(--accent), var(--accent3) 55%, var(--accent2)); opacity: .8; }
+.about h2 { font-family: var(--disp); font-size: clamp(30px, 4vw, 42px); color: var(--hd); line-height: 1.35; }
+.about p { font-size: 16px; line-height: 1.95; color: var(--lead); text-wrap: pretty; }
+.about strong { color: var(--hd2); font-weight: 700; }
+.quote { padding: var(--s3) var(--s4); border-radius: var(--r-m); background: var(--quote-bg); font-family: var(--disp); font-size: 20px; color: var(--hd2); line-height: 1.6; }
+.owner { font-family: var(--label); font-weight: 600; font-size: 11px; letter-spacing: .16em; color: var(--accent); text-align: center; width: 200px; }
+.push-test { display: flex; align-items: center; gap: 12px; justify-content: center; padding-bottom: var(--s6); }
+@media (max-width: 900px) {
+  .hero, .about { grid-template-columns: 1fr; gap: var(--s5); }
+  .about { padding: var(--s4); }
+  .card.wide { grid-column: span 1; }
+  .stats { gap: var(--s4); }
+}

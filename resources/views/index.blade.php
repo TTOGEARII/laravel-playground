@@ -2,123 +2,130 @@
 
 @section('title', '돈없음 가시있음 · Kanenashi Togeari')
 
-@section('header')
-    <div class="header-row">
-        <div class="header-brand">
-            <span class="header-badge">🚀 Toy Projects</span>
-            <h1>돈없음 가시있음</h1>
-            <p>덕후 개발자의 은밀한 취미공간</p>
-        </div>
-        <div class="header-actions">
-            @guest
-                <a href="{{ route('login') }}" class="header-login-btn">로그인</a>
-            @else
-                <a href="{{ route('user.index') }}" class="header-user-link">{{ Auth::user()->name }}님 · 마이페이지</a>
-            @endguest
+@section('content')
+    {{-- 홈 전용 티커(흐르는 띠) --}}
+    <div class="ticker">
+        <div class="ticker-track">
+            <span>지갑 잔고 <b>2D</b></span><span>가챠 천장 <b>돌파</b></span><span>한정 굿즈 <b>"이게 진짜 마지막" ×12</b></span><span>인생 목표 <b>돈 많은 백수</b></span><span>현재 상태 <b>돈 없는 직장인</b></span>
+            <span>지갑 잔고 <b>2D</b></span><span>가챠 천장 <b>돌파</b></span><span>한정 굿즈 <b>"이게 진짜 마지막" ×12</b></span><span>인생 목표 <b>돈 많은 백수</b></span><span>현재 상태 <b>돈 없는 직장인</b></span>
         </div>
     </div>
-@endsection
 
-@section('content')
-    <section class="projects-grid">
-        <!-- 프로젝트 1 -->
-        <article class="project-card accent-indigo">
-            <div class="card-icon">🛒</div>
-            <h2 class="card-title">Otaku Shop</h2>
-            <p class="card-description">
-                오타쿠 굿즈 통합검색
-            </p>
-            <a href="{{ route('otaku-shop.index') }}" class="card-button">
-                프로젝트 보기
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-            </a>
-        </article>
-
-        <!-- 프로젝트 2 -->
-        <article class="project-card accent-violet">
-            <div class="card-icon">🤖</div>
-            <h2 class="card-title">챗봇</h2>
-            <p class="card-description">
-                일론머스크형 AI와이프좀 만들어줘
-            </p>
-            <a href="{{ route('my-wife-bot.characters') }}" class="card-button">
-                프로젝트 보기
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-            </a>
-        </article>
-
-        <!-- 프로젝트 3 -->
-        <article class="project-card accent-pink">
-            <div class="card-icon">🎮</div>
-            <h2 class="card-title">Mini Game</h2>
-            <p class="card-description">
-                어머니는 웹개발자가 싫다고 하셨어
-            </p>
-            <a href="{{ route('mini-game.index') }}" class="card-button">
-                프로젝트 보기
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-            </a>
-        </article>
-
-        <!-- 프로젝트 4 · 서브컬쳐 게임 허브 (리딤코드 + 정보검색 + AI 통합) -->
-        <article class="project-card accent-teal">
-            <div class="card-icon">🎮</div>
-            <h2 class="card-title">서브컬쳐 게임 허브</h2>
-            <p class="card-description">
-                리딤코드 · 미래시 · 캐릭터정보 · 레이드 · 🤖 AI 물어보기
-            </p>
-            <a href="{{ route('subculture-game-info.index') }}" class="card-button">
-                프로젝트 보기
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-            </a>
-        </article>
-
-        <!-- 프로젝트 5 · 행사 캘린더 (J-pop 내한공연 + 서브컬쳐 오프라인 행사) -->
-        <article class="project-card accent-pink">
-            <div class="card-icon">🗓️</div>
-            <h2 class="card-title">행사 캘린더</h2>
-            <p class="card-description">
-                J-pop 내한공연 · 코믹월드 · 일러스타페스 · AGF 일정을 한눈에
-            </p>
-            <a href="{{ route('event-calendar.index') }}" class="card-button">
-                프로젝트 보기
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-            </a>
-        </article>
+    {{-- 히어로 --}}
+    <section id="top" class="shell section hero">
+        <div class="stack g3">
+            <span class="tag">TOY PROJECTS ★ 2026</span>
+            <h1>돈없음<br><em>가시있음</em></h1>
+            <p>덕후 개발자의 은밀한 취미공간.<br>아무도 안 시켰는데 혼자 진심인 것들만 모아뒀습니다.</p>
+            <div class="row" style="margin-top:var(--s1)">
+                <a class="btn btn-fill" href="#projects">프로젝트 보기</a>
+                @guest
+                    <a class="btn btn-ghost" href="{{ route('login') }}">로그인</a>
+                @else
+                    <a class="btn btn-ghost" href="{{ route('user.index') }}">마이페이지</a>
+                @endguest
+            </div>
+            <div class="stats" style="margin-top:var(--s3)">
+                <div><b>05</b><small>PROJECTS</small></div>
+                <div><b>2D</b><small>최애 &amp; 잔고</small></div>
+                <div><b>∞</b><small>야근 &amp; 덕질</small></div>
+            </div>
+        </div>
+        <div class="pcard-wrap">
+            <div class="pcard">
+                <div class="pcard-top"><span>PLAYER PROFILE</span><span>● ONLINE</span></div>
+                <div class="portrait" style="height:200px"><img src="/images/131544476_p0.jpg" alt="TTOGEARII 프로필 캐릭터" loading="eager"></div>
+                <div class="stack g1">
+                    <span class="pname">TTOGEARII</span>
+                    <span class="psub">오타쿠 개발자 · Lv.???</span>
+                </div>
+                <div class="chips">
+                    <span class="chip pink">#가챠천장돌파</span>
+                    <span class="chip cyan">#통장천장미달</span>
+                    <span class="chip">#돈많은백수희망</span>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <section class="projects-grid" style="margin-top: 40px;">
-        <article class="project-card accent-teal">
-            <div class="card-icon profile-avatar">
-                <img src="/images/131544476_p0.jpg" alt="개발자 프로필 이미지">
+    {{-- 프로젝트 목록 --}}
+    <section id="projects" class="shell section">
+        <div class="sec-head home-head">
+            <div class="stack g1">
+                <span class="eyebrow">PROJECT LIST</span>
+                <h2>혼자 진심인 것들</h2>
             </div>
-            <h2 class="card-title">TTOGEARII</h2>
-            <p class="card-description">
-                낮에는 코드를 짜고 밤에는 최애에게 영업당하는 <strong>오타쿠 개발자</strong>입니다.<br>
-                사이트 이름 그대로 <strong>돈은 없고(金無し) 고집(가시)만 있는</strong> 인간이라, 인생 목표는 단 하나 <strong>"돈 많은 백수"</strong>.
-                근데 자꾸 "돈 없는 직장인"에서 세이브 포인트가 안 넘어가는 게 함정입니다.<br>
-                가챠 천장은 잘만 뚫는데 통장 천장은 평생 못 뚫고, 한정 굿즈 앞에선 "이게 진짜 마지막"을 벌써 12번째 외치는 중.
-                좌우명은 <strong>"내 최애는 2D, 내 잔고도 2D(이미 평면)"</strong> 입니다.<br>
-                좋아하는 게임과 캐릭터를 핑계 삼아 굿즈 가격비교·AI 와이프 챗봇·미니게임·리딤코드 수집기처럼
-                <strong>아무도 안 시켰는데 혼자 진심</strong>인 토이 프로젝트를 만들며 덕질과 야근 사이를 표류합니다.<br>
-                오늘도 적당히 일하고 열심히 과금하며, 언젠가의 유유자적 백수 라이프를 기도메타로 빕니다. 🙏
-            </p>
-        </article>
+            <span>전부 무료 · 전부 취미</span>
+        </div>
+        <div class="grid">
+            <a class="card pink wide" href="{{ route('otaku-shop.index') }}">
+                <span class="card-no">01</span>
+                <span class="card-ico">🛒</span>
+                <div class="card-body">
+                    <h3>Otaku Shop</h3>
+                    <p>오타쿠 굿즈 통합검색 — 최저가 찾으러 왔다가 결국 다 사서 나가는 곳</p>
+                    <span class="enter">ENTER →</span>
+                </div>
+            </a>
+            <a class="card" href="{{ route('my-wife-bot.characters') }}">
+                <span class="card-no">02</span>
+                <span class="card-ico">🤖</span>
+                <div class="card-body">
+                    <h3>챗봇</h3>
+                    <p>일론머스크형 AI와이프좀 만들어줘</p>
+                    <span class="enter">ENTER →</span>
+                </div>
+            </a>
+            <a class="card" href="{{ route('mini-game.index') }}">
+                <span class="card-no">03</span>
+                <span class="card-ico">🎮</span>
+                <div class="card-body">
+                    <h3>Mini Game</h3>
+                    <p>어머니는 웹개발자가 싫다고 하셨어</p>
+                    <span class="enter">ENTER →</span>
+                </div>
+            </a>
+            <a class="card pink" href="{{ route('subculture-game-info.index') }}">
+                <span class="card-no">04</span>
+                <span class="card-ico">🕹️</span>
+                <div class="card-body">
+                    <h3>서브컬쳐 게임 허브</h3>
+                    <p>리딤코드 · 미래시 · 캐릭터정보 · 레이드 · AI 물어보기</p>
+                    <span class="enter">ENTER →</span>
+                </div>
+            </a>
+            <a class="card cyan" href="{{ route('event-calendar.index') }}">
+                <span class="card-no">05</span>
+                <span class="card-ico">🗓️</span>
+                <div class="card-body">
+                    <h3>행사 캘린더</h3>
+                    <p>J-pop 내한 · 코믹월드 · 일러스타페스 · AGF 일정을 한눈에</p>
+                    <span class="enter">ENTER →</span>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    {{-- 소개 --}}
+    <section id="about" class="shell section">
+        <div class="about">
+            <div class="stack g3">
+                <div class="portrait" style="width:200px;aspect-ratio:3/4"><img src="/images/131544476_p0.jpg" alt="TTOGEARII 프로필 캐릭터" loading="eager"></div>
+                <span class="owner">SITE OWNER / 金無し棘有り</span>
+            </div>
+            <div class="stack g3">
+                <span class="eyebrow">ABOUT ME</span>
+                <h2>낮에는 코드,<br>밤에는 영업당하는 중</h2>
+                <p>사이트 이름 그대로 <strong>돈은 없고(金無し) 고집(가시)만 있는</strong> 인간이라, 인생 목표는 단 하나 <strong>"돈 많은 백수"</strong>. 근데 자꾸 "돈 없는 직장인"에서 세이브 포인트가 안 넘어가는 게 함정입니다.</p>
+                <p>가챠 천장은 잘만 뚫는데 통장 천장은 평생 못 뚫고, 한정 굿즈 앞에선 "이게 진짜 마지막"을 벌써 12번째 외치는 중. 좋아하는 게임과 캐릭터를 핑계 삼아 굿즈 가격비교 · AI 와이프 챗봇 · 미니게임 · 리딤코드 수집기처럼 아무도 안 시켰는데 혼자 진심인 토이 프로젝트를 만들며 덕질과 야근 사이를 표류합니다.</p>
+                <blockquote class="quote">"내 최애는 2D, 내 잔고도 2D (이미 평면)"</blockquote>
+            </div>
+        </div>
     </section>
 
     {{-- 푸시 알림 테스트 — 누른 브라우저(기기)에만 발송. VAPID 설정 + 푸시 지원 브라우저에서만 노출 --}}
     @if (filled(config('services.webpush.public_key')))
-        <section class="push-test">
+        <section class="push-test shell">
             <button type="button" id="push-test-btn" class="push-test-btn" hidden
                     data-vapid="{{ config('services.webpush.public_key') }}">
                 🔔 푸시 알림 테스트

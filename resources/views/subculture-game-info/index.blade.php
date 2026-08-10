@@ -20,7 +20,14 @@
 @endsection
 
 @section('content')
-    <div class="sgi-page">
+    <section class="shell phero">
+        <a href="{{ route('subculture-game-info.index') }}" class="back">← 게임 허브로</a>
+        <span class="tag">🎁 서브컬쳐 게임</span>
+        <h1>리딤코드 모아보기</h1>
+        <p>원신·스타레일·젠레스·블루아카·명조·트릭컬의 리딤/쿠폰 코드를 한 곳에서. <a href="{{ route('subculture-game-info.info') }}">🔎 정보검색(미래시·캐릭터정보·레이드) →</a></p>
+    </section>
+
+    <div class="sgi-page shell">
         {{-- 게임 필터: 버튼(탭) 다중 선택. 각 버튼은 해당 게임을 선택 목록에 넣고 빼는 링크(토글) --}}
         <nav class="sgi-tabs">
             <a href="{{ route('subculture-game-info.codes') }}"

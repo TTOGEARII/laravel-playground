@@ -17,6 +17,14 @@
 @endsection
 
 @section('content')
+    <section class="shell phero">
+        <a href="/" class="back">← 메인으로</a>
+        <span class="tag">🎮 게임 플레이랜드</span>
+        <h1>Mini Game</h1>
+        <p>재미있는 미니게임들을 플레이해보세요!</p>
+    </section>
+
+    <div class="shell section" style="padding-top:0">
     <div class="mg-home-toolbar">
         <button type="button" id="mg-home-rank-open" class="mg-home-rank-open">🏆 전체 랭킹 보기</button>
     </div>
@@ -56,6 +64,8 @@
         </article>
         @endforeach
     </section>
+
+    </div>{{-- /.shell.section --}}
 
     {{-- 전체 랭킹 팝업 (랭킹 대상 게임 전체) --}}
     <div id="mg-home-rank" class="mg-home-rank" hidden data-url="{{ route('mini-game.rankings') }}">

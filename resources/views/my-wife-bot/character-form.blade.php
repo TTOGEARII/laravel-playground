@@ -5,7 +5,7 @@
 @section('body-class', 'my-wife-bot-form-page')
 
 @section('content')
-    <div class="my-wife-bot-form-wrapper">
+    <div class="my-wife-bot-form-wrapper shell" style="padding-top:var(--s5)">
         <header class="my-wife-bot-header-bar">
             <a href="{{ route('my-wife-bot.characters') }}" class="back-button">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
