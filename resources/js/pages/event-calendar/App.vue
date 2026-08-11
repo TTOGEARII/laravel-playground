@@ -154,7 +154,7 @@
             </dl>
             <div class="ec-detail-actions">
               <a v-for="link in detail.ticket_links || []" :key="link.url" class="ec-btn ec-btn--primary"
-                :href="link.url" target="_blank" rel="noopener">{{ link.label || '티켓 구매' }}</a>
+                :href="link.url" :title="link.label || '예매처'" target="_blank" rel="noopener">예매하기</a>
               <a v-if="detail.detail_url" class="ec-btn" :href="detail.detail_url" target="_blank" rel="noopener">원문 보기</a>
               <button class="ec-btn" @click="copyLink">링크 복사</button>
             </div>

@@ -446,17 +446,20 @@
     padding-top: var(--ds-space-xl);
 }
 .ec-btn {
-    display: inline-block;
-    padding: 11px 24px;
-    border-radius: var(--ds-round-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: var(--r-s); /* pill → 둥근 사각형 */
     border: 1px solid var(--ds-border);
     background: transparent;
     color: var(--ds-ink);
-    font-size: var(--ds-fs-xs);
+    font-size: 13px; /* 글씨 크기 축소 */
     font-weight: var(--ds-fw-bold);
-    letter-spacing: var(--ds-btn-tracking);
-    text-transform: uppercase;
+    letter-spacing: 0; /* 넓은 자간 제거(한글 버튼 깨짐 방지) */
     text-decoration: none;
+    white-space: nowrap;
     cursor: pointer;
     transition: all 0.15s ease;
 }
