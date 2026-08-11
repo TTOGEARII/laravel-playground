@@ -2,6 +2,8 @@
 
 @section('title', $character['name'] . ' - 대화 | MyWifeBot')
 
+{{-- 몰입형 풀스크린 채팅 — 전역 헤더·푸터·탭바 제외(자체 상단바로 대체) --}}
+@section('no-chrome', 'true')
 @section('body-class', 'my-wife-bot-chat-page')
 
 @section('vite_extra')
@@ -17,25 +19,85 @@
 @endphp
 
 @section('content')
-    <section class="shell">
-        <div class="phero">
-            <a class="back" href="{{ route('my-wife-bot.characters') }}">← 캐릭터 목록</a>
-            <span class="tag">🤖 MY WIFE BOT</span>
-            <h1>{{ $nm }}{{ $josa }} 대화</h1>
-            <p>{{ $character['description'] ?? '' }}</p>
+    <div class="mw-chat-wrap">
+        {{-- 상단바: 캐릭터 목록으로 · 제목 · 대화 초기화 --}}
+        <div class="mw-chat-topbar">
+            <a class="mw-chat-icon" href="{{ route('my-wife-bot.characters') }}" aria-label="캐릭터 목록" title="캐릭터 목록">←</a>
+            <span class="mw-chat-topttl">{{ $nm }}{{ $josa }} 대화</span>
+            <button class="mw-chat-icon" type="button" id="mw-reset-chat" data-cid="{{ $character['id'] }}" aria-label="대화 초기화" title="대화 초기화">⟲</button>
         </div>
-    </section>
 
-    <section class="shell stack g3" style="padding-bottom:var(--s6)">
-        <div id="my-wife-bot-chat-app"></div>
+        {{-- Vue(.chat)가 이 안을 꽉 채운다 --}}
+        <div id="my-wife-bot-chat-app" class="mw-chat-mount"></div>
         <script type="application/json" id="my-wife-bot-chat-data">{!! json_encode($character, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
 
-        <div class="row" style="justify-content:space-between">
-            <span style="font-size:13px;color:var(--tx3)">대화 내용은 이어가기 목적으로 저장됩니다. 자세한 내용은 <a href="{{ route('legal.privacy') }}" style="color:var(--accent2)">개인정보처리방침</a>.</span>
-            <button class="btn btn-soft" type="button" id="mw-reset-chat" data-cid="{{ $character['id'] }}">대화 초기화</button>
-        </div>
-    </section>
+        <p class="mw-chat-note">대화는 이어가기 위해 저장됩니다 · <a href="{{ route('legal.privacy') }}">개인정보처리방침</a></p>
+    </div>
 @endsection
+
+@push('styles')
+<style>
+    /* 몰입형 풀스크린 채팅 레이아웃(PC·모바일 공통) */
+    body.my-wife-bot-chat-page { overflow: hidden; } /* 페이지 스크롤 없이 채팅 로그만 스크롤 */
+    .mw-chat-wrap { height: 100dvh; display: flex; flex-direction: column; }
+
+    .mw-chat-topbar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+        border-bottom: 1px solid var(--line);
+        background: var(--hdr-bg);
+        backdrop-filter: blur(18px);
+    }
+    .mw-chat-icon {
+        width: 38px; height: 38px; flex: none;
+        display: grid; place-items: center;
+        border-radius: var(--r-pill);
+        border: 1px solid var(--chip-bd);
+        background: var(--chip-bg);
+        color: var(--hd);
+        font-size: 17px; line-height: 1;
+        text-decoration: none; cursor: pointer;
+        transition: .2s ease;
+    }
+    .mw-chat-icon:hover { border-color: var(--accent); color: var(--accent); }
+    .mw-chat-topttl {
+        flex: 1; min-width: 0; text-align: center;
+        font-family: var(--label); font-weight: 700; font-size: 14px; color: var(--hd);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .mw-chat-mount { flex: 1; min-height: 0; display: flex; }
+    /* Vue 가 렌더한 .chat 이 마운트 영역을 꽉 채운다 */
+    .my-wife-bot-chat-page .chat {
+        flex: 1; min-height: 0; width: 100%;
+        border-radius: 0; border-left: 0; border-right: 0;
+    }
+    /* 로그는 남는 공간을 모두 차지하고 스크롤(인라인 max-height 캡 무력화) */
+    .my-wife-bot-chat-page .chat-log { flex: 1 1 auto; max-height: none !important; }
+
+    .mw-chat-note {
+        flex: none; text-align: center;
+        font-size: 11px; color: var(--tx3);
+        padding: 7px 14px calc(7px + env(safe-area-inset-bottom, 0px));
+        background: var(--field); border-top: 1px solid var(--line);
+    }
+    .mw-chat-note a { color: var(--accent2); }
+
+    /* PC: 화면을 꽉 채우되 채팅은 가운데 컬럼(카드) — 너무 넓게 늘어지지 않게 */
+    @media (min-width: 821px) {
+        .mw-chat-mount { justify-content: center; padding: 22px; }
+        .my-wife-bot-chat-page .chat {
+            max-width: 900px;
+            border: 1px solid var(--line);
+            border-radius: var(--r-l);
+        }
+        .mw-chat-note { border-top: 0; }
+    }
+</style>
+@endpush
 
 @push('scripts')
 <script>
