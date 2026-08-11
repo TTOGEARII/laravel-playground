@@ -9,11 +9,19 @@
 .game-immersive .header { display: none; }
 .game-immersive .container { padding: 0; max-width: 100%; }
 .game-immersive main { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
-.game-immersive .game-wrapper { flex: 1 1 auto; min-height: 100vh; min-height: 100dvh; }
+/* 상단 safe-area(상태바)만큼 아래로 — 안 그러면 HUD(HOLD/NEXT 등)가 상태바에 가려 잘림.
+   box-sizing:border-box 로 패딩을 100dvh 안에 넣어 하단(조작키)이 밀려나지 않게. 하단 제스처바는
+   각 게임의 조작키가 자체 env(safe-area-inset-bottom) 패딩으로 처리한다. */
+.game-immersive .game-wrapper {
+    flex: 1 1 auto;
+    min-height: 100vh; min-height: 100dvh;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+}
 
 /* 게임 종료(나가기) 버튼 — 좌상단 고정. 게임에서 목록으로 나가는 유일한 경로 */
 .game-exit-btn {
-    position: fixed; top: 14px; left: 16px; z-index: 60;
+    position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 16px; z-index: 60;
     display: inline-flex; align-items: center; gap: 6px;
     padding: 9px 14px; border-radius: 11px;
     border: 1px solid #7f1d1d; background: rgba(15, 23, 42, 0.9); color: #fca5a5;
@@ -21,7 +29,7 @@
     font-family: 'Outfit', 'Noto Sans KR', sans-serif; transition: filter .15s, border-color .15s;
 }
 .game-exit-btn:hover { border-color: #ef4444; color: #fecaca; }
-@media (max-width: 768px) { .game-exit-btn { top: 10px; left: 12px; padding: 8px 12px; } }
+@media (max-width: 768px) { .game-exit-btn { top: calc(10px + env(safe-area-inset-top, 0px)); left: 12px; padding: 8px 12px; } }
 
 /* 시작화면 메뉴 (뱀파이어 서바이벌과 동일 구조: 시작 / 옵션 / 조작법 / 게임 종료) */
 .game-menu { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 22px; }
