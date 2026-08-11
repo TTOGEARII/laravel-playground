@@ -1,92 +1,70 @@
 <template>
-  <div class="mw-chat">
-    <!-- 좌측: 채팅 패널 -->
-    <section class="mw-chat-pane">
-      <!-- 상단 바: 뒤로가기 + 메시지 수 + 호감도 게이지 -->
-      <header class="mw-bar">
-        <div class="mw-bar-top">
-          <a :href="charactersUrl" class="mw-back" aria-label="목록으로">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-          </a>
-          <h1 class="mw-bar-name">{{ character?.name || '캐릭터' }}</h1>
-          <div class="mw-count">{{ messageCount }}</div>
-        </div>
-        <div class="mw-affinity">
+  <!-- 목업 kt `.chat` 카드. --mw-* 변수를 인라인으로 kt 토큰에 매핑해, 목업에 없는 보조 요소
+       (호감도·캐럿·타이핑 점)의 스코프 스타일이 라이트/다크 양쪽에서 그대로 살아나게 한다. -->
+  <div class="chat" style="--mw-accent:var(--accent2);--mw-accent-2:var(--accent);--mw-text:var(--tx);--mw-muted:var(--tx3);--mw-line:var(--line)">
+    <!-- 헤더: 아바타 + 이름 + 소개 + 상태/호감도 -->
+    <div class="chat-hero">
+      <span class="chat-ava" :class="{ noimg: !hasCharacterImage }">
+        <img v-if="hasCharacterImage" referrerpolicy="no-referrer" loading="lazy" decoding="async" :src="characterImageSrc" :alt="character?.name" />
+      </span>
+      <span class="stack" style="gap:2px;flex:1;min-width:0">
+        <span class="chat-name">{{ character?.name || '캐릭터' }}</span>
+        <span class="chat-desc" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">{{ character?.description || '' }}</span>
+      </span>
+      <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none">
+        <span class="chip cyan"><span class="dot-live"></span> 대화 중</span>
+        <div class="mw-affinity" style="margin:0;width:150px;max-width:42vw">
           <span class="mw-heart">♥</span>
           <div class="mw-affinity-track"><div class="mw-affinity-fill" :style="{ width: affinity + '%' }"></div></div>
           <span class="mw-affinity-val">{{ affinity }}%</span>
         </div>
-      </header>
+      </div>
+    </div>
 
-      <!-- 메시지 스트림 -->
-      <main class="mw-stream" ref="streamEl" @click="skipTyping">
-        <div v-if="loadingIntro" class="mw-row character">
-          <div class="mw-avatar"><img v-if="hasCharacterImage" :src="characterImageSrc" :alt="character.name" /><span v-else>{{ initial }}</span></div>
-          <div class="mw-bubble mw-typing"><span class="mw-dot"></span><span class="mw-dot"></span><span class="mw-dot"></span></div>
-        </div>
+    <!-- 메시지 로그 -->
+    <div class="chat-log" ref="streamEl" @click="skipTyping" style="max-height:min(62vh,620px);overflow-y:auto">
+      <div v-if="loadingIntro" class="msg bot mw-typing"><span class="mw-dot"></span><span class="mw-dot"></span><span class="mw-dot"></span></div>
 
-        <template v-for="(msg, i) in messages" :key="i">
-          <!-- 유저 메시지 -->
-          <div v-if="msg.role === 'user'" class="mw-row user">
-            <div class="mw-bubble user">{{ msg.text }}</div>
-          </div>
+      <template v-for="(msg, i) in messages" :key="i">
+        <!-- 유저 메시지 -->
+        <div v-if="msg.role === 'user'" class="msg me">{{ msg.text }}</div>
 
-          <!-- 캐릭터 턴: 지문 + 대사 -->
-          <div v-else class="mw-turn">
-            <p v-if="narrationOf(i, msg)" class="mw-narration">{{ narrationOf(i, msg) }}<span v-if="isTyping(i) && typing.phase === 'n'" class="mw-caret"></span></p>
-            <div v-if="dialogueOf(i, msg) || (isTyping(i) && typing.phase === 't')" class="mw-row character">
-              <div class="mw-avatar"><img v-if="hasCharacterImage" :src="characterImageSrc" :alt="character.name" /><span v-else>{{ initial }}</span></div>
-              <div class="mw-bubble character">
-                <span class="mw-name">{{ character?.name || '캐릭터' }}</span>
-                <p class="mw-text">{{ dialogueOf(i, msg) }}<span v-if="isTyping(i) && typing.phase === 't'" class="mw-caret"></span></p>
-              </div>
-            </div>
-          </div>
+        <!-- 캐릭터 턴: 지문(가운데 이탤릭) + 대사(bot 말풍선) -->
+        <template v-else>
+          <p v-if="narrationOf(i, msg)" class="mw-narration" style="color:var(--tx2);text-shadow:none">{{ narrationOf(i, msg) }}<span v-if="isTyping(i) && typing.phase === 'n'" class="mw-caret"></span></p>
+          <div v-if="dialogueOf(i, msg) || (isTyping(i) && typing.phase === 't')" class="msg bot">{{ dialogueOf(i, msg) }}<span v-if="isTyping(i) && typing.phase === 't'" class="mw-caret"></span></div>
         </template>
+      </template>
 
-        <!-- 응답 대기 -->
-        <div v-if="thinking" class="mw-row character">
-          <div class="mw-avatar"><img v-if="hasCharacterImage" :src="characterImageSrc" :alt="character.name" /><span v-else>{{ initial }}</span></div>
-          <div class="mw-bubble mw-typing"><span class="mw-dot"></span><span class="mw-dot"></span><span class="mw-dot"></span></div>
-        </div>
-      </main>
+      <!-- 응답 대기 -->
+      <div v-if="thinking" class="msg bot mw-typing"><span class="mw-dot"></span><span class="mw-dot"></span><span class="mw-dot"></span></div>
+    </div>
 
-      <!-- 입력 영역 -->
-      <footer class="mw-input-wrap">
-        <!-- 추천답변 칩 -->
-        <div v-if="suggestions.length" class="mw-suggestions">
-          <button v-for="(s, si) in suggestions" :key="si" type="button" class="mw-suggestion" @click="useSuggestion(s)">{{ s }}</button>
-        </div>
+    <!-- 추천답변 칩 -->
+    <div v-if="suggestions.length" class="chips" style="padding:0 var(--s4) var(--s2)">
+      <button v-for="(s, si) in suggestions" :key="si" type="button" class="chip cyan" @click="useSuggestion(s)">{{ s }}</button>
+    </div>
 
-        <!-- 액션 칩 -->
-        <div class="mw-actions">
-          <button type="button" class="mw-action" :disabled="busy" @click="requestNarration">✦ 상황묘사</button>
-          <button type="button" class="mw-action" :disabled="busy" @click="requestSuggestions">⇄ 추천답변</button>
-          <span v-if="actionLoading" class="mw-action-loading">불러오는 중…</span>
-        </div>
+    <!-- 액션 칩 -->
+    <div class="chips" style="padding:0 var(--s4) var(--s2);align-items:center">
+      <button type="button" class="chip pink" :disabled="busy" @click="requestNarration">✦ 상황묘사</button>
+      <button type="button" class="chip gold" :disabled="busy" @click="requestSuggestions">⇄ 추천답변</button>
+      <span v-if="actionLoading" style="font-size:12px;color:var(--tx3)">불러오는 중…</span>
+    </div>
 
-        <div class="mw-input-inner">
-          <textarea
-            v-model="inputText"
-            :placeholder="`${character?.name || '캐릭터'}에게 메시지 보내기`"
-            rows="1"
-            class="mw-input"
-            ref="inputEl"
-            @input="autoGrow"
-            @keydown.enter.exact="onEnterKey"
-          />
-          <button type="button" class="mw-send" :disabled="!inputText.trim() || busy" @click="send" aria-label="전송">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </button>
-        </div>
-      </footer>
-    </section>
-
-    <!-- 우측: 캐릭터 일러스트 패널 -->
-    <aside class="mw-art" :class="{ 'no-img': !hasCharacterImage }">
-      <img v-if="hasCharacterImage" class="mw-art-img" :src="characterImageSrc" :alt="character?.name" />
-      <span v-else class="mw-art-initial">{{ initial }}</span>
-    </aside>
+    <!-- 입력 영역 (여러 줄 지원 위해 textarea 유지 — Enter 전송, Shift+Enter 줄바꿈) -->
+    <form class="chat-bar" @submit.prevent>
+      <textarea
+        v-model="inputText"
+        :placeholder="`${character?.name || '캐릭터'}에게 메시지 보내기`"
+        rows="1"
+        ref="inputEl"
+        style="flex:1;background:transparent;border:0;outline:none;color:var(--tx);font-size:15px;font-family:inherit;padding:12px 8px;resize:none;line-height:1.5;max-height:120px"
+        @input="autoGrow"
+        @keydown.enter.exact="onEnterKey"
+      ></textarea>
+      <button class="btn btn-sm" type="button" :disabled="!inputText.trim() || busy" @click="send">보내기</button>
+    </form>
   </div>
 </template>
 

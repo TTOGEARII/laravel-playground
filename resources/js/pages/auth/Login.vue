@@ -1,48 +1,51 @@
 <template>
-  <div class="auth-wrap">
-    <a href="/" class="auth-back">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      메인으로
-    </a>
-    <div class="auth-box">
-      <h1 class="auth-title">로그인</h1>
-    <p v-if="socialError" class="auth-error auth-error--banner">{{ socialError }}</p>
-    <form @submit.prevent="submit" class="auth-form">
-      <div class="auth-field">
-        <label for="login-email">이메일</label>
-        <input
-          id="login-email"
-          v-model="email"
-          type="email"
-          required
-          autocomplete="email"
-          placeholder="example@email.com"
-        />
+  <section class="shell" style="display:grid;place-items:center;padding-block:var(--s7)">
+    <div class="card" style="width:100%;max-width:440px;gap:var(--s4);padding:var(--s5) var(--s4)">
+      <div class="stack" style="align-items:center;text-align:center;gap:10px">
+        <span class="logo-mark" style="width:56px;height:56px;font-size:26px">가</span>
+        <span style="font-family:var(--disp);font-size:28px;color:var(--hd);margin-top:6px">다시 오셨네요</span>
+        <span style="font-size:14px;color:var(--lead)">로그인하면 나만의 챗봇과 코드 알림을 쓸 수 있어요.</span>
       </div>
-      <div class="auth-field">
-        <label for="login-password">비밀번호</label>
-        <input
-          id="login-password"
-          v-model="password"
-          type="password"
-          required
-          autocomplete="current-password"
-          placeholder="비밀번호"
-        />
-      </div>
-      <div class="auth-field auth-field--row">
-        <label class="auth-checkbox-label">
-          <input v-model="remember" type="checkbox" />
-          <span>로그인 유지</span>
-        </label>
-      </div>
-      <p v-if="error" class="auth-error">{{ error }}</p>
-      <button type="submit" class="auth-submit" :disabled="loading">
-        {{ loading ? '로그인 중...' : '로그인' }}
-      </button>
-    </form>
+
+      <p v-if="socialError" class="auth-error auth-error--banner">{{ socialError }}</p>
+
+      <form @submit.prevent="submit" class="stack g3">
+        <div class="field">
+          <label for="login-email">EMAIL</label>
+          <input
+            id="login-email"
+            v-model="email"
+            class="input"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
+        </div>
+        <div class="field">
+          <label for="login-password">PASSWORD</label>
+          <input
+            id="login-password"
+            v-model="password"
+            class="input"
+            type="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+          />
+        </div>
+        <div class="row" style="justify-content:space-between">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2)">
+            <input v-model="remember" type="checkbox" style="accent-color:var(--accent);width:16px;height:16px" />
+            로그인 유지
+          </label>
+          <a href="#" style="font-size:13px" @click.prevent>비밀번호를 잊으셨나요?</a>
+        </div>
+        <p v-if="error" class="auth-error">{{ error }}</p>
+        <button type="submit" class="btn btn-fill btn-block" :disabled="loading">
+          {{ loading ? '로그인 중...' : '로그인' }}
+        </button>
+      </form>
 
       <div class="auth-divider"><span>또는</span></div>
 
@@ -53,12 +56,12 @@
         카카오로 로그인
       </a>
 
-      <p class="auth-switch">
-        계정이 없으신가요?
+      <span style="text-align:center;font-size:13px;color:var(--tx3)">
+        아직 계정이 없으신가요?
         <a :href="registerUrl">회원가입</a>
-      </p>
+      </span>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup>

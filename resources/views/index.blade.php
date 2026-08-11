@@ -57,7 +57,7 @@
             </div>
             <span>전부 무료 · 전부 취미</span>
         </div>
-        <div class="grid">
+        <div class="grid slide">
             <a class="card pink wide" href="{{ route('otaku-shop.index') }}">
                 <span class="card-no">01</span>
                 <span class="card-ico">🛒</span>

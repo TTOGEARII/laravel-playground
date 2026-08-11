@@ -1,77 +1,65 @@
 <template>
   <div class="ec-app">
-    <!-- 필터 탭 + 월 이동 -->
-    <div class="ec-toolbar">
-      <div class="ec-tabs" role="tablist">
-        <button v-for="t in TABS" :key="t.key" class="ec-tab" :class="{ 'is-active': tab === t.key }"
-          role="tab" :aria-selected="tab === t.key" @click="tab = t.key">{{ t.label }}</button>
-      </div>
-      <div class="ec-month-nav">
-        <button class="ec-nav-btn" aria-label="이전 달" @click="moveMonth(-1)">‹</button>
-        <span class="ec-month-label">{{ year }}년 {{ month }}월</span>
-        <button class="ec-nav-btn" aria-label="다음 달" @click="moveMonth(1)">›</button>
-        <button class="ec-today-btn" @click="goToday">오늘</button>
-        <div v-if="pushAvailable" class="ec-alarm">
-          <button class="ec-alarm-btn" :class="{ 'is-on': concertAlarmOn || eventAlarmOn }"
-            aria-label="알림 설정" @click="alarmOpen = !alarmOpen">🔔</button>
-          <!-- 알림 설정 팝오버 — 주제별 토글(브라우저 구독 단위) -->
-          <div v-if="alarmOpen" class="ec-alarm-pop">
-            <p class="ec-alarm-title">알림 설정</p>
-            <div class="ec-alarm-row">
-              <div class="ec-alarm-text">
-                <span class="ec-alarm-name">내한공연 알림</span>
-                <span class="ec-alarm-desc">티켓 오픈 당일 · 새 공연 등록</span>
+    <!-- 월 캘린더 — 목업(.cal) 구조: 상단 월 네비 + 우측 필터 칩, 아래 7열 그리드에 날짜별 칩 -->
+    <div class="cal">
+      <div class="cal-head">
+        <!-- 좌: 월 이동(←/→) + 오늘 + 알림 -->
+        <div class="row" style="gap:12px">
+          <button class="btn btn-soft" type="button" aria-label="이전 달" @click="moveMonth(-1)">←</button>
+          <span class="cal-month">{{ year }}. {{ ('0' + month).slice(-2) }}</span>
+          <button class="btn btn-soft" type="button" aria-label="다음 달" @click="moveMonth(1)">→</button>
+          <button class="btn btn-soft btn-sm" type="button" @click="goToday">오늘</button>
+          <div v-if="pushAvailable" class="ec-alarm">
+            <button class="ec-alarm-btn" :class="{ 'is-on': concertAlarmOn || eventAlarmOn }"
+              aria-label="알림 설정" @click="alarmOpen = !alarmOpen">🔔</button>
+            <!-- 알림 설정 팝오버 — 주제별 토글(브라우저 구독 단위) -->
+            <div v-if="alarmOpen" class="ec-alarm-pop">
+              <p class="ec-alarm-title">알림 설정</p>
+              <div class="ec-alarm-row">
+                <div class="ec-alarm-text">
+                  <span class="ec-alarm-name">내한공연 알림</span>
+                  <span class="ec-alarm-desc">티켓 오픈 당일 · 새 공연 등록</span>
+                </div>
+                <button type="button" class="ds-switch" role="switch"
+                  :aria-checked="concertAlarmOn ? 'true' : 'false'" aria-label="내한공연 알림"
+                  :disabled="alarmBusy" @click="toggleAlarm('concert')"></button>
               </div>
-              <button type="button" class="ds-switch" role="switch"
-                :aria-checked="concertAlarmOn ? 'true' : 'false'" aria-label="내한공연 알림"
-                :disabled="alarmBusy" @click="toggleAlarm('concert')"></button>
-            </div>
-            <div class="ec-alarm-row">
-              <div class="ec-alarm-text">
-                <span class="ec-alarm-name">행사 알림</span>
-                <span class="ec-alarm-desc">동인·전시 새 행사 등록</span>
+              <div class="ec-alarm-row">
+                <div class="ec-alarm-text">
+                  <span class="ec-alarm-name">행사 알림</span>
+                  <span class="ec-alarm-desc">동인·전시 새 행사 등록</span>
+                </div>
+                <button type="button" class="ds-switch" role="switch"
+                  :aria-checked="eventAlarmOn ? 'true' : 'false'" aria-label="행사 알림"
+                  :disabled="alarmBusy" @click="toggleAlarm('event')"></button>
               </div>
-              <button type="button" class="ds-switch" role="switch"
-                :aria-checked="eventAlarmOn ? 'true' : 'false'" aria-label="행사 알림"
-                :disabled="alarmBusy" @click="toggleAlarm('event')"></button>
             </div>
           </div>
         </div>
+        <!-- 우: 필터 탭(칩) — 기존 TABS 바인딩 유지, 활성은 .on -->
+        <div class="chips" role="tablist">
+          <span v-for="t in TABS" :key="t.key" class="chip" :class="{ on: tab === t.key }"
+            role="tab" :aria-selected="tab === t.key" tabindex="0"
+            @click="tab = t.key" @keydown.enter="tab = t.key">{{ t.label }}</span>
+        </div>
       </div>
-    </div>
 
-    <!-- 월 캘린더 — 주 단위 레인에 연속 띠(밴드)로 렌더(구글 캘린더식). 모바일은 점(dot) 유지 -->
-    <!-- --lanes 는 월 전체 최대 레인 수(캘린더 스코프) — 주마다 높이가 달라 들쭉날쭉해지지 않게 통일 -->
-    <div class="ec-calendar" :class="{ 'is-loading': loading }" :style="{ '--lanes': maxLanes, '--lanes-m': maxMultiLanes }">
-      <div class="ec-dow-row">
-        <div class="ec-dow" v-for="(d, i) in ['일', '월', '화', '수', '목', '금', '토']" :key="d"
-          :class="{ 'is-sun': i === 0, 'is-sat': i === 6 }">{{ d }}</div>
+      <!-- 요일 헤더 -->
+      <div class="cal-dow">
+        <span v-for="d in ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']" :key="d">{{ d }}</span>
       </div>
-      <div v-for="(week, wi) in weeks" :key="wi" class="ec-week">
-        <div v-for="cell in week.cells" :key="cell.dateStr" class="ec-day" :class="{
-          'is-other': !cell.inMonth,
-          'is-today': cell.isToday,
-          'is-selected': selectedDay === cell.dateStr,
-          'has-events': cell.events.length > 0,
-        }" @click="selectDay(cell)">
-          <span class="ec-day-num" :class="{ 'is-sun': cell.dow === 0, 'is-sat': cell.dow === 6 }">{{ cell.day }}</span>
-          <div class="ec-day-dots" v-if="cell.events.length">
-            <!-- 여러날 행사는 모바일에서도 띠가 담당 — 점은 하루짜리만(ec-dot--span 은 모바일 숨김) -->
-            <i v-for="ev in cell.events.slice(0, 4)" :key="'d' + (ev.__ticket ? 't' : '') + ev.id" class="ec-dot"
-              :class="[ev.__ticket ? 'ec-dot--ticket' : `ec-dot--${ev.kind}`, { 'ec-dot--span': !ev.__ticket && ev.ends_on && ev.ends_on !== ev.starts_on }]" />
-          </div>
-        </div>
-        <!-- 띠 오버레이: 행사 기간이 이어지면 셀 경계를 넘어 하나의 띠로 -->
-        <div class="ec-bands">
-          <button v-for="seg in week.segments" :key="seg.key" class="ec-band"
-            :class="[seg.ev.__ticket ? 'ec-band--ticket' : `ec-band--${seg.ev.kind}`, {
-              'is-cut-left': seg.cutLeft, 'is-cut-right': seg.cutRight, 'is-multi': seg.multi,
-            }]"
-            :style="{ left: `calc(${(seg.startCol / 7) * 100}% + 2px)`, width: `calc(${(seg.span / 7) * 100}% - 4px)`, top: `calc(var(--ec-band-top, 26px) + ${seg.lane} * var(--ec-lane-h))` }"
-            :title="seg.ev.__ticket ? `티켓 오픈: ${seg.ev.title}` : seg.ev.title"
-            @click.stop="openDetail(seg.ev.id)">
-            <span class="ec-band-text">{{ seg.ev.__ticket ? '🎫 오픈 ' + seg.ev.title : seg.ev.title }}</span>
-          </button>
+
+      <!-- 날짜 그리드(이웃달 셀은 .off 로 빈칸). 셀 클릭 → 그날 행사 리스트, 칩 클릭 → 상세 -->
+      <div class="cal-grid" :class="{ 'is-loading': loading }">
+        <div v-for="cell in cells" :key="cell.dateStr" class="cal-cell"
+          :class="{ off: !cell.inMonth }" @click="selectDay(cell)">
+          <template v-if="cell.inMonth">
+            <span class="cal-d">{{ cell.day }}</span>
+            <span v-for="ev in cell.events" :key="'e' + (ev.__ticket ? 't' : '') + ev.id" class="chip"
+              :class="ev.__ticket ? '' : (ev.kind === 'concert' ? 'pink' : ev.kind === 'doujin' ? 'cyan' : ev.kind === 'expo' ? 'gold' : '')"
+              :title="ev.__ticket ? '티켓 오픈: ' + ev.title : ev.title"
+              @click.stop="openDetail(ev.id)">{{ ev.__ticket ? '🎫 오픈' : ev.kind_label }}</span>
+          </template>
         </div>
       </div>
     </div>

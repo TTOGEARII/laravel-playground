@@ -1,52 +1,27 @@
 <template>
-  <div class="sga">
+  <section class="shell stack g3">
     <p v-if="!enabled" class="sga-disabled">지금은 AI 기능이 꺼져 있어요(서버 설정 필요). 잠시 후 다시 들러주세요.</p>
 
-    <!-- 페르소나 선택 — 챗봇 캐릭터창처럼 카드로 고른다(모든 사용자의 챗봇 캐릭터) -->
-    <div v-else-if="view === 'select'" class="sga-select">
-      <h2 class="sga-select-title">누구와 대화할까요?</h2>
-      <p class="sga-select-lead">챗봇 캐릭터를 고르면 그 캐릭터의 말투로 서브컬쳐 게임 정보를 알려드려요.</p>
-      <section v-if="personaOptions.length" class="sga-persona-grid">
-        <article
-          v-for="p in personaOptions"
-          :key="`${p.kind}-${p.ref}`"
-          class="sga-persona-card"
-          :class="{ 'is-current': persona && persona.kind === p.kind && persona.ref === p.ref }"
-        >
-          <div class="sga-persona-image">
-            <img v-if="p.image" :src="p.image" :alt="p.name" loading="lazy" />
-            <span v-else class="sga-persona-emoji">{{ p.emoji }}</span>
-          </div>
-          <h3 class="sga-persona-name">
-            {{ p.name }}
-            <span v-if="p.is_mine" class="sga-persona-kind">내 챗봇</span>
-          </h3>
-          <p class="sga-persona-desc">{{ p.description || '서브컬쳐 게임 정보를 알려드려요.' }}</p>
-          <button type="button" class="sga-persona-start" @click="selectPersona(p)">대화하기</button>
-        </article>
-      </section>
-      <p v-else class="sga-select-hint">
-        아직 챗봇 캐릭터가 없어요. <a href="/my-wife-bot/characters">챗봇 만들기</a>에서 첫 캐릭터를 만들어 보세요.
-      </p>
-      <p v-if="personaOptions.length && !loggedIn" class="sga-select-hint">
-        로그인하면 내가 만든 챗봇에 '내 챗봇' 표시가 붙고, 대화 기록도 계정에 저장돼요.
-      </p>
-    </div>
-
-    <!-- 채팅 뷰 -->
     <template v-else>
-      <div class="sga-topbar">
-        <button type="button" class="sga-current" :disabled="streaming" title="페르소나 변경" @click="view = 'select'">
-          <span class="sga-current-face">
-            <img v-if="currentPersona?.image" :src="currentPersona.image" :alt="currentPersona.name" />
-            <template v-else>{{ personaEmoji }}</template>
-          </span>
-          {{ currentPersona?.name ?? '페르소나' }}
-          <small>변경 ›</small>
-        </button>
-        <button v-if="messages.length" type="button" class="sga-new" :disabled="streaming" @click="newChat(); view = 'select';">
-          ＋ 새 대화
-        </button>
+      <!-- 페르소나 = 챗봇 캐릭터 전체에서 카드로 고른다. 고른 캐릭터의 말투로 답한다. -->
+      <div class="stack g2">
+        <span class="eyebrow">PERSONA</span>
+        <div v-if="personaOptions.length" class="grid grid-4">
+          <button
+            v-for="p in personaOptions"
+            :key="`${p.kind}-${p.ref}`"
+            type="button"
+            class="persona"
+            :class="{ on: persona && persona.kind === p.kind && persona.ref === p.ref }"
+            @click="selectPersona(p)"
+          >
+            <b>{{ p.name }}</b>
+            <span>{{ p.is_mine ? '내 챗봇' : (p.description || '서브컬쳐 게임 정보를 알려드려요') }}</span>
+          </button>
+        </div>
+        <p v-else class="sga-select-hint">
+          아직 챗봇 캐릭터가 없어요. <a href="/my-wife-bot/characters">챗봇 만들기</a>에서 첫 캐릭터를 만들어 보세요.
+        </p>
       </div>
 
       <!-- SGI 화면에서 넘어온 게임 컨텍스트 — 게임 미명시 질문의 기준 게임 -->
@@ -55,58 +30,71 @@
         <button type="button" class="sga-context-off" title="게임 컨텍스트 해제" @click="clearGameContext">✕</button>
       </div>
 
-      <!-- 빈 상태: 예시 프롬프트 -->
-      <div v-if="messages.length === 0" class="sga-empty">
-        <div class="sga-empty-icon">{{ personaEmoji }}</div>
-        <h2>무엇이 궁금하세요?</h2>
-        <p>서브컬쳐 게임의 리딤코드·레이드 편성·캐릭터·공략을 알려드려요.</p>
-        <div class="sga-suggestions">
-          <button v-for="s in suggestions" :key="s" type="button" class="sga-suggestion" @click="send(s)">{{ s }}</button>
-        </div>
-      </div>
-
       <!-- 대화 -->
-      <div ref="scroller" class="sga-messages">
-      <div v-for="(m, i) in messages" :key="i" class="sga-msg" :class="`is-${m.role}`">
-        <div v-if="m.role === 'assistant'" class="sga-avatar">
-          <img v-if="currentPersona?.image" :src="currentPersona.image" :alt="currentPersona?.name" />
-          <template v-else>{{ personaEmoji }}</template>
-        </div>
-        <div class="sga-msg-body">
-          <!-- 툴 진행 칩 -->
-          <div v-if="m.tools?.length" class="sga-tools">
-            <span v-for="(t, ti) in m.tools" :key="ti" class="sga-tool" :class="{ 'is-live': m.streaming && ti === m.tools.length - 1 }">{{ t }}</span>
+      <div class="chat">
+        <div ref="scroller" class="chat-log" style="overflow-y:auto;max-height:60vh">
+          <!-- 인트로 인사 -->
+          <div v-if="messages.length === 0" class="msg bot">
+            안녕하세요<template v-if="currentPersona">, {{ currentPersona.name }}</template>. 리딤코드 · 레이드 편성 · 미래시 뭐든 물어보세요.
           </div>
-          <div v-if="m.role === 'assistant'" class="sga-bubble sga-markdown" v-html="render(m.content)" />
-          <div v-else class="sga-bubble">{{ m.content }}</div>
-          <span v-if="m.streaming && !m.content" class="sga-typing"><i /><i /><i /></span>
-          <AgentCards v-if="m.cards?.length" :cards="m.cards" />
-        </div>
-      </div>
-    </div>
 
-      <!-- 입력 바 (Enter=전송 / Shift+Enter=줄바꿈) -->
-      <form class="sga-inputbar" @submit.prevent="send()">
-        <textarea
-          ref="inputEl"
-          v-model="input"
-          class="sga-input"
-          rows="1"
-          placeholder="예) 블루아카이브 리딤코드 알려줘 (Shift+Enter 줄바꿈)"
-          maxlength="2000"
-          :disabled="streaming"
-          @keydown.enter.exact.prevent="send()"
-          @input="autoGrow"
-        />
-        <button type="submit" class="sga-send" :disabled="streaming || !input.trim()" aria-label="전송">
-          <span v-if="streaming" class="sga-send-dots"><i /><i /><i /></span>
-          <svg v-else viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-            <path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-      </form>
+          <template v-for="(m, i) in messages" :key="i">
+            <!-- 유저 -->
+            <div v-if="m.role === 'user'" class="msg me">{{ m.content }}</div>
+            <!-- 어시스턴트: 말풍선(툴 진행 칩 + 마크다운 + 타이핑) + 카드 -->
+            <template v-else>
+              <div class="msg bot">
+                <div v-if="m.tools?.length" class="sga-tools">
+                  <span
+                    v-for="(t, ti) in m.tools"
+                    :key="ti"
+                    class="sga-tool"
+                    :class="{ 'is-live': m.streaming && ti === m.tools.length - 1 }"
+                  >{{ t }}</span>
+                </div>
+                <div v-if="m.content" class="sga-markdown" v-html="render(m.content)" />
+                <span v-if="m.streaming && !m.content" class="sga-typing"><i /><i /><i /></span>
+              </div>
+              <AgentCards v-if="m.cards?.length" :cards="m.cards" />
+            </template>
+          </template>
+        </div>
+
+        <!-- 추천 질문 칩 -->
+        <div class="chips" style="padding:0 var(--s4) var(--s3)">
+          <button
+            v-for="(s, i) in suggestions"
+            :key="s"
+            type="button"
+            class="chip"
+            :class="['pink', 'cyan', 'gold', ''][i % 4]"
+            :disabled="streaming || !currentPersona"
+            @click="send(s)"
+          >{{ s }}</button>
+        </div>
+
+        <!-- 입력 바 (Enter=전송 / Shift+Enter=줄바꿈) -->
+        <form class="chat-bar" @submit.prevent="send()">
+          <textarea
+            ref="inputEl"
+            v-model="input"
+            class="sga-input"
+            rows="1"
+            placeholder="무엇이든 물어보세요 — 예: 명조 최신 코드 알려줘 (Shift+Enter 줄바꿈)"
+            maxlength="2000"
+            :disabled="streaming"
+            @keydown.enter.exact.prevent="send()"
+            @input="autoGrow"
+          />
+          <button class="btn btn-sm" type="submit" :disabled="streaming || !input.trim() || !currentPersona">
+            {{ streaming ? '생성 중…' : '보내기' }}
+          </button>
+        </form>
+      </div>
+
+      <span style="font-size:13px;color:var(--tx3)">답변은 수집된 공개 정보를 바탕으로 생성되며, 실제와 다를 수 있습니다.</span>
     </template>
-  </div>
+  </section>
 </template>
 
 <script setup>

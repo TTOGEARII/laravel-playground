@@ -1,80 +1,82 @@
 <template>
-  <div class="auth-wrap">
-    <a href="/" class="auth-back">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      메인으로
-    </a>
-    <div class="auth-box">
-      <h1 class="auth-title">회원가입</h1>
-    <form @submit.prevent="submit" class="auth-form">
-      <div class="auth-field">
-        <label for="reg-name">이름</label>
-        <input
-          id="reg-name"
-          v-model="name"
-          type="text"
-          required
-          autocomplete="name"
-          placeholder="이름"
-        />
+  <section class="shell" style="display:grid;place-items:center;padding-block:var(--s6)">
+    <div class="card" style="width:100%;max-width:460px;gap:var(--s4);padding:var(--s5) var(--s4)">
+      <div class="stack" style="align-items:center;text-align:center;gap:10px">
+        <span class="logo-mark" style="width:56px;height:56px;font-size:26px">가</span>
+        <span style="font-family:var(--disp);font-size:28px;color:var(--hd);margin-top:6px">같이 덕질하실래요?</span>
+        <span style="font-size:14px;color:var(--lead)">가입하면 나만의 챗봇, 코드 교환 체크, 게임 랭킹을 쓸 수 있어요.</span>
       </div>
-      <div class="auth-field">
-        <label for="reg-email">이메일</label>
-        <input
-          id="reg-email"
-          v-model="email"
-          type="email"
-          required
-          autocomplete="email"
-          placeholder="example@email.com"
-        />
-      </div>
-      <div class="auth-field">
-        <label for="reg-password">비밀번호</label>
-        <input
-          id="reg-password"
-          v-model="password"
-          type="password"
-          required
-          autocomplete="new-password"
-          placeholder="8자 이상, 영문 대·소문자·숫자·특수문자 포함"
-        />
-        <p class="auth-field-hint">8자 이상, 영문 대문자 1개 이상·소문자·숫자·특수문자 조합</p>
-      </div>
-      <div class="auth-field">
-        <label for="reg-password-confirm">비밀번호 확인</label>
-        <input
-          id="reg-password-confirm"
-          v-model="passwordConfirm"
-          type="password"
-          required
-          autocomplete="new-password"
-          placeholder="비밀번호 다시 입력"
-        />
-      </div>
-      <div class="auth-agree">
-        <label class="auth-agree-label" for="reg-agree">
-          <input id="reg-agree" v-model="agree" type="checkbox" />
+
+      <form @submit.prevent="submit" class="stack g3">
+        <div class="field">
+          <label for="reg-name">닉네임</label>
+          <input
+            id="reg-name"
+            v-model="name"
+            class="input"
+            type="text"
+            required
+            autocomplete="name"
+            placeholder="사이트에서 보일 이름"
+          />
+        </div>
+        <div class="field">
+          <label for="reg-email">EMAIL</label>
+          <input
+            id="reg-email"
+            v-model="email"
+            class="input"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
+        </div>
+        <div class="field">
+          <label for="reg-password">PASSWORD</label>
+          <input
+            id="reg-password"
+            v-model="password"
+            class="input"
+            type="password"
+            required
+            autocomplete="new-password"
+            placeholder="8자 이상"
+          />
+          <p class="auth-field-hint">8자 이상, 영문 대문자 1개 이상·소문자·숫자·특수문자 조합</p>
+        </div>
+        <div class="field">
+          <label for="reg-password-confirm">PASSWORD 확인</label>
+          <input
+            id="reg-password-confirm"
+            v-model="passwordConfirm"
+            class="input"
+            type="password"
+            required
+            autocomplete="new-password"
+            placeholder="다시 한 번"
+          />
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--tx2);line-height:1.7" for="reg-agree">
+          <input id="reg-agree" v-model="agree" type="checkbox" style="accent-color:var(--accent);width:16px;height:16px;margin-top:4px" />
           <span>
             <a :href="termsUrl" target="_blank" rel="noopener">이용약관</a> 및
-            <a :href="privacyUrl" target="_blank" rel="noopener">개인정보 수집·이용</a>에 동의합니다.
+            <a :href="privacyUrl" target="_blank" rel="noopener">개인정보처리방침</a>에 동의합니다.
             <em class="auth-agree-required">(필수)</em>
           </span>
         </label>
-      </div>
-      <p v-if="error" class="auth-error">{{ error }}</p>
-      <button type="submit" class="auth-submit" :disabled="loading || !agree">
-        {{ loading ? '가입 중...' : '회원가입' }}
-      </button>
-    </form>
-      <p class="auth-switch">
+        <p v-if="error" class="auth-error">{{ error }}</p>
+        <button type="submit" class="btn btn-fill btn-block" :disabled="loading || !agree">
+          {{ loading ? '가입 중...' : '가입하기' }}
+        </button>
+      </form>
+
+      <span style="text-align:center;font-size:13px;color:var(--tx3)">
         이미 계정이 있으신가요?
         <a :href="loginUrl">로그인</a>
-      </p>
+      </span>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup>

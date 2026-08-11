@@ -73,38 +73,41 @@
     .mg-home-rank {
         position: fixed; inset: 0; z-index: 9999;
         display: flex; align-items: center; justify-content: center;
-        background: rgba(2, 6, 23, 0.78); backdrop-filter: blur(4px); padding: 20px;
-        font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+        background: color-mix(in srgb, var(--ink) 74%, transparent); backdrop-filter: blur(5px); padding: 20px;
     }
     .mg-home-rank[hidden] { display: none; }
     .mg-home-rank-box {
-        position: relative; width: 100%; max-width: 440px; max-height: 82vh; overflow: hidden;
+        position: relative; width: 100%; max-width: 460px; max-height: 82vh; overflow: hidden;
         display: flex; flex-direction: column;
-        background: #0f172a; border: 1px solid #1e293b; border-radius: 16px;
-        padding: 24px; color: #e2e8f0; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+        background: var(--ink2); border: 1px solid var(--line); border-radius: var(--r-l);
+        padding: 26px; color: var(--tx); box-shadow: var(--shadow-lift);
     }
     .mg-home-rank-x {
         position: absolute; top: 14px; right: 16px; background: none; border: none;
-        color: #94a3b8; font-size: 26px; line-height: 1; cursor: pointer;
+        color: var(--tx3); font-size: 26px; line-height: 1; cursor: pointer;
     }
-    .mg-home-rank-h { margin: 0 0 16px; font-size: 20px; font-weight: 800; text-align: center; }
+    .mg-home-rank-x:hover { color: var(--accent); }
+    .mg-home-rank-h { margin: 0 0 16px; font-family: var(--disp); font-size: 22px; text-align: center; color: var(--hd); }
     .mg-home-rank-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
     .mg-home-rank-tab {
-        padding: 8px 14px; border-radius: 999px; border: 1px solid #334155;
-        background: #1e293b; color: #cbd5e1; font-size: 14px; font-weight: 700; cursor: pointer;
+        padding: 8px 14px; border-radius: var(--r-pill); border: 1px solid var(--chip-bd);
+        background: var(--chip-bg); color: var(--tx2); font-family: var(--label); font-weight: 700; font-size: 13px; cursor: pointer; transition: .2s ease;
     }
-    .mg-home-rank-tab.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .mg-home-rank-tab:hover { color: var(--accent); }
+    .mg-home-rank-tab.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     .mg-home-rank-body { overflow-y: auto; }
-    .mg-home-rank-list { list-style: none; margin: 0; padding: 0; }
-    .mg-home-rank-list li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 14px; }
-    .mg-home-rank-list li + li { margin-top: 4px; }
-    .mg-home-rank-list .rk { width: 28px; text-align: center; font-weight: 800; color: #94a3b8; flex: none; }
-    .mg-home-rank-list li:nth-child(1) .rk { color: #fbbf24; }
-    .mg-home-rank-list li:nth-child(2) .rk { color: #cbd5e1; }
-    .mg-home-rank-list li:nth-child(3) .rk { color: #d97706; }
-    .mg-home-rank-list .nm { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .mg-home-rank-list .sc { font-weight: 700; color: #f8fafc; }
-    .mg-home-rank-empty { color: #64748b; text-align: center; padding: 24px 0; }
+    .mg-home-rank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .mg-home-rank-list li {
+        display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 12px;
+        padding: 12px 16px; border-radius: var(--r-m); background: var(--chip-bg); border: 1px solid var(--chip-bd); font-size: 14px;
+    }
+    .mg-home-rank-list .rk { text-align: center; font-family: var(--disp); font-weight: 700; font-size: 17px; color: var(--tx3); }
+    .mg-home-rank-list li:nth-child(1) .rk { color: var(--accent3); }
+    .mg-home-rank-list li:nth-child(2) .rk { color: var(--accent2); }
+    .mg-home-rank-list li:nth-child(3) .rk { color: var(--accent); }
+    .mg-home-rank-list .nm { color: var(--hd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mg-home-rank-list .sc { font-family: var(--label); font-weight: 700; color: var(--hd); }
+    .mg-home-rank-empty { color: var(--tx3); text-align: center; padding: 24px 0; }
 </style>
 @endpush
 

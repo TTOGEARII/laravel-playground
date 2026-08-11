@@ -54,56 +54,56 @@
         display: flex; justify-content: center;
         /* 내용이 뷰포트보다 높으면(모바일) 상하가 잘리지 않도록 오버레이가 스크롤되게 한다 */
         overflow-y: auto; -webkit-overflow-scrolling: touch;
-        background: rgba(2, 6, 23, 0.78); backdrop-filter: blur(4px);
-        padding: 20px; font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+        background: color-mix(in srgb, var(--ink) 74%, transparent); backdrop-filter: blur(5px);
+        padding: 20px;
     }
     .mg-rank-overlay[hidden] { display: none; }
     .mg-rank-modal {
-        width: 100%; max-width: 380px;
+        width: 100%; max-width: 400px;
         margin: auto; /* 공간 있으면 중앙, 크면 스크롤(align-items:center 의 잘림 회피) */
-        background: #0f172a; border: 1px solid #1e293b; border-radius: 16px;
-        padding: 26px 24px; color: #e2e8f0; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+        background: var(--ink2); border: 1px solid var(--line); border-radius: var(--r-l);
+        padding: 28px 26px; color: var(--tx); box-shadow: var(--shadow-lift);
         text-align: center;
     }
-    .mg-rank-title { margin: 0; font-size: 26px; font-weight: 800; color: #f87171; }
-    .mg-rank-score { margin: 8px 0 18px; font-size: 15px; color: #94a3b8; }
-    .mg-rank-score strong { color: #f8fafc; font-size: 22px; }
-    .mg-rank-who { font-size: 14px; color: #cbd5e1; margin: 0 0 16px; }
-    .mg-rank-who strong { color: #5eead4; }
-    .mg-rank-label { display: block; text-align: left; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+    .mg-rank-title { margin: 0; font-family: var(--disp); font-size: 28px; color: var(--accent); }
+    .mg-rank-score { margin: 8px 0 18px; font-size: 15px; color: var(--tx2); }
+    .mg-rank-score strong { color: var(--hd); font-family: var(--disp); font-size: 24px; }
+    .mg-rank-who { font-size: 14px; color: var(--tx2); margin: 0 0 16px; }
+    .mg-rank-who strong { color: var(--accent2); }
+    .mg-rank-label { display: block; text-align: left; font-family: var(--label); font-weight: 700; font-size: 12px; color: var(--tx2); margin-bottom: 6px; }
     .mg-rank-input {
-        width: 100%; box-sizing: border-box; padding: 11px 12px; margin-bottom: 14px;
-        background: #1e293b; border: 1px solid #334155; border-radius: 10px;
-        color: #f1f5f9; font-size: 15px;
+        width: 100%; box-sizing: border-box; padding: 12px 14px; margin-bottom: 14px;
+        background: var(--chip-bg); border: 1px solid var(--chip-bd); border-radius: var(--r-m);
+        color: var(--hd); font-size: 15px; font-family: var(--body);
     }
-    .mg-rank-input:focus { outline: none; border-color: #6366f1; }
-    .mg-rank-err { color: #fca5a5; font-size: 13px; margin: 0 0 12px; }
+    .mg-rank-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--chip-pink-bg); }
+    .mg-rank-err { color: var(--ds-negative); font-size: 13px; margin: 0 0 12px; }
     .mg-rank-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
     .mg-rank-btn {
         display: inline-flex; align-items: center; justify-content: center;
-        padding: 12px 16px; border-radius: 10px; border: 1px solid #334155;
-        background: #1e293b; color: #e2e8f0; font-size: 15px; font-weight: 700;
-        cursor: pointer; text-decoration: none; transition: filter .15s ease;
+        padding: 13px 18px; border-radius: var(--r-pill); border: 1px solid var(--chip-bd);
+        background: var(--chip-bg); color: var(--hd); font-family: var(--label); font-size: 14px; font-weight: 700;
+        cursor: pointer; text-decoration: none; transition: .2s ease;
     }
-    .mg-rank-btn:hover { filter: brightness(1.15); }
-    .mg-rank-btn--primary { background: #6366f1; border-color: #6366f1; color: #fff; }
-    .mg-rank-btn--link { background: transparent; border-color: transparent; color: #94a3b8; }
-    .mg-rank-myrank { font-size: 15px; color: #cbd5e1; margin: 0 0 14px; }
-    .mg-rank-myrank strong { color: #fbbf24; font-size: 20px; }
-    .mg-rank-list { list-style: none; margin: 0 0 18px; padding: 0; text-align: left; max-height: 320px; overflow-y: auto; }
+    .mg-rank-btn:hover { transform: translateY(-2px); }
+    .mg-rank-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-btn); }
+    .mg-rank-btn--link { background: transparent; border-color: transparent; color: var(--tx3); }
+    .mg-rank-myrank { font-size: 15px; color: var(--tx2); margin: 0 0 14px; }
+    .mg-rank-myrank strong { color: var(--accent3); font-family: var(--disp); font-size: 22px; }
+    .mg-rank-list { list-style: none; margin: 0 0 18px; padding: 0; text-align: left; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .mg-rank-list li {
-        display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+        display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px;
+        padding: 11px 14px; border-radius: var(--r-m); background: var(--chip-bg); border: 1px solid var(--chip-bd);
         font-size: 14px;
     }
-    .mg-rank-list li + li { margin-top: 4px; }
-    .mg-rank-list .mg-rank-rk { width: 28px; font-weight: 800; color: #94a3b8; text-align: center; flex: none; }
-    .mg-rank-list .mg-rank-nm { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .mg-rank-list .mg-rank-sc { font-weight: 700; color: #f8fafc; }
-    .mg-rank-list li.is-me { background: rgba(99,102,241,0.18); border: 1px solid rgba(99,102,241,0.5); }
-    .mg-rank-list li:nth-child(1) .mg-rank-rk { color: #fbbf24; }
-    .mg-rank-list li:nth-child(2) .mg-rank-rk { color: #cbd5e1; }
-    .mg-rank-list li:nth-child(3) .mg-rank-rk { color: #d97706; }
-    .mg-rank-list .mg-rank-empty { color: #64748b; padding: 12px; text-align: center; }
+    .mg-rank-list .mg-rank-rk { font-family: var(--disp); font-weight: 700; color: var(--tx3); text-align: center; }
+    .mg-rank-list .mg-rank-nm { color: var(--hd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mg-rank-list .mg-rank-sc { font-family: var(--label); font-weight: 700; color: var(--hd); }
+    .mg-rank-list li.is-me { background: var(--chip-pink-bg); border-color: var(--accent); }
+    .mg-rank-list li:nth-child(1) .mg-rank-rk { color: var(--accent3); }
+    .mg-rank-list li:nth-child(2) .mg-rank-rk { color: var(--accent2); }
+    .mg-rank-list li:nth-child(3) .mg-rank-rk { color: var(--accent); }
+    .mg-rank-list .mg-rank-empty { color: var(--tx3); padding: 12px; text-align: center; }
 </style>
 @endpush
 

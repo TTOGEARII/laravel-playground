@@ -34,11 +34,11 @@
         @if ($isGlobal ?? false)
             <span class="tag">✈️ OTAKU SHOP 해외관</span>
             <h1>해외 오타쿠샵 가격비교</h1>
-            <p>아미아미 등 해외 쇼핑몰 가격을 원화 환산과 함께 비교해 보세요. <a href="{{ route('otaku-shop.index') }}">국내관 →</a></p>
+            <p>아미아미 등 해외 쇼핑몰 가격을 원화 환산과 함께 비교해 보세요.</p>
         @else
             <span class="tag">🛒 OTAKU SHOP</span>
             <h1>오타쿠 굿즈 통합검색</h1>
-            <p>여러 쇼핑몰을 한 번에 검색하고 가격을 비교해 보세요. <a href="{{ route('otaku-shop.global') }}">해외관 ✈️</a></p>
+            <p>여러 쇼핑몰을 한 번에 검색하고 가격을 비교해 보세요.</p>
         @endif
     </section>
 

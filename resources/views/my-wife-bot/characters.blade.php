@@ -5,83 +5,72 @@
 @section('body-class', 'my-wife-bot-characters-page')
 
 @section('content')
-    <div class="my-wife-bot-characters-wrapper shell" style="padding-top:var(--s5)">
-        <header class="my-wife-bot-header-bar">
-            <a href="{{ url('/') }}" class="back-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                돌아가기
-            </a>
-            <h1 class="my-wife-bot-header-title">{{ $title ?? '캐릭터 모아보기' }}</h1>
-            <div class="my-wife-bot-header-actions">
-                @auth
-                    <a href="{{ route('my-wife-bot.my-characters') }}" class="my-characters-button">
-                        내 챗봇 관리
-                    </a>
-                    <a href="{{ route('my-wife-bot.characters.create') }}" class="add-character-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        챗봇 추가하기
-                    </a>
-                @else
-                    <a href="{{ route('login') }}" class="add-character-button">
-                        로그인하고 챗봇 만들기
-                    </a>
-                @endauth
-            </div>
-        </header>
+    <section class="shell">
+        <div class="phero">
+            <a class="back" href="{{ url('/') }}">← 돌아가기</a>
+            <span class="tag">🤖 MY WIFE BOT</span>
+            <h1>{{ $title ?? '캐릭터 모아보기' }}</h1>
+            <p>{{ $lead ?? '대화하고 싶은 캐릭터를 골라 보세요.' }}</p>
+        </div>
+    </section>
 
+    <section class="shell stack g3" style="padding-bottom:var(--s6)">
         @if(session('message'))
             <p class="characters-message">{{ session('message') }}</p>
         @endif
 
-        <p class="my-wife-bot-lead">{{ $lead ?? '대화하고 싶은 캐릭터를 골라 보세요.' }}</p>
+        <div class="sec-head">
+            <h2>지금 대화할 수 있는 캐릭터</h2>
+            <div class="row" style="gap:var(--s1)">
+                @auth
+                    <a class="btn btn-soft" href="{{ route('my-wife-bot.my-characters') }}">내 챗봇 관리</a>
+                    <a class="btn btn-sm" href="{{ route('my-wife-bot.characters.create') }}">＋ 챗봇 추가하기</a>
+                @else
+                    <a class="btn btn-soft" href="{{ route('login') }}">로그인하고 챗봇 만들기</a>
+                @endauth
+            </div>
+        </div>
 
         @if($characters->isEmpty())
             <p class="characters-empty">등록된 캐릭터가 없습니다. @auth<a href="{{ route('my-wife-bot.characters.create') }}">챗봇 추가하기</a>에서 첫 캐릭터를 만들어 보세요.@else<a href="{{ route('login') }}">로그인</a> 후 첫 캐릭터를 만들어 보세요.@endauth</p>
         @else
-        <section class="characters-grid {{ $characters->count() === 1 ? 'characters-grid--single' : '' }}">
+        <div class="grid-2 {{ $characters->count() === 1 ? 'characters-grid--single' : '' }}">
             @foreach($characters as $char)
-                <article class="character-card {{ $char['accent'] ?? 'accent-violet' }}">
-                    <div class="character-image-wrap">
-                        @if(!empty($char['image']))
-                            <img src="{{ $char['image'] }}" alt="{{ $char['name'] }}" class="character-image" />
-                        @else
-                            <div class="character-image-placeholder">🖼</div>
-                        @endif
-                    </div>
-                    <h2 class="character-name">{{ $char['name'] }}</h2>
-                    <p class="character-description">{{ $char['description'] }}</p>
-                    @if(!empty($char['has_more']))
-                        <button type="button" class="character-more-button"
-                                data-name="{{ $char['name'] }}"
-                                data-image="{{ $char['image'] }}"
-                                data-intro="{{ $char['short_intro'] }}"
-                                data-detail="{{ $char['detail_full'] }}">더보기</button>
+                <article class="card {{ $char['accent'] ?? 'accent-violet' }}" style="flex-direction:row;gap:var(--s3);align-items:center">
+                    @if(!empty($char['image']))
+                        <span class="ava" style="width:96px;height:96px;align-self:flex-start">
+                            <img referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="{{ $char['name'] }}" src="{{ $char['image'] }}">
+                        </span>
+                    @else
+                        <span class="ava noimg" style="width:96px;height:96px;align-self:flex-start"></span>
                     @endif
-                    <div class="character-actions">
-                        <a href="{{ route('my-wife-bot.chat', $char['id']) }}" class="character-button">
-                            대화하기
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </a>
-                        @if(!empty($showActions))
-                            <a href="{{ route('my-wife-bot.characters.edit', $char['id']) }}" class="character-link character-link--edit">수정</a>
-                            <form action="{{ route('my-wife-bot.characters.destroy', $char['id']) }}" method="POST" class="character-delete-form" onsubmit="return confirm('이 캐릭터를 삭제할까요?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="character-link character-link--delete">삭제</button>
-                            </form>
+                    <span class="stack" style="gap:10px;flex:1;min-width:0">
+                        <span style="font-family:var(--disp);font-size:24px;color:var(--hd)">{{ $char['name'] }}</span>
+                        <span style="font-size:14px;color:var(--lead);line-height:1.7">{{ $char['description'] }}</span>
+                        @if(!empty($char['has_more']))
+                            <button type="button" class="character-more-button" style="align-self:flex-start"
+                                    data-name="{{ $char['name'] }}"
+                                    data-image="{{ $char['image'] }}"
+                                    data-intro="{{ $char['short_intro'] }}"
+                                    data-detail="{{ $char['detail_full'] }}">더보기</button>
                         @endif
-                    </div>
+                        <span class="row" style="gap:var(--s3);align-items:center;margin-top:2px">
+                            <a class="enter" style="text-decoration:none" href="{{ route('my-wife-bot.chat', $char['id']) }}">대화하기 →</a>
+                            @if(!empty($showActions))
+                                <a href="{{ route('my-wife-bot.characters.edit', $char['id']) }}" style="font-size:12px;color:var(--tx3);text-decoration:none">수정</a>
+                                <form action="{{ route('my-wife-bot.characters.destroy', $char['id']) }}" method="POST" style="display:inline;margin:0" onsubmit="return confirm('이 캐릭터를 삭제할까요?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" style="font-size:12px;color:var(--ds-negative);background:none;border:none;cursor:pointer;font-family:inherit;padding:0">삭제</button>
+                                </form>
+                            @endif
+                        </span>
+                    </span>
                 </article>
             @endforeach
-        </section>
+        </div>
         @endif
-    </div>
+    </section>
 
     {{-- 캐릭터 상세 모달 — 카드에서 잘린 설명 전문과 일러스트를 보여준다 --}}
     <div class="character-modal" id="character-modal" hidden>

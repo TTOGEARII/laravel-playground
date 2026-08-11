@@ -1,15 +1,16 @@
 <template>
-  <div class="sgr-page">
-    <!-- 레이드 상세 -->
-    <RaidDetail
-      v-if="view === 'detail' && detail"
-      :raid="detail"
-      :pool="poolFor(detail.game.slug)"
-      :user-subs="userSubsFor(detail.game.slug)"
-      @back="showDashboard"
-      @set-substitute="onSetSubstitute"
-      @clear-substitute="onClearSubstitute"
-    />
+  <div class="sgr-info-root">
+    <!-- 레이드 상세 — 900px 고정 칼럼 유지(몰루로그식) -->
+    <div v-if="view === 'detail' && detail" class="sgr-page">
+      <RaidDetail
+        :raid="detail"
+        :pool="poolFor(detail.game.slug)"
+        :user-subs="userSubsFor(detail.game.slug)"
+        @back="showDashboard"
+        @set-substitute="onSetSubstitute"
+        @clear-substitute="onClearSubstitute"
+      />
+    </div>
 
     <!-- 대시보드 (게임 탭 + 게임별 정보 모듈; 캐릭터정보 도감에 내 보유·성장도 통합) -->
     <RaidDashboard

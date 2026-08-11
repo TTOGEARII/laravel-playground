@@ -112,7 +112,7 @@ class RedemptionTest extends TestCase
         $this->actingAs($user)
             ->get('/subculture-game-info/codes')
             ->assertOk()
-            ->assertSee('sgi-redeemed-toggle', false)
+            ->assertSee('js-redeemed', false) // 교환완료 토글 버튼(kt 개편 후 훅 클래스)
             ->assertSee((string) $code->id);
     }
 }
