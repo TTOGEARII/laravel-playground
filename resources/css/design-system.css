@@ -194,7 +194,7 @@ main { position: relative; }
 .btn-block { width: 100%; }
 
 /* ── 헤더 ── */
-.hdr { position: sticky; top: 0; z-index: 40; background: var(--hdr-bg); backdrop-filter: blur(18px); border-bottom: 1px solid var(--line); }
+.hdr { position: sticky; top: 0; z-index: 40; background: var(--hdr-bg); backdrop-filter: blur(18px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
 .hdr-in { height: 76px; display: flex; align-items: center; gap: var(--s4); }
 .logo { display: flex; align-items: center; gap: 12px; }
 .logo-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--r-s); background: linear-gradient(140deg, var(--accent), var(--accent3)); color: var(--on-accent); font-family: var(--disp); font-size: 21px; box-shadow: var(--shadow-btn); }

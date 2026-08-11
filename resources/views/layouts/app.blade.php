@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{-- viewport-fit=cover: 안드로이드/iOS 엣지투엣지에서 env(safe-area-inset-*) 가 실제 값으로 계산되게(없으면 항상 0 → 제스처바에 하단 콘텐츠가 잘림) --}}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Kanenashi Togeari')</title>
     {{-- PWA: 홈 화면 설치(standalone) 지원 --}}
