@@ -290,6 +290,18 @@ onMounted(async () => {
     const { data } = await res.json();
     personaOptions.value = data.characters ?? []; // 페르소나 = 챗봇 캐릭터 전체(프리셋 제거)
   } catch { /* 프리셋 없이도 대화는 가능 */ }
-  restoreSession();
+  await restoreSession();
+
+  // 정보검색 상단 검색창에서 ?q= 로 넘어온 질문 — 입력창에 채우고, 페르소나가 정해져 있으면 바로 전송.
+  // (페르소나 미선택이면 프리필만 → 카드에서 고른 뒤 전송. q 는 URL 에서 제거해 새로고침 재전송 방지)
+  const urlQuery = new URLSearchParams(location.search).get('q');
+  if (urlQuery) {
+    input.value = urlQuery;
+    nextTick(autoGrow);
+    if (currentPersona.value && !streaming.value) send();
+    const rest = new URLSearchParams(location.search);
+    rest.delete('q');
+    history.replaceState(null, '', location.pathname + (rest.toString() ? `?${rest}` : ''));
+  }
 });
 </script>

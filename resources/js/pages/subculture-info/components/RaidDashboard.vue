@@ -23,10 +23,11 @@
     </div>
 
     <section class="shell stack g3" style="padding-top:var(--s4)">
-      <!-- 검색(목업 셸 구조 — 게임별 정보 탐색 진입점) -->
-      <form class="searchbar" @submit.prevent>
+      <!-- 검색 → AI 에이전트에게 현재 게임 컨텍스트로 질문 -->
+      <form class="searchbar" @submit.prevent="askAgent">
         <input
           type="search"
+          v-model="searchQuery"
           aria-label="정보 검색"
           placeholder="캐릭터 · 컨텐츠 · 공략 검색 — 예: 총력전 편성, 미래시"
         />
@@ -175,6 +176,18 @@ function tabLabel(key) {
 }
 
 const currentGame = computed(() => props.games.find((g) => g.slug === props.activeGame) ?? props.games[0]);
+
+// 상단 검색창 → AI 에이전트로 질문 전달(현재 게임 컨텍스트 + 질문 프리필). 실검색 대신 '물어보기' 진입점.
+const searchQuery = ref('');
+function askAgent() {
+  const q = searchQuery.value.trim();
+  const game = props.activeGame || currentGame.value?.slug;
+  const params = new URLSearchParams();
+  if (game) params.set('game', game);
+  if (q) params.set('q', q);
+  const qs = params.toString();
+  window.location.href = `/subculture-agent${qs ? `?${qs}` : ''}`;
+}
 
 // modules 는 평면 배열(전부 메인) 또는 { main:[...], tabs:[...] } 두 형태를 지원
 const mainModules = computed(() => {
