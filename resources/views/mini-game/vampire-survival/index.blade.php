@@ -4,6 +4,9 @@
 
 @section('body-class', 'vampire-survival-page game-immersive')
 
+{{-- 몰입형 게임 화면 — 전역 헤더/푸터 제외(하단 잘림 방지). 게임 내 메뉴로 종료/홈 이동 --}}
+@section('no-chrome', 'true')
+
 @section('content')
     <div class="game-wrapper">
 

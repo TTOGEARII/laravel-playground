@@ -2,6 +2,9 @@
 
 @section('title', '테트리스 대전 - Mini Game')
 
+{{-- 몰입형 게임 화면 — 전역 헤더/푸터 제외(하단 잘림 방지) --}}
+@section('no-chrome', 'true')
+
 @section('content')
     @vite(['resources/js/pages/mini-game/tetris-versus.js'])
     <div

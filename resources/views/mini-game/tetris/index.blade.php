@@ -4,6 +4,9 @@
 
 @section('body-class', 'tetris-page game-immersive')
 
+{{-- 몰입형 게임 화면 — 전역 헤더/푸터 제외(하단 잘림 방지) --}}
+@section('no-chrome', 'true')
+
 @section('content')
     <a class="game-exit-btn" id="gameExitBtn" href="{{ route('mini-game.index') }}" hidden
        onclick="return confirm('게임을 종료하고 목록으로 돌아갈까요?')">✕ 게임 종료</a>

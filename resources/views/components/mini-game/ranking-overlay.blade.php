@@ -51,13 +51,16 @@
 <style>
     .mg-rank-overlay {
         position: fixed; inset: 0; z-index: 9999;
-        display: flex; align-items: center; justify-content: center;
+        display: flex; justify-content: center;
+        /* 내용이 뷰포트보다 높으면(모바일) 상하가 잘리지 않도록 오버레이가 스크롤되게 한다 */
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
         background: rgba(2, 6, 23, 0.78); backdrop-filter: blur(4px);
         padding: 20px; font-family: 'Outfit', 'Noto Sans KR', sans-serif;
     }
     .mg-rank-overlay[hidden] { display: none; }
     .mg-rank-modal {
         width: 100%; max-width: 380px;
+        margin: auto; /* 공간 있으면 중앙, 크면 스크롤(align-items:center 의 잘림 회피) */
         background: #0f172a; border: 1px solid #1e293b; border-radius: 16px;
         padding: 26px 24px; color: #e2e8f0; box-shadow: 0 24px 60px rgba(0,0,0,0.5);
         text-align: center;
