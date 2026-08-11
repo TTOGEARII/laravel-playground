@@ -39,7 +39,7 @@
     @yield('vite_extra')
     @stack('styles')
 </head>
-<body class="@yield('body-class', '')">
+<body class="@yield('body-class', '') @hasSection('no-chrome') no-chrome @endif">
     {{-- KT 배경: 도트 패턴 + 3색 블롭 글로우(고정, 콘텐츠 뒤) --}}
     <div class="bg bg-dots"></div>
     <div class="bg"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="blob blob-c"></div></div>
@@ -64,6 +64,7 @@
                     <span class="logo-en">KANENASHI TOGEARI</span>
                 </span>
             </a>
+            <button class="burger" type="button" aria-label="메뉴" aria-expanded="false"><i></i><i></i><i></i></button>
             <nav class="nav">
                 <a href="{{ url('/otaku-shop') }}" @class(['on' => request()->is('otaku-shop*')])>오타쿠샵</a>
                 <a href="{{ url('/subculture-game-info') }}" @class(['on' => request()->is('subculture-game-info*') || request()->is('subculture-agent*')])>게임 허브</a>
@@ -90,13 +91,53 @@
 
     @unless (View::hasSection('no-chrome'))
         <x-site-footer />
+
+        {{-- 모바일 하단 탭바(주요 메뉴) — 데스크톱은 CSS 로 숨김 --}}
+        <nav class="tabbar" aria-label="주요 메뉴">
+            <a href="{{ url('/') }}" @class(['on' => request()->is('/')])><span class="ti">🏠</span><span class="tl">홈</span></a>
+            <a href="{{ url('/otaku-shop') }}" @class(['on' => request()->is('otaku-shop*')])><span class="ti">🛒</span><span class="tl">샵</span></a>
+            <a href="{{ url('/subculture-game-info') }}" @class(['on' => request()->is('subculture-game-info*') || request()->is('subculture-agent*')])><span class="ti">🎮</span><span class="tl">게임</span></a>
+            <a href="{{ url('/mini-game') }}" @class(['on' => request()->is('mini-game*')])><span class="ti">🕹️</span><span class="tl">미니게임</span></a>
+            <a href="{{ url('/event-calendar') }}" @class(['on' => request()->is('event-calendar*')])><span class="ti">🗓️</span><span class="tl">캘린더</span></a>
+            <a href="{{ url('/my-wife-bot') }}" @class(['on' => request()->is('my-wife-bot*')])><span class="ti">🤖</span><span class="tl">챗봇</span></a>
+        </nav>
     @endunless
 
-    {{-- 테마 토글 라벨을 현재 테마에 맞춘다(초기 로드) --}}
+    {{-- 공통 셸 스크립트: js 마킹 · 테마 라벨 · 햄버거 드로어 · 이미지 폴백(noimg) --}}
     <script>
+        document.documentElement.classList.add('js');
         (function () {
             var t = document.documentElement.getAttribute('data-theme');
             document.querySelectorAll('.theme-tg-lbl').forEach(function (el) { el.textContent = t === 'light' ? 'DARK' : 'LIGHT'; });
+        })();
+
+        // 모바일 햄버거 드로어(작은 화면에서 nav 펼침/접기) — 하단 탭바가 주 내비, 버거는 보조
+        (function () {
+            var bar = document.querySelector('.hdr-in'), nav = document.querySelector('.nav');
+            if (!bar || !nav) return;
+            var b = bar.querySelector('.burger');
+            if (!b) return;
+            bar.style.position = 'relative';
+            function close() { nav.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); }
+            b.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var open = nav.classList.toggle('open');
+                b.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            nav.addEventListener('click', function (e) { if (e.target.closest('a')) close(); });
+            document.addEventListener('click', function (e) { if (!nav.contains(e.target) && !b.contains(e.target)) close(); });
+            window.addEventListener('resize', function () { if (window.innerWidth > 820) close(); });
+        })();
+
+        // 이미지 로드 실패(깨진 초상화/아바타)는 컨테이너에 noimg 클래스로 폴백(🎀)
+        (function () {
+            function mark(img) { var w = img.parentElement; if (w && w.className && /portrait|ava|chat-ava/.test(w.className)) w.classList.add('noimg'); }
+            var imgs = document.querySelectorAll('.portrait img,.ava img,.chat-ava img');
+            for (var i = 0; i < imgs.length; i++) {
+                var im = imgs[i];
+                if (im.complete && im.naturalWidth === 0) mark(im);
+                im.addEventListener('error', (function (x) { return function () { mark(x); }; })(im));
+            }
         })();
     </script>
 
