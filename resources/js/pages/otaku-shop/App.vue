@@ -121,12 +121,13 @@
         <p v-else class="empty">등록된 상품이 없습니다.</p>
       </template>
 
-      <!-- 페이지네이션 -->
-      <div v-if="meta.last_page > 1" class="prod-pager">
-        <button class="btn btn-soft btn-sm" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">이전</button>
-        <span class="prod-pager-info">{{ meta.current_page }} / {{ meta.last_page }}</span>
-        <button class="btn btn-soft btn-sm" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">다음</button>
+      <!-- 무한 스크롤: 센티넬이 보이면 다음 페이지를 이어 붙인다(append). '더 보기' 폴백 버튼 포함 -->
+      <div v-if="hasMore" ref="sentinelEl" class="prod-sentinel">
+        <button class="btn btn-soft" type="button" :disabled="loadingMore" @click="loadMore">
+          {{ loadingMore ? '불러오는 중…' : '더 보기' }}
+        </button>
       </div>
+      <p v-else-if="products.length" class="prod-end">모든 상품을 불러왔어요 · 총 {{ meta.total.toLocaleString() }}개</p>
 
       <!-- 핫 키워드 — 목업 hotkey -->
       <div class="stack g2" style="margin-top:var(--s3)">
@@ -317,7 +318,10 @@
           </div>
         </div>
 
-        <button class="btn btn-soft btn-block" type="button" @click="resetFilters">필터 초기화</button>
+        <div class="filter-drawer-actions">
+          <button class="btn btn-soft" type="button" @click="resetFilters">초기화</button>
+          <button class="btn btn-fill" type="button" @click="showFilters = false">적용</button>
+        </div>
       </aside>
     </div>
   </div>
@@ -343,6 +347,7 @@ const meta = ref({
   total: 0,
 });
 const loading = ref(false);
+const loadingMore = ref(false); // 무한 스크롤: 다음 페이지 이어붙이는 중
 const keyword = ref('');
 const selectedCategoryId = ref(null);
 const selectedIpId = ref(null);
@@ -694,8 +699,10 @@ async function fetchShops() {
   }
 }
 
-async function fetchProducts(page = 1) {
-  loading.value = true;
+// append=true 면 다음 페이지를 기존 목록에 이어붙인다(무한 스크롤). 아니면 새로 교체.
+async function fetchProducts(page = 1, append = false) {
+  if (append) loadingMore.value = true;
+  else loading.value = true;
   try {
     const res = await otakuShopApi.getProducts({
       page,
@@ -712,13 +719,25 @@ async function fetchProducts(page = 1) {
       price_min: priceMin.value || undefined,
       price_max: priceMax.value || undefined,
     });
-    products.value = res.data || [];
+    const rows = res.data || [];
+    products.value = append ? products.value.concat(rows) : rows;
     meta.value = res.meta || meta.value;
   } catch (e) {
     console.error('products', e);
-    products.value = [];
+    if (!append) products.value = [];
   } finally {
-    loading.value = false;
+    if (append) loadingMore.value = false;
+    else loading.value = false;
+  }
+}
+
+// 무한 스크롤 — 센티넬이 뷰포트 근처에 오면 다음 페이지를 이어붙인다.
+const hasMore = computed(() => (meta.value.current_page || 1) < (meta.value.last_page || 1));
+const sentinelEl = ref(null);
+let productIO = null;
+function loadMore() {
+  if (hasMore.value && !loading.value && !loadingMore.value) {
+    fetchProducts((meta.value.current_page || 1) + 1, true);
   }
 }
 
@@ -802,10 +821,23 @@ onMounted(() => {
   fetchShops().then(() => fetchProducts(1));
   loadWishes();
   document.addEventListener('mousedown', onDocClick);
+  // 무한 스크롤 옵저버(센티넬은 v-if 라 mount 시점에 watch 로 관찰 대상 연결)
+  productIO = new IntersectionObserver(
+    (entries) => { if (entries.some((e) => e.isIntersecting)) loadMore(); },
+    { rootMargin: '600px 0px' },
+  );
+});
+
+// 센티넬 엘리먼트가 나타나면 관찰, 사라지면 해제(다음 페이지 없으면 v-if 로 언마운트)
+watch(sentinelEl, (el, prev) => {
+  if (!productIO) return;
+  if (prev) productIO.unobserve(prev);
+  if (el) productIO.observe(el);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onDocClick);
+  if (productIO) productIO.disconnect();
 });
 
 watch([selectedCategoryId, selectedIpId, sortBy, comparedOnly, upcomingOnly, inStockOnly], () => fetchProducts(1));

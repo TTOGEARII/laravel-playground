@@ -163,7 +163,7 @@ img { max-width: 100%; }
 .row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
 
 /* ── 배경 (도트 + 블롭 글로우) ── */
-.bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
 .bg-dots { background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 26px 26px; animation: drift 90s linear infinite; }
 .blob { position: absolute; border-radius: 50%; filter: blur(40px); }
 .blob-a { top: -320px; left: -220px; width: 820px; height: 820px; background: radial-gradient(circle, var(--glow-a), transparent 65%); }
@@ -173,7 +173,11 @@ img { max-width: 100%; }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 @keyframes breathe { 0%, 100% { opacity: .85; } 50% { opacity: .45; } }
 @keyframes slide { to { transform: translateX(-50%); } }
-main, header, footer, .ticker { position: relative; z-index: 1; }
+/* main 은 z-index 로 stacking context 를 만들지 않는다 — 만들면 내부 모달(z-index)이
+   헤더(.hdr z-40)·탭바(.tabbar z-50) 위로 못 올라가 닫기 버튼이 가려진다.
+   배경(.bg)을 z-index:-1 로 내려 content 는 z-index 없이도 배경 위에 온다. */
+header, footer, .ticker { position: relative; z-index: 1; }
+main { position: relative; }
 /* 레거시 배경 노드 무력화(레이아웃이 .bg 로 대체) */
 .bg-gradient, .noise { display: none !important; }
 
@@ -820,17 +824,14 @@ a.chip:hover, button.chip:hover { border-color: var(--accent); color: var(--acce
 
 /* ══════════ 가로 슬라이드 (모바일) ══════════ */
 @media(max-width:820px){
-  .catrow,.prodgrid,.sortbar .chips,.gfilter .chips,.tabs,.gpick,.hotkey,.grid.slide,.gside.slide{
+  .catrow,.sortbar .chips,.gfilter .chips,.tabs,.gpick,.hotkey,.grid.slide,.gside.slide{
     scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-padding-inline:var(--pad-x)}
-  .catrow>*,.prodgrid>*,.sortbar .chips>*,.gfilter .chips>*,.tabs>*,.gpick>*,.hotkey>*,.grid.slide>*,.gside.slide>*{scroll-snap-align:start}
+  .catrow>*,.sortbar .chips>*,.gfilter .chips>*,.tabs>*,.gpick>*,.hotkey>*,.grid.slide>*,.gside.slide>*{scroll-snap-align:start}
   .catrow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
           margin-inline:calc(var(--pad-x) * -1);padding:2px var(--pad-x)}
   .catrow::-webkit-scrollbar{display:none}
   .cat{flex:0 0 72px;padding:14px 6px}
-  .prodgrid{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;
-            margin-inline:calc(var(--pad-x) * -1);padding:2px var(--pad-x)}
-  .prodgrid::-webkit-scrollbar{display:none}
-  .prod{flex:0 0 46%}
+  /* 굿즈(prodgrid)는 세로 2열 그리드 유지(무한 스크롤) — 가로 슬라이드에서 제외 */
   .hotkey{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
           margin-inline:calc(var(--pad-x) * -1);padding-inline:var(--pad-x)}
   .hotkey::-webkit-scrollbar{display:none}

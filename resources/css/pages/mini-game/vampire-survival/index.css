@@ -21,7 +21,7 @@
 
 .game-wrapper {
     width: 100%;
-    min-height: calc(100vh - 100px);
+    min-height: calc(100dvh - 100px);
     display: flex;
     flex-direction: column;
 }
@@ -73,7 +73,7 @@
     justify-content: center;
     align-items: center;
     flex: 1;
-    min-height: calc(100vh - 200px);
+    min-height: calc(100dvh - 200px);
     width: 100%;
     margin: 0;
     border: none;
@@ -154,7 +154,7 @@
     align-items: center;
     width: 100%;
     flex: 1;
-    min-height: calc(100vh - 200px);
+    min-height: calc(100dvh - 200px);
     margin: 0;
     border: none;
     border-radius: 0;
@@ -222,11 +222,11 @@
     }
 
     .game-start-screen {
-        min-height: calc(100vh - 150px);
+        min-height: calc(100dvh - 150px);
     }
 
     #game-container {
-        min-height: calc(100vh - 150px);
+        min-height: calc(100dvh - 150px);
     }
 
     .start-screen-content h2 {
