@@ -20,7 +20,32 @@
     </div>
 
     <section class="shell stack g3" style="padding-top:var(--s4)">
-      <!-- 카테고리 타일 — 목업 catrow -->
+      <!-- 모바일: 굿즈 종류 드롭다운(가로 스크롤 대체). PC 는 아래 catrow 타일 -->
+      <div class="cat-select" :class="{ 'is-open': catOpen }" ref="catSelectEl">
+        <button type="button" class="cat-select-trigger" @click="catOpen = !catOpen">
+          <span class="cat-select-cur"><span class="cat-i">{{ selectedCatEmoji }}</span>{{ selectedCatLabel }}</span>
+          <svg viewBox="0 0 24 24" class="cat-select-caret" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <div v-if="catOpen" class="cat-select-panel">
+          <button type="button" class="cat-opt" :class="{ 'is-sel': selectedCategoryId === null }" @click="pickCategory(null)">
+            <span class="cat-i">🛍️</span> 전체
+          </button>
+          <button
+            v-for="cat in categories"
+            :key="cat.ok_category_id"
+            type="button"
+            class="cat-opt"
+            :class="{ 'is-sel': selectedCategoryId === cat.ok_category_id }"
+            @click="pickCategory(cat.ok_category_id)"
+          >
+            <span class="cat-i">{{ categoryEmoji(cat) }}</span> {{ cat.ok_category_label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 카테고리 타일 — 목업 catrow (PC) -->
       <div class="catrow">
         <a
           class="cat"
@@ -370,6 +395,23 @@ const ipSearch = ref('');
 const ipComboboxEl = ref(null);
 const ipSearchInput = ref(null);
 
+// 굿즈 종류 드롭다운(모바일) 상태
+const catOpen = ref(false);
+const catSelectEl = ref(null);
+const selectedCatLabel = computed(() => {
+  if (selectedCategoryId.value === null) return '전체';
+  return categories.value.find((c) => c.ok_category_id === selectedCategoryId.value)?.ok_category_label ?? '전체';
+});
+const selectedCatEmoji = computed(() => {
+  if (selectedCategoryId.value === null) return '🛍️';
+  const cat = categories.value.find((c) => c.ok_category_id === selectedCategoryId.value);
+  return cat ? categoryEmoji(cat) : '🛍️';
+});
+function pickCategory(id) {
+  selectedCategoryId.value = id;
+  catOpen.value = false;
+}
+
 const filteredIps = computed(() => {
   const q = ipSearch.value.trim().toLowerCase();
   if (!q) return ips.value;
@@ -399,6 +441,9 @@ function selectIp(id) {
 function onDocClick(e) {
   if (ipOpen.value && ipComboboxEl.value && !ipComboboxEl.value.contains(e.target)) {
     closeIpDropdown();
+  }
+  if (catOpen.value && catSelectEl.value && !catSelectEl.value.contains(e.target)) {
+    catOpen.value = false;
   }
 }
 

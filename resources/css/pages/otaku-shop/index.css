@@ -1478,9 +1478,70 @@
 .prod-sentinel { display: flex; justify-content: center; padding: var(--s3) 0; }
 .prod-end { text-align: center; color: var(--tx3); font-size: 13px; padding: var(--s3) 0; }
 
+/* ── 굿즈 종류 드롭다운(모바일 전용, PC 는 catrow 타일) ── */
+.cat-select { display: none; position: relative; }
+.cat-select-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 13px 16px;
+    border-radius: var(--r-m);
+    border: 1px solid var(--line);
+    background: var(--ink2);
+    color: var(--hd);
+    font-family: var(--body);
+    font-size: 14px;
+    cursor: pointer;
+    transition: .2s ease;
+}
+.cat-select.is-open .cat-select-trigger,
+.cat-select-trigger:hover { border-color: var(--accent); }
+.cat-select-cur { display: flex; align-items: center; gap: 10px; font-weight: 600; min-width: 0; }
+.cat-select-cur .cat-i { font-size: 18px; flex: none; }
+.cat-select-caret { width: 18px; height: 18px; flex: none; color: var(--tx3); transition: transform .2s ease; }
+.cat-select.is-open .cat-select-caret { transform: rotate(180deg); }
+.cat-select-panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: var(--r-m);
+    border: 1px solid var(--line);
+    background: var(--ink2);
+    box-shadow: var(--shadow-lift);
+}
+.cat-opt {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: var(--r-s);
+    background: transparent;
+    color: var(--tx2);
+    font-family: var(--body);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: .15s ease;
+}
+.cat-opt:hover { background: var(--chip-bg); color: var(--hd); }
+.cat-opt.is-sel { background: var(--chip-pink-bg); color: var(--accent); font-weight: 700; }
+.cat-opt .cat-i { font-size: 18px; flex: none; }
+
 @media (max-width: 820px) {
     .prod-modal-head { flex-direction: column; }
     .prod-modal-thumb { width: 100%; height: 200px; }
     .filter-drawer { width: 100%; }
+    /* 모바일: 카테고리 타일 가로 스크롤 → 드롭다운으로 교체 */
+    .otaku-shop-page .catrow { display: none; }
+    .otaku-shop-page .cat-select { display: block; }
 }
 
