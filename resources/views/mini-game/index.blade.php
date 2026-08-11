@@ -24,48 +24,38 @@
         <p>재미있는 미니게임들을 플레이해보세요!</p>
     </section>
 
-    <div class="shell section" style="padding-top:0">
-    <div class="mg-home-toolbar">
-        <button type="button" id="mg-home-rank-open" class="mg-home-rank-open">🏆 전체 랭킹 보기</button>
-    </div>
+    @php
+        $list = collect($games)->values();
+        $featured = $list->first();
+        $rest = $list->slice(1)->values();
+        $tones = ['pink', 'cyan', 'gold'];
+    @endphp
 
-    <section class="games-grid">
-        @foreach($games as $game)
-        <article class="game-card {{ $game['color'] }} {{ $game['status'] === 'coming-soon' ? 'coming-soon' : '' }}">
-            @if($game['status'] === 'coming-soon')
-                <span class="status-badge coming-soon">준비중</span>
-            @else
-                <span class="status-badge">플레이 가능</span>
-            @endif
-            
-            <div class="card-icon">{{ $game['icon'] }}</div>
-            <h2 class="card-title">{{ $game['name'] }}</h2>
-            <p class="card-description">
-                {{ $game['description'] }}
-            </p>
-            <div class="card-tags">
-                @foreach($game['tags'] as $tag)
-                    <span class="tag">{{ $tag }}</span>
-                @endforeach
+    <section class="shell stack g3" style="padding-top:0">
+        {{-- 필터 바: 전체 개수 칩 + 전체 랭킹 팝업 트리거 --}}
+        <div class="row gfilter" style="justify-content:space-between">
+            <div class="chips">
+                <span class="chip on">전체 {{ $list->count() }}</span>
             </div>
-            @if($game['status'] === 'coming-soon')
-                <button class="card-button" disabled>
-                    준비중입니다
-                </button>
-            @else
-                <a href="{{ isset($game['route']) ? route($game['route']) : '#' }}" class="card-button">
-                    게임 시작
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </a>
-            @endif
-        </article>
-        @endforeach
-    </section>
+            <button type="button" id="mg-home-rank-open" class="btn btn-soft">🏆 전체 랭킹</button>
+        </div>
 
-    </div>{{-- /.shell.section --}}
+        @if ($featured)
+            {{-- 대표(피처) 카드 + 사이드 카드 슬라이드 --}}
+            <div class="gfeature">
+                <x-mini-game.game-card :game="$featured" :index="0" tone="pink" featured />
+                @if ($rest->isNotEmpty())
+                    <div class="gside slide">
+                        @foreach ($rest as $i => $game)
+                            <x-mini-game.game-card :game="$game" :index="$i + 1" :tone="$tones[($i + 1) % count($tones)]" />
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @else
+            <div class="empty">아직 등록된 게임이 없습니다.</div>
+        @endif
+    </section>
 
     {{-- 전체 랭킹 팝업 (랭킹 대상 게임 전체) --}}
     <div id="mg-home-rank" class="mg-home-rank" hidden data-url="{{ route('mini-game.rankings') }}">
@@ -80,15 +70,6 @@
 
 @push('styles')
 <style>
-    .mg-home-toolbar { display: flex; justify-content: flex-end; margin-bottom: 18px; }
-    .mg-home-rank-open {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 10px 18px; border-radius: 10px; border: 1px solid #6366f1;
-        background: #6366f1; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
-        transition: filter .15s ease;
-    }
-    .mg-home-rank-open:hover { filter: brightness(1.1); }
-
     .mg-home-rank {
         position: fixed; inset: 0; z-index: 9999;
         display: flex; align-items: center; justify-content: center;
