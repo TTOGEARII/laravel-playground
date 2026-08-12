@@ -2,8 +2,22 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    {{-- viewport-fit=cover: 안드로이드/iOS 엣지투엣지에서 env(safe-area-inset-*) 가 실제 값으로 계산되게(없으면 항상 0 → 제스처바에 하단 콘텐츠가 잘림) --}}
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{-- 풀스크린(채팅·게임) 높이는 100dvh 대신 실제 사용가능 높이(--app-height)로 잡는다.
+         안드로이드(특히 엣지투엣지)에서 100dvh 가 시스템 바 아래 영역까지 포함해 하단이 잘리는데,
+         window.innerHeight 는 상태바·제스처바를 뺀 실제 웹 영역이라 이걸 CSS 변수로 노출한다. --}}
+    <script>
+        (function () {
+            function setAppHeight() {
+                var h = window.innerHeight || document.documentElement.clientHeight;
+                document.documentElement.style.setProperty('--app-height', Math.round(h) + 'px');
+            }
+            setAppHeight();
+            window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', function () { setTimeout(setAppHeight, 200); });
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+        })();
+    </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Kanenashi Togeari')</title>
     {{-- PWA: 홈 화면 설치(standalone) 지원 --}}

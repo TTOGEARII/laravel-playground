@@ -14,8 +14,8 @@
 }
 
 .doom-page .game-wrapper {
-    height: 100dvh;
-    min-height: 100dvh;
+    height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
     display: flex;
     flex-direction: column;
     position: relative;

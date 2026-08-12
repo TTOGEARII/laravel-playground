@@ -39,7 +39,9 @@
 <style>
     /* 몰입형 풀스크린 채팅 레이아웃(PC·모바일 공통) */
     body.my-wife-bot-chat-page { overflow: hidden; } /* 페이지 스크롤 없이 채팅 로그만 스크롤 */
-    .mw-chat-wrap { height: 100dvh; display: flex; flex-direction: column; }
+    /* 높이는 실제 사용가능 높이(--app-height=window.innerHeight) — 100dvh 는 안드로이드에서
+       시스템 바 아래까지 포함해 입력창이 제스처바에 잘린다. */
+    .mw-chat-wrap { height: var(--app-height, 100dvh); display: flex; flex-direction: column; }
 
     .mw-chat-topbar {
         flex: none;
