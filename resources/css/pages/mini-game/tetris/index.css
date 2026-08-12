@@ -126,9 +126,9 @@
     font-family: inherit;
     font-size: clamp(16px, 4.5vw, 24px);
     font-weight: 700;
-    color: rgba(226, 232, 240, 0.9);
-    background: rgba(148, 163, 184, 0.12);
-    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: rgba(241, 245, 249, 0.98);
+    background: rgba(51, 65, 85, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.6);
     border-radius: 14px;
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);

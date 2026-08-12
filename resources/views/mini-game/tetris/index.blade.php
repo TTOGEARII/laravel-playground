@@ -201,7 +201,10 @@ class TetrisScene extends Phaser.Scene {
 
         if (portrait) {
             const lblH = 16;
-            const topH = clamp(usableH * 0.12, 62, 104);
+            // 좌상단 '게임 종료' 버튼(HTML 고정)이 HOLD/NEXT 를 가리지 않게 상단 여백 확보
+            const exitClear = 52;
+            const hudH = clamp(usableH * 0.12, 62, 104);
+            const topH = hudH + exitClear;
             const availH = usableH - topH - pad * 2;
             const availW = W - pad * 2;
             const cell = Math.max(10, Math.floor(Math.min(availW / COLS, availH / ROWS)));
@@ -211,9 +214,9 @@ class TetrisScene extends Phaser.Scene {
             this.boardX = Math.floor((W - this.boardW) / 2);
             this.boardY = Math.floor(topH + pad + (availH - this.boardH) / 2);
 
-            const previewSize = Math.min(topH - lblH - 8, cell * 3.2);
-            this.holdBox = { x: pad, y: lblH + 4, size: previewSize };
-            this.nextBox = { x: pad + previewSize + 14, y: lblH + 4, size: previewSize };
+            const previewSize = Math.min(hudH - lblH - 8, cell * 3.2);
+            this.holdBox = { x: pad, y: exitClear + lblH + 4, size: previewSize };
+            this.nextBox = { x: pad + previewSize + 14, y: exitClear + lblH + 4, size: previewSize };
         } else {
             const availH = usableH - pad * 2;
             const cell = Math.max(10, Math.floor(Math.min(availH / ROWS, (W * 0.62) / COLS)));
