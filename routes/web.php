@@ -78,6 +78,7 @@ Route::prefix('event-calendar')->group(base_path('routes/event-calendar.php'));
 Route::prefix('api/my-wife-bot')->middleware('throttle:30,1')->controller(MyWifeBotChatController::class)->group(function () {
     Route::post('chat/init', 'init');
     Route::post('chat/send', 'send');
+    Route::post('chat/send-stream', 'sendStream');
     Route::post('chat/suggest', 'suggest');
     Route::post('chat/narrate', 'narrate');
 });

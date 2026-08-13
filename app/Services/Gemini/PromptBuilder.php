@@ -72,9 +72,57 @@ class PromptBuilder
     }
 
     /**
-     * 캐릭터 시스템 프롬프트
+     * 스트리밍 응답 메타데이터 구분자. 스트리밍 모드에서 모델은 대사(message)를 먼저 평문으로
+     * 출력하고, 대사가 끝나면 이 마커 뒤에 {"affinity":정수,"narration":"..."} 를 붙인다.
+     * 서버는 이 마커 앞까지를 대사 델타로 흘리고, 뒤를 메타로 파싱한다(부분 JSON 파싱 회피).
      */
-    public static function characterSystem(ChatCharacter $character): string
+    public const STREAM_META_MARKER = '@@@META@@@';
+
+    /**
+     * 캐릭터 시스템 프롬프트 (JSON 구조 응답 — 비스트리밍 경로).
+     *
+     * @param  array<int, string>  $memories  장기기억(RAG)으로 검색된 관련 기억 문장
+     */
+    public static function characterSystem(ChatCharacter $character, array $memories = []): string
+    {
+        $lines = self::withMemories(self::personaLines($character), $memories);
+
+        $lines[] = "\n한국어로만 답하세요. 응답은 다음 두 요소로 구성합니다.";
+        $lines[] = '- narration: 캐릭터의 행동·표정·주변 상황을 3인칭으로 묘사한 지문 (1~2문장, 없으면 빈 문자열)';
+        $lines[] = '- message: 캐릭터가 직접 내뱉는 대사 (따옴표 없이 내용만, 짧고 자연스럽게)';
+        $lines[] = '또한 유저와의 대화 흐름을 반영한 현재 호감도를 affinity(0~100 정수)로 함께 출력하세요.';
+
+        return self::appendJsonInstruction(
+            $lines,
+            '{"narration": "캐릭터의 행동/상황 묘사 (없으면 빈 문자열)", "message": "캐릭터의 대사 한두 문장", "affinity": 50}'
+        );
+    }
+
+    /**
+     * 캐릭터 시스템 프롬프트 (스트리밍 경로) — 대사를 평문으로 먼저, 끝에 메타 마커.
+     * JSON 모드를 쓰지 않아 대사가 토큰 단위로 자연스럽게 흘러나온다.
+     *
+     * @param  array<int, string>  $memories  장기기억(RAG)으로 검색된 관련 기억 문장
+     */
+    public static function characterSystemStream(ChatCharacter $character, array $memories = []): string
+    {
+        $lines = self::withMemories(self::personaLines($character), $memories);
+
+        $marker = self::STREAM_META_MARKER;
+        $lines[] = "\n한국어로만 답하세요. 출력 형식을 반드시 지키세요:";
+        $lines[] = '1) 먼저 캐릭터가 직접 내뱉는 대사(message)만 따옴표 없이 자연스럽게 출력합니다.';
+        $lines[] = "2) 대사가 끝나면 마지막 줄에 정확히 다음 형식의 메타데이터를 붙입니다: {$marker}{\"affinity\": 0~100 정수, \"narration\": \"행동·상황 3인칭 지문 1~2문장 또는 빈 문자열\"}";
+        $lines[] = "메타데이터({$marker} 이후)는 대사 본문에 절대 섞지 말고 맨 끝에 한 번만 출력하세요.";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * 페르소나 설정 라인(공용) — JSON/스트리밍 두 경로가 함께 쓴다.
+     *
+     * @return array<int, string>
+     */
+    private static function personaLines(ChatCharacter $character): array
     {
         $lines = [
             "당신은 캐릭터 \"{$character->name}\"입니다. 아래 설정을 철저히 지키며 그 인물로서 일관되게 대화하세요.",
@@ -127,15 +175,29 @@ class PromptBuilder
             $lines[] = "[예시 대화] — 아래의 말투와 성격을 참고하되 그대로 복사하지는 마세요.\n".Str::limit($character->example_dialogue, 1200);
         }
 
-        $lines[] = "\n한국어로만 답하세요. 응답은 다음 두 요소로 구성합니다.";
-        $lines[] = '- narration: 캐릭터의 행동·표정·주변 상황을 3인칭으로 묘사한 지문 (1~2문장, 없으면 빈 문자열)';
-        $lines[] = '- message: 캐릭터가 직접 내뱉는 대사 (따옴표 없이 내용만, 짧고 자연스럽게)';
-        $lines[] = '또한 유저와의 대화 흐름을 반영한 현재 호감도를 affinity(0~100 정수)로 함께 출력하세요.';
+        return $lines;
+    }
 
-        return self::appendJsonInstruction(
-            $lines,
-            '{"narration": "캐릭터의 행동/상황 묘사 (없으면 빈 문자열)", "message": "캐릭터의 대사 한두 문장", "affinity": 50}'
-        );
+    /**
+     * 장기기억(RAG) 블록을 페르소나 라인 뒤에 덧붙인다. 비어 있으면 그대로 반환.
+     *
+     * @param  array<int, string>  $lines
+     * @param  array<int, string>  $memories
+     * @return array<int, string>
+     */
+    private static function withMemories(array $lines, array $memories): array
+    {
+        $memories = array_values(array_filter(array_map('trim', $memories)));
+        if ($memories === []) {
+            return $lines;
+        }
+
+        $lines[] = '[관련 기억] — 이전 대화에서 있었던 일들입니다. 자연스럽게 참고하되, 유저가 묻지 않은 내용을 억지로 꺼내지는 마세요.';
+        foreach (array_slice($memories, 0, 5) as $m) {
+            $lines[] = '- '.Str::limit($m, 300);
+        }
+
+        return $lines;
     }
 
     /**

@@ -48,6 +48,17 @@ return [
         // Gemini 3 계열 사고(thinking) 강도. low/minimal 로 낮추면 사고 토큰 소비가 줄어
         // 같은 출력 예산 안에서 실제 대사가 잘리는 현상을 막는다. (2.5 계열은 thinkingBudget 사용 → 빈 값으로)
         'thinking_level' => env('GEMINI_THINKING_LEVEL', 'low'),
+
+        // 컨텍스트 캐싱(explicit context caching): 페르소나(systemInstruction)를 서버에 캐시해
+        // 매 턴 재전송·재과금을 줄인다. 프리뷰/플래시 모델은 미지원일 수 있어 기본 OFF —
+        // 켜도 생성 실패 시 인라인 systemInstruction 으로 자동 폴백한다(방어적).
+        'context_cache' => env('GEMINI_CONTEXT_CACHE', false),
+        'context_cache_ttl' => (int) env('GEMINI_CONTEXT_CACHE_TTL', 1800), // 초
+
+        // 장기기억(RAG): 대화 요약을 임베딩해 저장하고, 관련 기억을 검색해 프롬프트에 주입.
+        // 임베딩 호출(텍스트)이 추가되므로 기본 OFF. 켜면 chat_memories 테이블 사용.
+        'long_term_memory' => env('GEMINI_LONG_TERM_MEMORY', false),
+        'embed_model' => env('GEMINI_EMBED_MODEL', 'gemini-embedding-001'),
     ],
 
     // 소셜 로그인(OAuth). client_id 가 비어 있으면 해당 제공자 로그인은 비활성으로 처리된다.

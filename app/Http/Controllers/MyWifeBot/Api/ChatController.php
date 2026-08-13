@@ -8,6 +8,7 @@ use App\Models\MyWifeBot\ChatSession;
 use App\Services\Gemini\ChatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatController extends Controller
 {
@@ -107,6 +108,77 @@ class ChatController extends Controller
                 ],
                 'affinity' => $reply['affinity'],
             ],
+        ]);
+    }
+
+    /**
+     * 메시지 전송 → Gemini 응답을 SSE 로 스트리밍(토큰 단위).
+     * POST /api/my-wife-bot/chat/send-stream { "session_id": "1", "content": "안녕" }
+     *
+     * 이벤트: delta{ text } (대사 조각) · done{ message, narration, affinity } (완료) · error{ message }.
+     */
+    public function sendStream(Request $request): StreamedResponse|JsonResponse
+    {
+        $request->validate([
+            'session_id' => ['required', 'string'],
+            'content' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $session = ChatSession::with('chatCharacter')->find($request->input('session_id'));
+
+        if (! $session) {
+            return response()->json(['message' => '세션을 찾을 수 없습니다.'], 404);
+        }
+
+        if (! $this->ownsSession($session)) {
+            return response()->json(['message' => '이 대화에 접근할 권한이 없습니다.'], 403);
+        }
+
+        if (! $session->chatCharacter) {
+            return response()->json(['message' => '캐릭터를 찾을 수 없습니다.'], 404);
+        }
+
+        $content = trim($request->input('content'));
+        if ($content === '') {
+            return response()->json(['message' => '메시지를 입력하세요.'], 422);
+        }
+
+        // 스트리밍은 응답이 오래 걸린다 → 세션 파일 쓰기 잠금을 먼저 풀어(save) 같은 세션의 다른 요청
+        // (추천답변·상황묘사 등)이 블로킹되지 않게 한다. 소유권 검증은 위에서 이미 끝냈다.
+        session()->save();
+
+        return response()->stream(function () use ($session, $content) {
+            $emit = function (string $event, array $data): void {
+                echo 'event: '.$event."\n";
+                echo 'data: '.json_encode($data, JSON_UNESCAPED_UNICODE)."\n\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                flush();
+            };
+
+            try {
+                $result = $this->chatService->replyStream($session, $content, function (string $delta) use ($emit) {
+                    if ($delta !== '') {
+                        $emit('delta', ['text' => $delta]);
+                    }
+                });
+
+                $emit('done', [
+                    'message' => $result['message'],
+                    'narration' => $result['narration'],
+                    'affinity' => $result['affinity'],
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+                $emit('error', ['message' => '응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.']);
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            // 운영 nginx 프록시가 응답을 버퍼링하면 스트리밍이 무의미해진다 → 이 응답만 버퍼링 비활성.
+            'X-Accel-Buffering' => 'no',
+            'Connection' => 'keep-alive',
         ]);
     }
 

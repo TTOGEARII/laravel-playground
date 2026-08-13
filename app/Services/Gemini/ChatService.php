@@ -5,6 +5,7 @@ namespace App\Services\Gemini;
 use App\Enums\MyWifeBot\Genre;
 use App\Enums\MyWifeBot\Target;
 use App\Models\MyWifeBot\ChatCharacter;
+use App\Models\MyWifeBot\ChatMemory;
 use App\Models\MyWifeBot\ChatMessage;
 use App\Models\MyWifeBot\ChatSession;
 use Illuminate\Database\Eloquent\Collection;
@@ -13,9 +14,16 @@ class ChatService
 {
     private const MESSAGES_BEFORE_SUMMARY = 20;
 
+    /** 장기기억(RAG) 검색 임계치 — 코사인 유사도가 이보다 낮으면 무관한 기억으로 보고 버린다. */
+    private const MEMORY_SIMILARITY_MIN = 0.6;
+
+    private bool $longTermMemory;
+
     public function __construct(
         private GeminiService $gemini
-    ) {}
+    ) {
+        $this->longTermMemory = (bool) config('services.gemini.long_term_memory', false);
+    }
 
     /**
      * 채팅 세션 생성 + 캐릭터 인트로 메시지 저장.
@@ -70,6 +78,120 @@ class ChatService
      */
     public function reply(ChatSession $session, string $content): array
     {
+        [$character, $recentMessages, $summary] = $this->persistAndPrepare($session, $content);
+        $memories = $this->retrieveMemories($session, $content);
+
+        $reply = $this->chat($character, $summary, $recentMessages, $content, $memories);
+
+        $affinity = $this->persistCharacterReply($session, $reply['message'], $reply['narration'], $reply['affinity']);
+
+        return [
+            'message' => $reply['message'],
+            'narration' => $reply['narration'],
+            'affinity' => $affinity,
+        ];
+    }
+
+    /**
+     * 스트리밍 채팅 응답. 대사를 토큰 단위로 $onDelta 콜백에 흘리고, 완료 후 최종 결과를 저장·반환한다.
+     * 스트리밍 실패(키 없음/네트워크/HTTP 에러)는 비스트리밍 chat()으로 자동 폴백한다.
+     *
+     * @param  callable(string):void  $onDelta  대사 조각이 도착할 때마다 호출
+     * @return array{message: string, narration: ?string, affinity: int}
+     */
+    public function replyStream(ChatSession $session, string $content, callable $onDelta): array
+    {
+        $character = $session->chatCharacter;
+
+        if (! $this->gemini->hasApiKey()) {
+            $message = ($character->name ?? '캐릭터').'입니다. (API 설정 후 이용해 주세요.)';
+            $onDelta($message);
+            $affinity = $this->persistCharacterReply($session, $message, null, null);
+
+            return ['message' => $message, 'narration' => null, 'affinity' => $affinity];
+        }
+
+        [$character, $recentMessages, $summary] = $this->persistAndPrepare($session, $content);
+        $memories = $this->retrieveMemories($session, $content);
+
+        $systemPrompt = PromptBuilder::characterSystemStream($character, $memories);
+        if (filled($summary)) {
+            $systemPrompt .= "\n\n[이전 대화 요약]\n".trim($summary);
+        }
+
+        $contents = $this->buildContents($recentMessages, $content);
+
+        // 스트리밍 중에는 대사(메타 마커 이전)만 델타로 흘린다. 마커 이후(narration/affinity)는 버퍼링해
+        // 스트림 종료 후 파싱한다 — 부분 JSON 파싱을 피하는 노벨챗식 이벤트 분리 방식.
+        $marker = PromptBuilder::STREAM_META_MARKER;
+        $markerLen = strlen($marker);
+        $full = '';
+        $emitted = 0;
+        $metaReached = false;
+
+        $ok = $this->gemini->streamChat($systemPrompt, $contents, function (string $text) use (&$full, &$emitted, &$metaReached, $marker, $markerLen, $onDelta) {
+            $full .= $text;
+            if ($metaReached) {
+                return;
+            }
+            $pos = strpos($full, $marker);
+            if ($pos !== false) {
+                $msgPart = substr($full, 0, $pos);
+                if (strlen($msgPart) > $emitted) {
+                    $onDelta(substr($msgPart, $emitted));
+                    $emitted = strlen($msgPart);
+                }
+                $metaReached = true;
+
+                return;
+            }
+            // 마커가 청크 경계에 걸릴 수 있어 마지막 (markerLen-1) 바이트는 보류한다.
+            // 보류분은 완료 시 done 이벤트의 최종 message 로 클라이언트가 정합화한다.
+            $safe = max(0, strlen($full) - ($markerLen - 1));
+            // 멀티바이트(한글 등) 문자가 델타 경계에서 쪼개져 깨진 UTF-8이 나가지 않도록,
+            // 안전 지점을 UTF-8 문자 시작 경계까지 뒤로 물린다(연속 바이트 0b10xxxxxx 는 건너뜀).
+            while ($safe > $emitted && $safe < strlen($full) && (ord($full[$safe]) & 0xC0) === 0x80) {
+                $safe--;
+            }
+            if ($safe > $emitted) {
+                $onDelta(substr($full, $emitted, $safe - $emitted));
+                $emitted = $safe;
+            }
+        }, 0.8, 2048);
+
+        // 최종 대사/메타 분리.
+        $pos = strpos($full, $marker);
+        $message = trim($pos !== false ? substr($full, 0, $pos) : $full);
+        $narration = null;
+        $affinity = null;
+        if ($pos !== false) {
+            [$narration, $affinity] = $this->parseStreamMeta(substr($full, $pos + $markerLen));
+        }
+
+        // 스트리밍이 아무것도 못 받았으면 비스트리밍으로 폴백.
+        if (! $ok || $message === '') {
+            $reply = $this->chat($character, $summary, $recentMessages, $content, $memories);
+            $message = $reply['message'];
+            $narration = $reply['narration'];
+            $affinity = $reply['affinity'];
+            if ($message !== '') {
+                $onDelta($message);
+            }
+        }
+
+        $finalAffinity = $this->persistCharacterReply($session, $message, $narration, $affinity);
+
+        return ['message' => $message, 'narration' => $narration, 'affinity' => $finalAffinity];
+    }
+
+    /**
+     * 유저 메시지 저장 + (임계치 초과 시) 요약 압축 후, 모델에 넘길 최근 히스토리/요약을 준비한다.
+     * reply()·replyStream() 공용. 요약이 새로 생기면 장기기억(RAG)에도 적재한다.
+     *
+     * @return array{0: ChatCharacter, 1: array<int, array{role: string, content: string}>, 2: ?string}
+     */
+    private function persistAndPrepare(ChatSession $session, string $content): array
+    {
         $character = $session->chatCharacter;
 
         ChatMessage::create([
@@ -96,6 +218,9 @@ class ChatService
                 $session->save();
                 // 요약 후에는 갱신된 포인터 기준으로 히스토리를 다시 잡아 요약된 구간을 중복 전송하지 않는다.
                 $summarizedId = $session->summarized_until_message_id;
+
+                // 새 요약을 장기기억(RAG)으로 임베딩 저장 — 이후 관련 대화에서 검색 주입된다.
+                $this->storeMemory($session, $newSummary);
             }
         }
 
@@ -104,26 +229,28 @@ class ChatService
         $history = $recent->count() > 0 ? $recent->take($recent->count() - 1) : $recent;
         $recentMessages = $history->map(fn ($m) => ['role' => $m->role, 'content' => $m->content])->values()->all();
 
-        $reply = $this->chat($character, $session->conversation_summary, $recentMessages, $content);
+        return [$character, $recentMessages, $session->conversation_summary];
+    }
 
+    /**
+     * 캐릭터 응답을 저장하고 호감도를 반영한다(reply/replyStream 공용).
+     */
+    private function persistCharacterReply(ChatSession $session, string $message, ?string $narration, ?int $affinity): int
+    {
         ChatMessage::create([
             'chat_session_id' => $session->id,
             'role' => 'character',
-            'content' => $reply['message'],
-            'narration' => $reply['narration'],
+            'content' => $message,
+            'narration' => $narration,
         ]);
 
         // 모델이 호감도를 제시하면 세션에 반영 (없으면 기존값 유지)
-        if ($reply['affinity'] !== null) {
-            $session->affinity = $reply['affinity'];
+        if ($affinity !== null) {
+            $session->affinity = $affinity;
             $session->save();
         }
 
-        return [
-            'message' => $reply['message'],
-            'narration' => $reply['narration'],
-            'affinity' => (int) $session->affinity,
-        ];
+        return (int) $session->affinity;
     }
 
     /**
@@ -190,7 +317,10 @@ class ChatService
      *
      * @return array{message: string, narration: ?string, affinity: ?int}
      */
-    public function chat(ChatCharacter $character, ?string $summary, array $recentMessages, string $userMessage): array
+    /**
+     * @param  array<int, string>  $memories  장기기억(RAG)으로 검색된 관련 기억
+     */
+    public function chat(ChatCharacter $character, ?string $summary, array $recentMessages, string $userMessage, array $memories = []): array
     {
         if (! $this->gemini->hasApiKey()) {
             return [
@@ -200,19 +330,12 @@ class ChatService
             ];
         }
 
-        $systemPrompt = PromptBuilder::characterSystem($character);
+        $systemPrompt = PromptBuilder::characterSystem($character, $memories);
         if (filled($summary)) {
             $systemPrompt .= "\n\n[이전 대화 요약]\n".trim($summary);
         }
 
-        $contents = collect($recentMessages)
-            ->map(fn ($m) => [
-                'role' => ($m['role'] ?? '') === 'character' ? 'model' : 'user',
-                'parts' => [['text' => trim((string) ($m['content'] ?? ''))]],
-            ])
-            ->push(['role' => 'user', 'parts' => [['text' => $userMessage]]])
-            ->values()
-            ->all();
+        $contents = $this->buildContents($recentMessages, $userMessage);
 
         // JSON 모드 + 넉넉한 토큰으로 응답 잘림/코드펜스 깨짐 방지.
         $text = $this->gemini->chat($systemPrompt, $contents, json: true, maxOutputTokens: 2048);
@@ -222,6 +345,143 @@ class ChatService
         }
 
         return ['message' => '잠시 후 다시 말 걸어 주세요.', 'narration' => null, 'affinity' => null];
+    }
+
+    /**
+     * 최근 히스토리 + 이번 유저 발화를 Gemini contents 배열로 변환한다.
+     *
+     * @param  array<int, array{role: string, content: string}>  $recentMessages
+     * @return array<int, array{role: string, parts: array}>
+     */
+    private function buildContents(array $recentMessages, string $userMessage): array
+    {
+        return collect($recentMessages)
+            ->map(fn ($m) => [
+                'role' => ($m['role'] ?? '') === 'character' ? 'model' : 'user',
+                'parts' => [['text' => trim((string) ($m['content'] ?? ''))]],
+            ])
+            ->push(['role' => 'user', 'parts' => [['text' => $userMessage]]])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * 스트리밍 메타 마커 뒤 문자열에서 narration/affinity 파싱. 실패 시 [null, null].
+     *
+     * @return array{0: ?string, 1: ?int}
+     */
+    private function parseStreamMeta(string $raw): array
+    {
+        // 잡텍스트/코드펜스 방어: 첫 '{' ~ 마지막 '}' 구간만 JSON 으로 파싱.
+        $start = strpos($raw, '{');
+        $end = strrpos($raw, '}');
+        if ($start === false || $end === false || $end < $start) {
+            return [null, null];
+        }
+
+        $data = json_decode(substr($raw, $start, $end - $start + 1), true);
+        if (! is_array($data)) {
+            return [null, null];
+        }
+
+        $narration = isset($data['narration']) && is_string($data['narration']) && trim($data['narration']) !== ''
+            ? trim($data['narration'])
+            : null;
+        $affinity = isset($data['affinity']) && is_numeric($data['affinity'])
+            ? max(0, min(100, (int) $data['affinity']))
+            : null;
+
+        return [$narration, $affinity];
+    }
+
+    /**
+     * 요약을 임베딩해 장기기억(chat_memories)으로 저장. 장기기억 비활성이면 아무것도 안 한다.
+     */
+    private function storeMemory(ChatSession $session, string $summary): void
+    {
+        if (! $this->longTermMemory) {
+            return;
+        }
+
+        ChatMemory::create([
+            'chat_session_id' => $session->id,
+            'chat_character_id' => $session->chat_character_id,
+            'kind' => 'summary',
+            'content' => $summary,
+            'embedding' => $this->gemini->embed($summary, 'RETRIEVAL_DOCUMENT'),
+        ]);
+    }
+
+    /**
+     * 유저 발화와 관련된 장기기억을 코사인 유사도로 검색해 상위 K개 문장을 반환한다.
+     * 장기기억 비활성/임베딩 실패 시 빈 배열(그냥 기억 없이 대화).
+     *
+     * @return array<int, string>
+     */
+    private function retrieveMemories(ChatSession $session, string $query, int $k = 3): array
+    {
+        if (! $this->longTermMemory) {
+            return [];
+        }
+
+        $queryVec = $this->gemini->embed($query, 'RETRIEVAL_QUERY');
+        if ($queryVec === null) {
+            return [];
+        }
+
+        $rows = ChatMemory::query()
+            ->where('chat_session_id', $session->id)
+            ->whereNotNull('embedding')
+            ->latest('id')
+            ->limit(50)
+            ->get(['content', 'embedding']);
+
+        $scored = [];
+        foreach ($rows as $row) {
+            $vec = $row->embedding;
+            if (! is_array($vec) || $vec === []) {
+                continue;
+            }
+            $sim = $this->cosineSimilarity($queryVec, $vec);
+            if ($sim >= self::MEMORY_SIMILARITY_MIN) {
+                $scored[] = ['sim' => $sim, 'content' => (string) $row->content];
+            }
+        }
+
+        usort($scored, fn ($a, $b) => $b['sim'] <=> $a['sim']);
+
+        return array_map(fn ($x) => $x['content'], array_slice($scored, 0, $k));
+    }
+
+    /**
+     * 코사인 유사도. 길이가 다르면 겹치는 앞부분만 비교하고, 0 벡터는 0을 반환한다.
+     *
+     * @param  array<int, float>  $a
+     * @param  array<int, float>  $b
+     */
+    private function cosineSimilarity(array $a, array $b): float
+    {
+        $n = min(count($a), count($b));
+        if ($n === 0) {
+            return 0.0;
+        }
+
+        $dot = 0.0;
+        $normA = 0.0;
+        $normB = 0.0;
+        for ($i = 0; $i < $n; $i++) {
+            $x = (float) $a[$i];
+            $y = (float) $b[$i];
+            $dot += $x * $y;
+            $normA += $x * $x;
+            $normB += $y * $y;
+        }
+
+        if ($normA <= 0.0 || $normB <= 0.0) {
+            return 0.0;
+        }
+
+        return $dot / (sqrt($normA) * sqrt($normB));
     }
 
     /**

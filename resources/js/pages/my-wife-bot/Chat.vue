@@ -32,7 +32,7 @@
         <!-- 캐릭터 턴: 지문(가운데 이탤릭) + 대사(bot 말풍선) -->
         <template v-else>
           <p v-if="narrationOf(i, msg)" class="mw-narration" style="color:var(--tx2);text-shadow:none">{{ narrationOf(i, msg) }}<span v-if="isTyping(i) && typing.phase === 'n'" class="mw-caret"></span></p>
-          <div v-if="dialogueOf(i, msg) || (isTyping(i) && typing.phase === 't')" class="msg bot">{{ dialogueOf(i, msg) }}<span v-if="isTyping(i) && typing.phase === 't'" class="mw-caret"></span></div>
+          <div v-if="dialogueOf(i, msg) || (isTyping(i) && typing.phase === 't')" class="msg bot">{{ dialogueOf(i, msg) }}<span v-if="(isTyping(i) && typing.phase === 't') || msg.streaming" class="mw-caret"></span></div>
         </template>
       </template>
 
@@ -94,7 +94,8 @@ const messages = ref([]); // { role, text, narration }
 const sessionId = ref('');
 const loadingIntro = ref(true);
 const inputText = ref('');
-const thinking = ref(false);
+const thinking = ref(false); // 첫 토큰 도착 전 "…" 대기 표시
+const streaming = ref(false); // 스트리밍 진행 중(중복 전송 잠금) — 첫 토큰 이후에도 유지
 const actionLoading = ref(false);
 const affinity = ref(10);
 const suggestions = ref([]);
@@ -102,12 +103,21 @@ const streamEl = ref(null);
 const inputEl = ref(null);
 
 const messageCount = computed(() => messages.value.length);
-const busy = computed(() => thinking.value || actionLoading.value || typing.active);
+const busy = computed(() => thinking.value || streaming.value || actionLoading.value || typing.active);
 
 /* ── 타자기 리빌 ─────────────────────────────────────── */
 const typing = reactive({ index: -1, phase: 'n', narration: '', text: '', active: false });
 let typingTimer = null;
 const TYPE_SPEED = 22; // ms/char
+
+// 스트리밍 타자기 드레이너 — SSE 델타를 버퍼에 쌓고 일정 속도로 한 글자씩 흘려보낸다.
+let streamTimer = null;
+function clearStreamTimer() {
+  if (streamTimer) {
+    clearInterval(streamTimer);
+    streamTimer = null;
+  }
+}
 
 function isTyping(i) {
   return typing.active && typing.index === i;
@@ -245,18 +255,74 @@ async function send() {
   resetInputHeight();
   scrollSoon();
 
+  // 스트리밍 수신용 빈 캐릭터 메시지 슬롯 — 델타가 도착할 때마다 이 슬롯의 text 를 실시간으로 채운다.
+  const idx = messages.value.length;
+  messages.value.push({ role: 'character', text: '', narration: '', streaming: true });
+  scrollSoon();
+
   thinking.value = true;
+  streaming.value = true;
+
+  let target = ''; // SSE 로 받은 누적 텍스트(표시 목표)
+  let shown = 0; // 현재까지 흘려보낸 글자 수(코드포인트 기준)
+  let done = false; // done/에러로 스트림이 끝났는지
+  let finalNarration = '';
+  const slot = () => messages.value[idx];
+
+  const finalize = () => {
+    clearStreamTimer();
+    const m = slot();
+    if (m) {
+      m.text = target;
+      m.narration = finalNarration;
+      m.streaming = false;
+    }
+    streaming.value = false;
+    scrollSoon();
+  };
+
+  // 타자기 드레이너: SSE 델타가 큰 덩어리로 와도 버퍼(target)에 쌓아두고, 매 틱마다 몇 글자씩만
+  // 흘려보내 한 글자씩 찍히는 효과를 낸다. 많이 밀리면 속도를 높여 실시간성을 유지한다.
+  clearStreamTimer();
+  streamTimer = setInterval(() => {
+    const m = slot();
+    if (!m) {
+      clearStreamTimer();
+      return;
+    }
+    const all = Array.from(target); // 코드포인트 단위(이모지/서러게이트 안전)
+    if (shown < all.length) {
+      thinking.value = false; // 한 글자라도 찍히면 "…" 대기 표시 종료
+      const behind = all.length - shown;
+      const step = Math.max(1, Math.ceil(behind / 10)); // 밀린 만큼 가변 속도
+      shown = Math.min(all.length, shown + step);
+      m.text = all.slice(0, shown).join('');
+      scrollSoon();
+    } else if (done) {
+      finalize();
+    }
+  }, 20);
+
   try {
-    const data = await myWifeBotChatApi.sendMessage(sessionId.value, text);
-    if (typeof data?.affinity === 'number') affinity.value = data.affinity;
-    pushCharacter({
-      text: normalizeText(data?.message?.text ?? data?.message),
-      narration: data?.message?.narration || '',
+    await myWifeBotChatApi.sendMessageStream(sessionId.value, text, {
+      onDelta: (delta) => {
+        target += delta; // 즉시 버퍼에 누적 — 실제 표시는 드레이너가 한 글자씩
+      },
+      onDone: (data) => {
+        target = normalizeText(data?.message ?? target); // 최종 정합화(마커 꼬리·잔여 제거)
+        finalNarration = data?.narration || '';
+        if (typeof data?.affinity === 'number') affinity.value = data.affinity;
+      },
+      onError: () => {
+        if (!target) target = '응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.';
+      },
     });
   } catch (_) {
-    pushCharacter({ text: '응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.' });
+    if (!target) target = '응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.';
   } finally {
     thinking.value = false;
+    done = true; // 스트림 종료 확정 — 드레이너가 남은 글자를 다 흘린 뒤 마무리한다.
+    if (!streamTimer) finalize(); // 드레이너가 이미 없어졌으면 안전장치로 마무리
   }
 }
 
@@ -381,7 +447,10 @@ onMounted(async () => {
   });
 });
 
-onBeforeUnmount(cancelTimer);
+onBeforeUnmount(() => {
+  cancelTimer();
+  clearStreamTimer();
+});
 </script>
 
 <style scoped>
