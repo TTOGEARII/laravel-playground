@@ -22,7 +22,7 @@
     <title>@yield('title', 'Kanenashi Togeari')</title>
     {{-- PWA: 홈 화면 설치(standalone) 지원 --}}
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#141026">
+    <meta name="theme-color" content="#17131c">
     <link rel="apple-touch-icon" href="/images/pwa/apple-touch-icon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,7 +35,7 @@
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('theme', theme);
             var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', theme === 'light' ? '#fff7f2' : '#141026');
+            if (meta) meta.setAttribute('content', theme === 'light' ? '#f6f2ec' : '#17131c');
             document.querySelectorAll('.theme-tg-lbl').forEach(function (el) { el.textContent = theme === 'light' ? 'DARK' : 'LIGHT'; });
         };
         (function () {
@@ -43,7 +43,7 @@
             var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
             document.documentElement.setAttribute('data-theme', theme);
             var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', theme === 'light' ? '#fff7f2' : '#141026');
+            if (meta) meta.setAttribute('content', theme === 'light' ? '#f6f2ec' : '#17131c');
         })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">

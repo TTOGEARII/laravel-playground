@@ -1,8 +1,8 @@
 /* ============================================================================
  * 디자인 시스템 — "Kanenashi Togeari (KT)" 디자인 언어  ·  DESIGN.md 단일 출처
  *
- * 서브컬쳐 카와이 글로우: 딥 퍼플 다크(#141026) 몰입 + 라이트(웜 오프화이트) 토글.
- * 멀티 액센트 = 핑크(#ff5c97)·시안(#5fd8ef)·골드(#ffd66e). 둥근 pill·큰 라운딩·소프트 글로우.
+ * 정제된 서브컬쳐: 따뜻한 딥 차콜 다크(#17131c) + 라이트(웜 아이보리 #f6f2ec) 토글.
+ * 단일 코랄 액센트(#dd6d63) + 세이지틸·앰버골드 조화 보조. 절제된 라운딩·뉴트럴 소프트 섀도우(네온·글로우 제거).
  * 폰트: Jua(디스플레이/제목) · Quicksand(라벨/버튼) · Pretendard(본문).
  *
  * 사용 원칙:
@@ -26,7 +26,7 @@
   /* 스페이싱 — 8px 그리드 */
   --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s5: 48px; --s6: 64px; --s7: 96px;
   --shell: 1160px; --gap: 24px; --pad-card: 32px; --pad-x: 32px; --section-y: 96px;
-  --r-s: 14px; --r-m: 22px; --r-l: 28px; --r-pill: 999px;
+  --r-s: 10px; --r-m: 14px; --r-l: 18px; --r-pill: 999px;
 
   /* 폰트 */
   --disp: 'Jua', system-ui, sans-serif;
@@ -34,30 +34,31 @@
   --body: 'Pretendard', system-ui, -apple-system, 'Noto Sans KR', sans-serif;
 
   /* 색 — 다크 */
-  --accent: #ff5c97; --accent2: #5fd8ef; --accent3: #ffd66e; --on-accent: #1a1030;
-  --ink: #141026; --ink2: #1e1838; --line: rgba(255, 255, 255, .09);
-  --tx: #f3edff; --tx2: #b6aad6; --tx3: #8478ab; --lead: #cfc4ee; --hd: #ffffff; --hd2: #ffb3cd;
-  --dot: rgba(255, 255, 255, .05); --glow-a: rgba(255, 92, 151, .30); --glow-b: rgba(95, 216, 239, .20);
-  --glow-c: rgba(255, 214, 110, .14);
-  --hdr-bg: rgba(20, 16, 38, .72); --ftr-bg: rgba(16, 12, 32, .55);
-  --ticker-bg: rgba(255, 92, 151, .10); --ticker-tx: var(--tx2);
-  --grad-pink: linear-gradient(155deg, rgba(255, 92, 151, .20), rgba(30, 24, 56, .92));
-  --grad-cyan: linear-gradient(155deg, rgba(95, 216, 239, .16), rgba(30, 24, 56, .92));
-  --grad-gold: linear-gradient(155deg, rgba(255, 214, 110, .16), rgba(30, 24, 56, .92));
-  --shadow-soft: 0 18px 40px rgba(0, 0, 0, .28);
-  --shadow-lift: 0 26px 60px rgba(0, 0, 0, .36);
-  --shadow-btn: 0 12px 26px rgba(255, 92, 151, .32);
-  --no-color: rgba(255, 255, 255, .05); --ph: #2a2148; --field: rgba(255, 255, 255, .05);
-  --chip-bg: rgba(255, 255, 255, .06); --chip-bd: rgba(255, 255, 255, .12); --chip-tx: #d5cbf0;
-  --chip-pink-bg: rgba(255, 92, 151, .16); --chip-pink-bd: rgba(255, 92, 151, .30); --chip-pink-tx: #ffb3cd;
-  --chip-cyan-bg: rgba(95, 216, 239, .14); --chip-cyan-bd: rgba(95, 216, 239, .26); --chip-cyan-tx: #a8ebf7;
-  --chip-gold-bg: rgba(255, 214, 110, .14); --chip-gold-bd: rgba(255, 214, 110, .26); --chip-gold-tx: #ffe1a1;
-  --tag-bg: rgba(95, 216, 239, .10); --tag-bd: rgba(95, 216, 239, .30); --tag-tx: #a8ebf7;
-  --ghost-bd: rgba(255, 255, 255, .22); --quote-bg: rgba(255, 92, 151, .10);
+  /* 정제된 서브컬쳐 — 따뜻한 딥 차콜 + 단일 코랄 액센트(+조화 보조), 네온·글로우 제거 */
+  --accent: #dd6d63; --accent2: #6fa39c; --accent3: #d9a24e; --on-accent: #2a1712;
+  --ink: #17131c; --ink2: #201a26; --line: rgba(255, 255, 255, .08);
+  --tx: #f2ece4; --tx2: #a89ea6; --tx3: #7c7280; --lead: #cabfc6; --hd: #f7f2ec; --hd2: #e8a79e;
+  --dot: rgba(255, 255, 255, .035); --glow-a: rgba(221, 109, 99, .13); --glow-b: rgba(111, 163, 156, .10);
+  --glow-c: rgba(217, 162, 78, .09);
+  --hdr-bg: rgba(23, 19, 28, .74); --ftr-bg: rgba(18, 14, 22, .55);
+  --ticker-bg: rgba(221, 109, 99, .09); --ticker-tx: var(--tx2);
+  --grad-pink: linear-gradient(160deg, rgba(221, 109, 99, .10), var(--ink2));
+  --grad-cyan: linear-gradient(160deg, rgba(111, 163, 156, .10), var(--ink2));
+  --grad-gold: linear-gradient(160deg, rgba(217, 162, 78, .10), var(--ink2));
+  --shadow-soft: 0 14px 34px rgba(0, 0, 0, .34);
+  --shadow-lift: 0 22px 52px rgba(0, 0, 0, .42);
+  --shadow-btn: 0 10px 22px rgba(30, 14, 12, .45);
+  --no-color: rgba(255, 255, 255, .05); --ph: #2a2330; --field: rgba(255, 255, 255, .045);
+  --chip-bg: rgba(255, 255, 255, .055); --chip-bd: rgba(255, 255, 255, .11); --chip-tx: #cabfc6;
+  --chip-pink-bg: rgba(221, 109, 99, .15); --chip-pink-bd: rgba(221, 109, 99, .30); --chip-pink-tx: #eba59f;
+  --chip-cyan-bg: rgba(111, 163, 156, .14); --chip-cyan-bd: rgba(111, 163, 156, .28); --chip-cyan-tx: #a3cbc4;
+  --chip-gold-bg: rgba(217, 162, 78, .14); --chip-gold-bd: rgba(217, 162, 78, .28); --chip-gold-tx: #e6c78e;
+  --tag-bg: rgba(111, 163, 156, .12); --tag-bd: rgba(111, 163, 156, .30); --tag-tx: #a3cbc4;
+  --ghost-bd: rgba(255, 255, 255, .20); --quote-bg: rgba(221, 109, 99, .10);
 
   /* 시맨틱(에러·성공 등 — 액센트와 별개로 유지) */
-  --ds-negative: #ff6b7d; --ds-warning: var(--accent3); --ds-info: var(--accent2);
-  --ds-text-success: #7be0a8; --ds-danger-bg: rgba(255, 107, 125, .14);
+  --ds-negative: #ef5350; --ds-warning: var(--accent3); --ds-info: var(--accent2);
+  --ds-text-success: #5cbf8a; --ds-danger-bg: rgba(239, 83, 80, .14);
 
   /* ------------------------------------------------------------------------
    * 레거시 --ds-* 리매핑 — 기존 페이지가 이 이름을 참조하므로 kt 값으로 연결하면
@@ -109,30 +110,30 @@
  * 라이트 테마 — data-theme="light" (웜 오프화이트)
  * ========================================================================== */
 :root[data-theme='light'] {
-  --accent: #ff6fa5; --accent2: #3fc7e0; --accent3: #ffd166; --on-accent: #ffffff;
-  --ink: #fff7f2; --ink2: #ffffff; --line: rgba(90, 60, 110, .12);
-  --tx: #2f2140; --tx2: #7b6690; --tx3: #a394b3; --lead: #5d4a72; --hd: #2f2140; --hd2: #e5578d;
-  --dot: rgba(90, 60, 110, .07); --glow-a: rgba(255, 111, 165, .22); --glow-b: rgba(63, 199, 224, .18);
-  --glow-c: rgba(255, 209, 102, .28);
-  --hdr-bg: rgba(255, 247, 242, .80); --ftr-bg: rgba(255, 255, 255, .55);
-  --ticker-bg: rgba(255, 209, 102, .28); --ticker-tx: #6d5730;
-  --grad-pink: linear-gradient(155deg, #ffeef4, #ffffff);
-  --grad-cyan: linear-gradient(155deg, #e6f8fc, #ffffff);
-  --grad-gold: linear-gradient(155deg, #fff5df, #ffffff);
-  --shadow-soft: 0 16px 36px rgba(120, 80, 140, .10);
-  --shadow-lift: 0 26px 54px rgba(120, 80, 140, .16);
-  --shadow-btn: 0 12px 26px rgba(255, 111, 165, .34);
-  --no-color: rgba(90, 60, 110, .06); --ph: #ffeef4; --field: rgba(90, 60, 110, .04);
-  --chip-bg: rgba(90, 60, 110, .05); --chip-bd: rgba(90, 60, 110, .12); --chip-tx: #6d5b80;
-  --chip-pink-bg: #ffeef4; --chip-pink-bd: rgba(255, 111, 165, .32); --chip-pink-tx: #e5578d;
-  --chip-cyan-bg: #e6f8fc; --chip-cyan-bd: rgba(63, 199, 224, .32); --chip-cyan-tx: #1f92a8;
-  --chip-gold-bg: #fff5df; --chip-gold-bd: rgba(230, 170, 40, .30); --chip-gold-tx: #a5761a;
-  --tag-bg: rgba(63, 199, 224, .12); --tag-bd: rgba(63, 199, 224, .30); --tag-tx: #1f92a8;
-  --ghost-bd: rgba(90, 60, 110, .22); --quote-bg: rgba(255, 111, 165, .12);
+  --accent: #d9705f; --accent2: #4e8f86; --accent3: #b7822f; --on-accent: #2a1712;
+  --ink: #f6f2ec; --ink2: #ffffff; --line: rgba(60, 44, 58, .12);
+  --tx: #2a2230; --tx2: #6f6474; --tx3: #9a8f9e; --lead: #574c60; --hd: #241d2b; --hd2: #c0453c;
+  --dot: rgba(60, 44, 58, .055); --glow-a: rgba(217, 112, 95, .10); --glow-b: rgba(78, 143, 134, .10);
+  --glow-c: rgba(183, 130, 47, .12);
+  --hdr-bg: rgba(246, 242, 236, .82); --ftr-bg: rgba(255, 255, 255, .55);
+  --ticker-bg: rgba(217, 112, 95, .08); --ticker-tx: #7a5b57;
+  --grad-pink: linear-gradient(160deg, #fbeeec, #ffffff);
+  --grad-cyan: linear-gradient(160deg, #e9f3f1, #ffffff);
+  --grad-gold: linear-gradient(160deg, #f6eeda, #ffffff);
+  --shadow-soft: 0 14px 32px rgba(80, 50, 60, .10);
+  --shadow-lift: 0 22px 48px rgba(80, 50, 60, .15);
+  --shadow-btn: 0 10px 22px rgba(217, 112, 95, .20);
+  --no-color: rgba(60, 44, 58, .05); --ph: #f3ece6; --field: rgba(60, 44, 58, .04);
+  --chip-bg: rgba(60, 44, 58, .05); --chip-bd: rgba(60, 44, 58, .12); --chip-tx: #6f6474;
+  --chip-pink-bg: #fbeeec; --chip-pink-bd: rgba(217, 112, 95, .30); --chip-pink-tx: #c0453c;
+  --chip-cyan-bg: #e9f3f1; --chip-cyan-bd: rgba(78, 143, 134, .30); --chip-cyan-tx: #3d726a;
+  --chip-gold-bg: #f6eeda; --chip-gold-bd: rgba(183, 130, 47, .30); --chip-gold-tx: #8f6721;
+  --tag-bg: rgba(78, 143, 134, .12); --tag-bd: rgba(78, 143, 134, .30); --tag-tx: #3d726a;
+  --ghost-bd: rgba(60, 44, 58, .22); --quote-bg: rgba(217, 112, 95, .10);
 
-  --ds-negative: #ef4444; --ds-text-success: #15803d;
-  --ds-text-accent: #e5578d; --ds-text-blue: #1f92a8; --ds-text-amber: #a5761a; --ds-text-pink: #e5578d;
-  --ds-ink-dark: #2f2140;
+  --ds-negative: #d64541; --ds-text-success: #2f8f5f;
+  --ds-text-accent: #c0453c; --ds-text-blue: #3d726a; --ds-text-amber: #8f6721; --ds-text-pink: #c0453c;
+  --ds-ink-dark: #241d2b;
 }
 
 /* ============================================================================
@@ -184,7 +185,7 @@ main { position: relative; }
 /* ── 버튼 ── */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--disp); border-radius: var(--r-pill); transition: transform .22s ease, box-shadow .22s ease, background .22s ease, color .22s ease; line-height: 1; cursor: pointer; border: 0; text-decoration: none; }
 .btn-fill { background: var(--accent); color: var(--on-accent); padding: 17px 34px; font-size: 17px; box-shadow: var(--shadow-btn); }
-.btn-fill:hover { color: var(--on-accent); transform: translateY(-3px); box-shadow: 0 18px 34px rgba(255, 111, 165, .42); }
+.btn-fill:hover { color: var(--on-accent); transform: translateY(-2px); box-shadow: var(--shadow-lift); }
 .btn-ghost { background: transparent; border: 1.5px solid var(--ghost-bd); color: var(--hd); padding: 16px 32px; font-size: 17px; }
 .btn-ghost:hover { border-color: var(--accent2); color: var(--accent2); transform: translateY(-3px); }
 .btn-sm { font-family: var(--label); font-weight: 700; font-size: 13px; letter-spacing: .08em; background: var(--accent); color: var(--on-accent); padding: 11px 22px; box-shadow: var(--shadow-btn); }
@@ -333,7 +334,7 @@ a.chip:hover, button.chip:hover { border-color: var(--accent); color: var(--acce
 .chat-desc { font-size: 13px; color: var(--tx3); }
 
 /* ── 게임 플레이 화면 ── */
-.stage { background: #0b0818; border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow-soft); aspect-ratio: 16/10; display: grid; place-items: center; position: relative; overflow: hidden; }
+.stage { background: #100c14; border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--shadow-soft); aspect-ratio: 16/10; display: grid; place-items: center; position: relative; overflow: hidden; }
 [data-theme="light"] .stage { background: #221a33; }
 .stage-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: var(--s4); }
 .stage-inner .big { font-family: var(--disp); font-size: 44px; color: #fff; }
@@ -419,7 +420,7 @@ a.chip:hover, button.chip:hover { border-color: var(--accent); color: var(--acce
   :root{
     --section-y:52px; --pad-x:20px; --gap:14px; --pad-card:22px;
     --s5:36px; --s6:44px; --s7:56px;
-    --r-l:22px; --r-m:18px;
+    --r-l:16px; --r-m:12px;
   }
 
   /* 헤더 */
